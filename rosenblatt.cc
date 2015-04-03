@@ -21,34 +21,14 @@ int main(int argc, char* argv[]) {
     LabeledSet trainset = LabeledSet(trainIn);
     LabeledSet testset = LabeledSet(testIn);
 
-    /*
-    cout << "training set:\n";
-    for (auto sample : trainset) {
-        cout << sample.fmt() << "\n";
-    }
-    */
-
     Perceptron p(trainset.getInputSize());
-    cout << "Initial weights:                    " << p.fmt() << "\n";
-    p.trainConverge(trainset);
-    cout << "Weights after convergence training: " << p.fmt() << "\n";
+    cout << "Initial weights:                     " << p.fmt() << "\n";
+    ConfusionMatrix cm1 = p.test(testset);
+    cout << "Initial accuracy:                    " << cm1.accuracy() << "\n";
 
-    /*
-    int nErrors = 0;
-    for (int i=0; i<testset.nSamples; ++i) {
-        auto x = testset.inputs[i];
-        double y_true = testset.outputs[i][0];
-        double y_predicted = p.response(x);
-        if (y_true * y_predicted < 0) {
-            nErrors++;
-            for (auto x_j : x) {
-                cout << x_j << " ";
-            }
-            cout << "=> " << y_predicted;
-            cout << " ERROR\n";
-        }
-    }
-    cout << "Accuracy: " << (100.0*(1-nErrors*1.0/testset.nSamples)) << "%\n";
-    */
+    p.trainConverge(trainset);
+    cout << "Weights after convergence training:  " << p.fmt() << "\n";
+    ConfusionMatrix cm2 = p.test(testset);
+    cout << "Accuracy after convergence training: " << cm2.accuracy() << "\n";
 }
 

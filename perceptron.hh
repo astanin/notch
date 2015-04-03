@@ -9,17 +9,20 @@
 #include <assert.h>
 
 
+#include "classifier.hh"
+
+
 using namespace std;
 
 
 double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
-class Perceptron {
+class Perceptron : public BinaryClassifier<double> {
     double bias;
     vector<double> weights;
 
-    void trainConverge_addSample(vector<double> input, double output, double eta) {
+    void trainConverge_addSample(Input input, double output, double eta) {
          double y = response(input);
          double xfactor = eta * (output - y);
          transform(weights.begin(), weights.end(), input.begin(),
@@ -30,12 +33,12 @@ class Perceptron {
     public:
     Perceptron(int n) : bias(0), weights(n) {}
 
-    double inducedLocalField(const vector<double> &x) const {
+    double inducedLocalField(const Input &x) const {
         assert (x.size() == weights.size());
         return inner_product(weights.begin(), weights.end(), x.begin(), bias);
     }
 
-    double response(const vector<double> &x) const {
+    virtual double response(const Input &x) const {
         return sign(inducedLocalField(x));
     }
 
