@@ -50,6 +50,27 @@ class Perceptron : public BinaryClassifier<double> {
         }
     }
 
+    /// batch-training algorithm (Sec 1.6, Eq. 1.42)
+    void trainBatch(const LabeledSet &trainSet, int epochs, double eta=1.0) {
+        assert (trainSet.getOutputSize() == 1);
+        assert (trainSet.getInputSize() == weights.size());
+        LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
+            return (this->response(in))*out[0] <= 0;
+        };
+        // \nabla J(w) = \sum_{\mathbf{x}(n) \in H_{wrong}} ( - \mathbf{x}(n) d(n) )   as in (1.40)
+        for (int epoch=0; epoch < epochs; ++epoch) {
+            // a new batch
+            LabeledSet misclassifiedSet = trainSet.filter(isMisclassified);
+            // sum cost gradient over the entire bactch
+            for (auto sample : misclassifiedSet) {
+                double d = sample.output[0]; // desired output
+                Input x = sample.input;
+                transform(x.begin(), x.end(), weights.begin(), weights.begin(),
+                          [d, eta](double x_i, double w_i) { return w_i + eta * x_i * d; });
+            }
+        }
+    }
+
     string fmt() {
         ostringstream ss;
         ss << bias;

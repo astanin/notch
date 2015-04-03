@@ -38,8 +38,8 @@ int main(int argc, char* argv[]) {
     cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
-    cout << "\n99 more iterations...\n\n";
-    for (int i=0; i<99; i++) {
+    cout << "\n9 more iterations...\n\n";
+    for (int i=0; i<9; i++) {
         p.trainConverge(trainset);
     }
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
@@ -49,6 +49,14 @@ int main(int argc, char* argv[]) {
     cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
+    cout << "\n10 iterations of batch training...\n\n";
     Perceptron p2(trainset.getInputSize());
+    p2.trainBatch(trainset, 10, 0.5);
+    cm = p2.test(testset);
+    cout << "Confusion matrix:\n";
+    cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
+    cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
+    cout << "Accuracy after batch training:       " << cm.accuracy() << "\n";
+
 }
 

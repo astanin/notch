@@ -14,6 +14,7 @@ using namespace std;
 
 using Input = vector<double>;
 using Output = vector<double>;
+using LabeledPairPredicate = function<bool(const Input&, const Output&)>;
 
 
 struct LabeledPair {
@@ -180,8 +181,6 @@ class LabeledSet {
         LabeledSet& append(const LabeledPair &sample) {
             return append(sample.input, sample.output);
         }
-
-        using LabeledPairPredicate = function<bool(const Input&, const Output&)>;
 
         LabeledSet filter(LabeledPairPredicate &selectPredicate) const {
             LabeledSet newSet;
