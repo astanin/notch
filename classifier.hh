@@ -11,6 +11,10 @@ struct ConfusionMatrix {
     int trueNegatives;
     int falseNegatives; // type II error
 
+    ConfusionMatrix() :
+        truePositives(0), falsePositives(0),
+        trueNegatives(0), falseNegatives(0) {}
+
     double recall() {
         return 1.0*truePositives/(truePositives + falseNegatives);
     }

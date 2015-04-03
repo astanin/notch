@@ -24,11 +24,15 @@ int main(int argc, char* argv[]) {
     Perceptron p(trainset.getInputSize());
     cout << "Initial weights:                     " << p.fmt() << "\n";
     ConfusionMatrix cm1 = p.test(testset);
+    cout << cm1.truePositives << " " << cm1.falsePositives << "\n";
+    cout << cm1.falseNegatives << " " << cm1.trueNegatives << "\n";
     cout << "Initial accuracy:                    " << cm1.accuracy() << "\n";
 
     p.trainConverge(trainset);
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
     ConfusionMatrix cm2 = p.test(testset);
+    cout << cm2.truePositives << " " << cm2.falsePositives << "\n";
+    cout << cm2.falseNegatives << " " << cm2.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm2.accuracy() << "\n";
 
     cout << "\nMisclassified set:\n";
