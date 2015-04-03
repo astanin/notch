@@ -43,9 +43,9 @@ class Perceptron : public BinaryClassifier<double> {
     }
 
     /// use perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &ts, double eta=1.0) {
-        assert (ts.getOutputSize() == 1);
-        for (auto sample : ts) {
+    void trainConverge(const LabeledSet &trainSet, double eta=1.0) {
+        assert (trainSet.getOutputSize() == 1);
+        for (auto sample : trainSet) {
             trainConverge_addSample(sample.input, sample.output[0], eta);
         }
     }

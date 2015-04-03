@@ -23,20 +23,32 @@ int main(int argc, char* argv[]) {
 
     Perceptron p(trainset.getInputSize());
     cout << "Initial weights:                     " << p.fmt() << "\n";
-    ConfusionMatrix cm1 = p.test(testset);
+    ConfusionMatrix cm = p.test(testset);
     cout << "Confusion matrix:\n";
-    cout << "    TP=" << cm1.truePositives << " FP=" << cm1.falsePositives << "\n";
-    cout << "    FN=" << cm1.falseNegatives << " TN=" << cm1.trueNegatives << "\n";
-    cout << "Initial accuracy:                    " << cm1.accuracy() << "\n";
+    cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
+    cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
+    cout << "Initial accuracy:                    " << cm.accuracy() << "\n";
 
-    cout << "\n";
+    cout << "\n1 iteration...\n\n";
     p.trainConverge(trainset);
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
-    ConfusionMatrix cm2 = p.test(testset);
+    cm = p.test(testset);
     cout << "Confusion matrix:\n";
-    cout << "    TP=" << cm2.truePositives << " FP=" << cm2.falsePositives << "\n";
-    cout << "    FN=" << cm2.falseNegatives << " TN=" << cm2.trueNegatives << "\n";
-    cout << "Accuracy after convergence training: " << cm2.accuracy() << "\n";
+    cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
+    cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
+    cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
+    cout << "\n99 more iterations...\n\n";
+    for (int i=0; i<99; i++) {
+        p.trainConverge(trainset);
+    }
+    cout << "Weights after convergence training:  " << p.fmt() << "\n";
+    cm = p.test(testset);
+    cout << "Confusion matrix:\n";
+    cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
+    cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
+    cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
+
+    Perceptron p2(trainset.getInputSize());
 }
 
