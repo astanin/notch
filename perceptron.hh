@@ -25,9 +25,20 @@ class Perceptron : public BinaryClassifier<double> {
     void trainConverge_addSample(Input input, double output, double eta) {
          double y = response(input);
          double xfactor = eta * (output - y);
+         bias += xfactor * 1.0;
          transform(weights.begin(), weights.end(), input.begin(),
                    weights.begin() /* output */,
                    [&xfactor](double w_i, double x_i) { return w_i + xfactor*x_i; });
+    }
+
+    void trainBatch_addBatch(LabeledSet batch, double eta) {
+        for (auto sample : batch) {
+            double d = sample.output[0]; // desired output
+            Input x = sample.input;
+            bias += eta * 1.0 * d;
+            transform(x.begin(), x.end(), weights.begin(), weights.begin(),
+                      [d, eta](double x_i, double w_i) { return w_i + eta * x_i * d; });
+        }
     }
 
     public:
@@ -43,31 +54,29 @@ class Perceptron : public BinaryClassifier<double> {
     }
 
     /// use perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet, double eta=1.0) {
+    void trainConverge(const LabeledSet &trainSet, int epochs=1, double eta=1.0) {
         assert (trainSet.getOutputSize() == 1);
-        for (auto sample : trainSet) {
-            trainConverge_addSample(sample.input, sample.output[0], eta);
+        for (int epoch=0; epoch < epochs; ++epoch) {
+            for (auto sample : trainSet) {
+                trainConverge_addSample(sample.input, sample.output[0], eta);
+            }
         }
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet, int epochs, double eta=1.0) {
+    void trainBatch(const LabeledSet &trainSet, int epochs=1, double eta=1.0) {
         assert (trainSet.getOutputSize() == 1);
         assert (trainSet.getInputSize() == weights.size());
         LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
             return (this->response(in))*out[0] <= 0;
         };
-        // \nabla J(w) = \sum_{\mathbf{x}(n) \in H_{wrong}} ( - \mathbf{x}(n) d(n) )   as in (1.40)
+        // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) )      (1.40)
+        // w(n+1) = w(n) - eta(n) \nabla J(w)                               (1.42)
         for (int epoch=0; epoch < epochs; ++epoch) {
             // a new batch
             LabeledSet misclassifiedSet = trainSet.filter(isMisclassified);
             // sum cost gradient over the entire bactch
-            for (auto sample : misclassifiedSet) {
-                double d = sample.output[0]; // desired output
-                Input x = sample.input;
-                transform(x.begin(), x.end(), weights.begin(), weights.begin(),
-                          [d, eta](double x_i, double w_i) { return w_i + eta * x_i * d; });
-            }
+            trainBatch_addBatch(misclassifiedSet, eta);
         }
     }
 
