@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <functional>  // function<>
+#include <assert.h>
 
 
 using namespace std;
@@ -78,9 +80,9 @@ class LabeledPairsIterator : public iterator<input_iterator_tag, LabeledPair> {
 
 class LabeledSet {
     private:
-        int nSamples;
-        int inputSize;
-        int outputSize;
+        size_t nSamples;
+        size_t inputSize;
+        size_t outputSize;
         vector< Input > inputs;
         vector< Output > outputs;
 
@@ -89,13 +91,13 @@ class LabeledSet {
             in >> nSamples >> inputSize >> outputSize;
             inputs.clear();
             outputs.clear();
-            for (int i=0; i<nSamples; ++i) {
+            for (size_t i=0; i<nSamples; ++i) {
                 auto input = vector<double>(inputSize);
                 auto output = vector<double>(outputSize);
-                for (int j=0; j<inputSize; ++j) {
+                for (size_t j=0; j<inputSize; ++j) {
                     in >> input[j];
                 }
-                for (int j=0; j<outputSize; ++j) {
+                for (size_t j=0; j<outputSize; ++j) {
                     in >> output[j];
                 }
                 inputs.push_back(input);
@@ -107,15 +109,15 @@ class LabeledSet {
         string fmtFANN() {
             ostringstream ss;
             ss << nSamples << " " << inputSize << " " << outputSize << "\n";
-            for (int i=0; i<nSamples; ++i) {
-                for (int j=0; j<inputSize; ++j) {
+            for (size_t i=0; i<nSamples; ++i) {
+                for (size_t j=0; j<inputSize; ++j) {
                     if (j) {
                         ss << " ";
                     }
                     ss << inputs[i][j];
                 }
                 ss << "\n";
-                for (int j=0; j<outputSize; ++j) {
+                for (size_t j=0; j<outputSize; ++j) {
                     if (j) {
                         ss << " ";
                     }
@@ -127,7 +129,7 @@ class LabeledSet {
         }
 
    public:
-        LabeledSet() {}
+        LabeledSet() : nSamples(0), inputSize(0), outputSize(0) {}
         LabeledSet(istream& in) { loadFANN(in); }
 
         LabeledPairsIterator begin() const {
@@ -138,9 +140,58 @@ class LabeledSet {
             return LabeledPairsIterator(inputs, outputs, nSamples);
         }
 
-        int getSetSize() const { return nSamples; }
-        int getInputSize() const { return inputSize; }
-        int getOutputSize() const { return outputSize; }
+        size_t getSetSize() const { return nSamples; }
+        size_t getInputSize() const { return inputSize; }
+        size_t getOutputSize() const { return outputSize; }
+
+        LabeledSet& append(Input &input, Output &output) {
+            if (nSamples != 0) {
+                assert (inputSize == input.size());
+                assert (outputSize == output.size());
+            } else {
+                inputSize = input.size();
+                outputSize = output.size();
+            }
+            nSamples++;
+            inputs.push_back(input);
+            outputs.push_back(output);
+        }
+
+        LabeledSet& append(const Input &input, const Output &output) {
+            if (nSamples != 0) {
+                assert (inputSize == input.size());
+                assert (outputSize == output.size());
+            } else {
+                inputSize = input.size();
+                outputSize = output.size();
+            }
+            nSamples++;
+            Input input_copy(input);
+            Output output_copy(output);
+            inputs.push_back(input_copy);
+            outputs.push_back(output_copy);
+            return *this;
+        }
+
+        LabeledSet& append(LabeledPair &sample) {
+            return append(sample.input, sample.output);
+        }
+
+        LabeledSet& append(const LabeledPair &sample) {
+            return append(sample.input, sample.output);
+        }
+
+        using LabeledPairPredicate = function<bool(const Input&, const Output&)>;
+
+        LabeledSet filter(LabeledPairPredicate &selectPredicate) const {
+            LabeledSet newSet;
+            for (auto sample : *this) {
+                if (selectPredicate(sample.input, sample.output)) {
+                    newSet.append(sample);
+                }
+            }
+            return newSet;
+        }
 
         friend istream& operator>>(istream& out, LabeledSet& ls);
         friend ostream& operator<<(ostream& out, LabeledSet& ls);

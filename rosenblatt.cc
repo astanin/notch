@@ -30,5 +30,12 @@ int main(int argc, char* argv[]) {
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
     ConfusionMatrix cm2 = p.test(testset);
     cout << "Accuracy after convergence training: " << cm2.accuracy() << "\n";
+
+    cout << "\nMisclassified set:\n";
+    LabeledSet::LabeledPairPredicate isMisclassified = [&p](const Input &in, const Output &out) {
+        return p.response(in)*out[0] < 0;
+    };
+    auto misclassifiedSet = testset.filter(isMisclassified);
+    cout << misclassifiedSet;
 }
 
