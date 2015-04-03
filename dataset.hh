@@ -78,6 +78,12 @@ class LabeledPairsIterator : public iterator<input_iterator_tag, LabeledPair> {
 
 class LabeledSet {
     private:
+        int nSamples;
+        int inputSize;
+        int outputSize;
+        vector< Input > inputs;
+        vector< Output > outputs;
+
         /// load a dataset from file (the same format as FANN)
         void loadFANN(istream& in) {
             in >> nSamples >> inputSize >> outputSize;
@@ -121,23 +127,20 @@ class LabeledSet {
         }
 
    public:
-        int nSamples;
-        int inputSize;
-        int outputSize;
-
-        vector< Input > inputs;
-        vector< Output > outputs;
-
         LabeledSet() {}
         LabeledSet(istream& in) { loadFANN(in); }
 
-        LabeledPairsIterator begin() {
+        LabeledPairsIterator begin() const {
             return LabeledPairsIterator(inputs, outputs);
         }
 
-        LabeledPairsIterator end() {
+        LabeledPairsIterator end() const {
             return LabeledPairsIterator(inputs, outputs, nSamples);
         }
+
+        int getSetSize() const { return nSamples; }
+        int getInputSize() const { return inputSize; }
+        int getOutputSize() const { return outputSize; }
 
         friend istream& operator>>(istream& out, LabeledSet& ls);
         friend ostream& operator<<(ostream& out, LabeledSet& ls);

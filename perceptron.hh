@@ -41,9 +41,9 @@ class Perceptron {
 
     /// use perceptron convergence algorithm (Table 1.1)
     void trainConverge(const LabeledSet &ts, double eta=1.0) {
-        assert (ts.outputSize == 1);
-        for (int i=0; i < ts.nSamples; ++i) {
-            trainConverge_addSample(ts.inputs[i], ts.outputs[i][0], eta);
+        assert (ts.getOutputSize() == 1);
+        for (auto sample : ts) {
+            trainConverge_addSample(sample.input, sample.output[0], eta);
         }
     }
 

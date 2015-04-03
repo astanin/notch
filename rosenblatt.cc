@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     }
     */
 
-    Perceptron p(trainset.inputSize);
+    Perceptron p(trainset.getInputSize());
     cout << "Initial weights:                    " << p.fmt() << "\n";
     p.trainConverge(trainset);
     cout << "Weights after convergence training: " << p.fmt() << "\n";
