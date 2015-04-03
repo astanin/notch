@@ -53,18 +53,29 @@ class Perceptron : public BinaryClassifier<double> {
         return sign(inducedLocalField(x));
     }
 
+    using epoch_parameter = function<double(int)>;
+
+    static epoch_parameter const_eta(double eta) {
+        return [eta](int) { return eta; };
+    }
+
     /// use perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet, int epochs=1, double eta=1.0) {
+    void trainConverge(const LabeledSet &trainSet,
+                       int epochs=1,
+                       epoch_parameter eta=const_eta(1.0)) {
         assert (trainSet.getOutputSize() == 1);
         for (int epoch=0; epoch < epochs; ++epoch) {
+            double etaval = eta(epoch);
             for (auto sample : trainSet) {
-                trainConverge_addSample(sample.input, sample.output[0], eta);
+                trainConverge_addSample(sample.input, sample.output[0], etaval);
             }
         }
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet, int epochs=1, double eta=1.0) {
+    void trainBatch(const LabeledSet &trainSet,
+                    int epochs=1,
+                    epoch_parameter eta=const_eta(1.0)) {
         assert (trainSet.getOutputSize() == 1);
         assert (trainSet.getInputSize() == weights.size());
         LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
@@ -73,10 +84,11 @@ class Perceptron : public BinaryClassifier<double> {
         // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) )      (1.40)
         // w(n+1) = w(n) - eta(n) \nabla J(w)                               (1.42)
         for (int epoch=0; epoch < epochs; ++epoch) {
+            double etaval = eta(epoch);
             // a new batch
             LabeledSet misclassifiedSet = trainSet.filter(isMisclassified);
             // sum cost gradient over the entire bactch
-            trainBatch_addBatch(misclassifiedSet, eta);
+            trainBatch_addBatch(misclassifiedSet, etaval);
         }
     }
 
