@@ -21,11 +21,19 @@ int main(int argc, char* argv[]) {
     LabeledSet trainset = LabeledSet(trainIn);
     LabeledSet testset = LabeledSet(testIn);
 
-    Perceptron p(trainset.inputSize);
-    cout << "Initial weights: " << p.fmt() << "\n";
-    p.trainPCA(trainset);
-    cout << "Final weights: " << p.fmt() << "\n";
+    /*
+    cout << "training set:\n";
+    for (auto sample : trainset) {
+        cout << sample.fmt() << "\n";
+    }
+    */
 
+    Perceptron p(trainset.inputSize);
+    cout << "Initial weights:                    " << p.fmt() << "\n";
+    p.trainConverge(trainset);
+    cout << "Weights after convergence training: " << p.fmt() << "\n";
+
+    /*
     int nErrors = 0;
     for (int i=0; i<testset.nSamples; ++i) {
         auto x = testset.inputs[i];
@@ -41,5 +49,6 @@ int main(int argc, char* argv[]) {
         }
     }
     cout << "Accuracy: " << (100.0*(1-nErrors*1.0/testset.nSamples)) << "%\n";
+    */
 }
 
