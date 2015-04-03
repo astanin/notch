@@ -24,22 +24,19 @@ int main(int argc, char* argv[]) {
     Perceptron p(trainset.getInputSize());
     cout << "Initial weights:                     " << p.fmt() << "\n";
     ConfusionMatrix cm1 = p.test(testset);
-    cout << cm1.truePositives << " " << cm1.falsePositives << "\n";
-    cout << cm1.falseNegatives << " " << cm1.trueNegatives << "\n";
+    cout << "Confusion matrix:\n";
+    cout << "    TP=" << cm1.truePositives << " FP=" << cm1.falsePositives << "\n";
+    cout << "    FN=" << cm1.falseNegatives << " TN=" << cm1.trueNegatives << "\n";
     cout << "Initial accuracy:                    " << cm1.accuracy() << "\n";
 
+    cout << "\n";
     p.trainConverge(trainset);
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
     ConfusionMatrix cm2 = p.test(testset);
-    cout << cm2.truePositives << " " << cm2.falsePositives << "\n";
-    cout << cm2.falseNegatives << " " << cm2.trueNegatives << "\n";
+    cout << "Confusion matrix:\n";
+    cout << "    TP=" << cm2.truePositives << " FP=" << cm2.falsePositives << "\n";
+    cout << "    FN=" << cm2.falseNegatives << " TN=" << cm2.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm2.accuracy() << "\n";
 
-    cout << "\nMisclassified set:\n";
-    LabeledSet::LabeledPairPredicate isMisclassified = [&p](const Input &in, const Output &out) {
-        return p.response(in)*out[0] < 0;
-    };
-    auto misclassifiedSet = testset.filter(isMisclassified);
-    cout << misclassifiedSet;
 }
 
