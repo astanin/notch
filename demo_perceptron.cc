@@ -8,6 +8,7 @@
 
 
 using namespace std;
+int N_ITERS=100;
 
 
 int main(int argc, char* argv[]) {
@@ -37,8 +38,8 @@ int main(int argc, char* argv[]) {
     cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
-    cout << "\n99 more iterations...\n\n";
-    for (int i=0; i<99; i++) {
+    cout << "\n" << N_ITERS - 1 << " more iterations...\n\n";
+    for (int i=0; i < N_ITERS - 1; i++) {
         p.trainConverge(trainset);
     }
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
@@ -48,9 +49,9 @@ int main(int argc, char* argv[]) {
     cout << "    FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
-    cout << "\nvs 100 iterations of batch training...\n\n";
+    cout << "\nvs " << N_ITERS << " iterations of batch training...\n\n";
     Perceptron p2(trainset.getInputSize());
-    p2.trainBatch(trainset, 100, [](int epoch) { return 1.0/(1+epoch); });
+    p2.trainBatch(trainset, N_ITERS, [](int epoch) { return 1.0/(1+epoch); });
     cout << "Weights after batch training:        " << p2.fmt() << "\n";
     cm = p2.test(testset);
     cout << "Confusion matrix:\n";
