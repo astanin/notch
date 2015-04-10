@@ -16,4 +16,4 @@ Two training methods:
  * perceptron convergence training (`Perceptron::trainConverge()`)
  * batch training on misclassified subsets (`Perceptron::trainBatch()`)
 
-Demo: [rosenblatt.cc](rosenblatt.cc).
+Demo: [demo_perceptron.cc](demo_perceptron.cc).

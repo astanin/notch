@@ -1,5 +1,4 @@
-// Chapter 1. Rosenblatt's Perceptron.
-// Section 1.6. The Batch Perceptron Algorithm.
+// Demo for Chapter 1. Rosenblatt's Perceptron.
 #include <iostream>
 #include <fstream>
 
