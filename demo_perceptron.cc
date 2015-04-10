@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     cout << "\nvs 100 iterations of batch training...\n\n";
     Perceptron p2(trainset.getInputSize());
     p2.trainBatch(trainset, 100, [](int epoch) { return 1.0/(1+epoch); });
-    cout << "Weights after batch training:        " << p.fmt() << "\n";
+    cout << "Weights after batch training:        " << p2.fmt() << "\n";
     cm = p2.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
