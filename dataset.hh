@@ -156,6 +156,7 @@ class LabeledSet {
             nSamples++;
             inputs.push_back(input);
             outputs.push_back(output);
+            return *this;
         }
 
         LabeledSet& append(const Input &input, const Output &output) {
