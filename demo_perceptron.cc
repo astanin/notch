@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     cout << "Initial accuracy:                    " << cm.accuracy() << "\n";
 
     cout << "\n1 iteration...\n\n";
-    p.trainConverge(trainset);
+    p.trainConverge(trainset, 1);
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
     cm = p.test(testset);
     cout << "Confusion matrix:\n";
@@ -39,9 +39,8 @@ int main(int argc, char* argv[]) {
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
     cout << "\n" << N_ITERS - 1 << " more iterations...\n\n";
-    for (int i=0; i < N_ITERS - 1; i++) {
-        p.trainConverge(trainset);
-    }
+    p.trainConverge(trainset, N_ITERS-1);
+
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
     cm = p.test(testset);
     cout << "Confusion matrix:\n";
@@ -51,7 +50,7 @@ int main(int argc, char* argv[]) {
 
     cout << "\nvs " << N_ITERS << " iterations of batch training...\n\n";
     Perceptron p2(trainset.getInputSize());
-    p2.trainBatch(trainset, N_ITERS, [](int epoch) { return 1.0/(1+epoch); });
+    p2.trainBatch(trainset, N_ITERS);
     cout << "Weights after batch training:        " << p2.fmt() << "\n";
     cm = p2.test(testset);
     cout << "Confusion matrix:\n";

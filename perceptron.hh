@@ -18,6 +18,14 @@ using namespace std;
 double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
+using epoch_parameter = function<double(int)>;
+
+
+epoch_parameter const_epoch_parameter(double eta) {
+    return [eta](int) { return eta; };
+}
+
+
 class Perceptron : public BinaryClassifier<double> {
     double bias;
     vector<double> weights;
@@ -53,16 +61,17 @@ class Perceptron : public BinaryClassifier<double> {
         return sign(inducedLocalField(x));
     }
 
-    using epoch_parameter = function<double(int)>;
-
-    static epoch_parameter const_eta(double eta) {
-        return [eta](int) { return eta; };
+    /// perceptron convergence algorithm (Table 1.1)
+    void trainConverge(const LabeledSet &trainSet,
+                       int epochs,
+                       double eta=1.0) {
+        return trainConverge(trainSet, epochs, const_epoch_parameter(eta));
     }
 
-    /// use perceptron convergence algorithm (Table 1.1)
+    /// perceptron convergence algorithm (Table 1.1)
     void trainConverge(const LabeledSet &trainSet,
-                       int epochs=1,
-                       epoch_parameter eta=const_eta(1.0)) {
+                       int epochs,
+                       epoch_parameter eta) {
         assert (trainSet.getOutputSize() == 1);
         for (int epoch=0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
@@ -74,8 +83,15 @@ class Perceptron : public BinaryClassifier<double> {
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
     void trainBatch(const LabeledSet &trainSet,
-                    int epochs=1,
-                    epoch_parameter eta=const_eta(1.0)) {
+                    int epochs,
+                    double eta=1.0) {
+        return trainBatch(trainSet, epochs, const_epoch_parameter(eta));
+    }
+
+    /// batch-training algorithm (Sec 1.6, Eq. 1.42)
+    void trainBatch(const LabeledSet &trainSet,
+                    int epochs,
+                    epoch_parameter eta) {
         assert (trainSet.getOutputSize() == 1);
         assert (trainSet.getInputSize() == weights.size());
         LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
