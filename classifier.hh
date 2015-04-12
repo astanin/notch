@@ -45,26 +45,23 @@ class Classifier {
 };
 
 
-/// Binary classifier returns two class labels: -1 and +1.
-template<typename ScalarType>
-class BinaryClassifier : public Classifier<ScalarType> {
+/// Binary classifier returns two class labels: true and false.
+class BinaryClassifier : public Classifier<bool> {
     public:
         virtual ConfusionMatrix test(const LabeledSet& testSet) const {
             assert (testSet.getOutputSize() == 1);
             ConfusionMatrix cm;
             for (LabeledPair sample : testSet) {
-                auto result = this->classify(sample.input);
-                auto expected = sample.output[0];
-                bool epectedIsPositive = expected > 0;
-                bool resultIsPositive = result > 0;
-                if (epectedIsPositive) {
-                    if (resultIsPositive) {
+                bool result = this->classify(sample.input);
+                bool expected = sample.output[0] > 0;
+                if (expected) {
+                    if (result) {
                         cm.truePositives++;
                     } else {
                         cm.falseNegatives++;
                     }
                 } else {
-                    if (resultIsPositive) {
+                    if (result) {
                         cm.falsePositives++;
                     } else {
                         cm.trueNegatives++;

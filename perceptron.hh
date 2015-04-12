@@ -33,7 +33,7 @@ class APerceptron {
 
 
 class Perceptron : public APerceptron,
-                   public BinaryClassifier<double> {
+                   public BinaryClassifier {
 private:
     double bias;
     vector<double> weights;
@@ -71,8 +71,8 @@ public:
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual double classify(const Input &x) const {
-        return output(x);
+    virtual bool classify(const Input &x) const {
+        return output(x) > 0;
     }
 
     /// perceptron convergence algorithm (Table 1.1)
