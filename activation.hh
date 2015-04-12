@@ -15,6 +15,7 @@ class ActivationFunction {
 };
 
 
+/// phi(v) = 1/(1 + exp(-slope*v)); Chapter 4, page 135
 class LogisticFunction : public ActivationFunction {
     private:
         double slope = 1.0;
@@ -33,6 +34,26 @@ class LogisticFunction : public ActivationFunction {
 };
 
 
+/// phi(v) = a * tanh(b * v); Chapter 4, page 136
+class TanhFunction : public ActivationFunction {
+    private:
+        double a = 1.0;
+        double b = 1.0;
+    public:
+        TanhFunction(double a=1.0, double b=1.0) : a(a), b(b) {}
+
+        virtual double operator()(double v) const {
+            return a*tanh(b*v);
+        }
+
+        virtual double derivative(double v) const {
+            double y = tanh(b*v);
+            return a*b*(1.0 - y*y);
+        }
+};
+
+
+/// calculate derivative with numeric differentiation
 class AutoDiffFunction : public ActivationFunction {
     private:
         function<double(double)> f;
