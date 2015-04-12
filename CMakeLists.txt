@@ -10,4 +10,4 @@ set(SOURCE_FILES
     perceptron.hh)
 
 add_executable(demo_perceptron demo_perceptron.cc ${SOURCE_FILES})
-add_executable(gen_twomoon gen_twomoon.cc ${SOURCE_FILES})
+add_executable(gen_twomoons gen_twomoons.cc ${SOURCE_FILES})

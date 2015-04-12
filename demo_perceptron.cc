@@ -13,7 +13,7 @@ int N_ITERS=100;
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        cerr << "Usage: rosenblatt train.data test.data\n";
+        cerr << "Usage: demo_perceptron train.data test.data\n";
         exit(-1);
     }
     ifstream trainIn(argv[1]);
