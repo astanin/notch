@@ -10,12 +10,10 @@
 
 
 #include "classifier.hh"
+#include "activation.hh"
 
 
 using namespace std;
-
-
-double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
 using epoch_parameter = function<double(int)>;
