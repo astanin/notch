@@ -34,8 +34,10 @@ class APerceptron {
 
 class Perceptron : public APerceptron,
                    public BinaryClassifier<double> {
+private:
     double bias;
     vector<double> weights;
+    ActivationFunction &activationFunction;
 
     void trainConverge_addSample(Input input, double output, double eta) {
          double y = this->output(input);
@@ -56,8 +58,9 @@ class Perceptron : public APerceptron,
         }
     }
 
-    public:
-    Perceptron(int n) : bias(0), weights(n) {}
+public:
+    Perceptron(int n, ActivationFunction &af=signumFunction) :
+        bias(0), weights(n), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) const {
         assert (x.size() == weights.size());
@@ -65,7 +68,7 @@ class Perceptron : public APerceptron,
     }
 
     virtual double output(const Input &x) const {
-        return sign(inducedLocalField(x));
+        return activationFunction(inducedLocalField(x));
     }
 
     virtual double classify(const Input &x) const {

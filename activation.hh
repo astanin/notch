@@ -2,7 +2,6 @@
 #define ACTIVATION_H
 
 
-//#include <functional> // function
 #include <cmath>      // exp
 
 
@@ -10,8 +9,9 @@ double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
 class ActivationFunction {
-    virtual double operator()(double v) const = 0;
-    virtual double derivative(double v) const = 0;
+    public:
+        virtual double operator()(double v) const = 0;
+        virtual double derivative(double v) const = 0;
 };
 
 
@@ -50,5 +50,7 @@ class AutoDiffFunction : public ActivationFunction {
         }
 };
 
+
+AutoDiffFunction signumFunction(sign);
 
 #endif /* ACTIVATION_H */
