@@ -26,12 +26,21 @@ epoch_parameter const_epoch_parameter(double eta) {
 }
 
 
-class Perceptron : public BinaryClassifier<double> {
+class APerceptron {
+    // induced local field of activation potential $v_k$, page 11
+    virtual double inducedLocalField(const Input &x) const = 0;
+    // neuron's output (activation function applied to the induced local field)
+    virtual double output(const Input &x) const = 0;
+};
+
+
+class Perceptron : public APerceptron,
+                   public BinaryClassifier<double> {
     double bias;
     vector<double> weights;
 
     void trainConverge_addSample(Input input, double output, double eta) {
-         double y = response(input);
+         double y = this->output(input);
          double xfactor = eta * (output - y);
          bias += xfactor * 1.0;
          transform(weights.begin(), weights.end(), input.begin(),
@@ -52,13 +61,17 @@ class Perceptron : public BinaryClassifier<double> {
     public:
     Perceptron(int n) : bias(0), weights(n) {}
 
-    double inducedLocalField(const Input &x) const {
+    virtual double inducedLocalField(const Input &x) const {
         assert (x.size() == weights.size());
         return inner_product(weights.begin(), weights.end(), x.begin(), bias);
     }
 
-    virtual double response(const Input &x) const {
+    virtual double output(const Input &x) const {
         return sign(inducedLocalField(x));
+    }
+
+    virtual double classify(const Input &x) const {
+        return output(x);
     }
 
     /// perceptron convergence algorithm (Table 1.1)
@@ -95,7 +108,7 @@ class Perceptron : public BinaryClassifier<double> {
         assert (trainSet.getOutputSize() == 1);
         assert (trainSet.getInputSize() == weights.size());
         LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
-            return (this->response(in))*out[0] <= 0;
+            return (this->output(in))*out[0] <= 0;
         };
         // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) )      (1.40)
         // w(n+1) = w(n) - eta(n) \nabla J(w)                               (1.42)

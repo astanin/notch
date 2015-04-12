@@ -40,11 +40,12 @@ struct ConfusionMatrix {
 template<typename Out>
 class Classifier {
     public:
-        virtual Out response(const Input& input) const = 0;
+        virtual Out classify(const Input& input) const = 0;
         virtual ConfusionMatrix test(const LabeledSet& testSet) const = 0;
 };
 
 
+/// Binary classifier returns two class labels: -1 and +1.
 template<typename ScalarType>
 class BinaryClassifier : public Classifier<ScalarType> {
     public:
@@ -52,7 +53,7 @@ class BinaryClassifier : public Classifier<ScalarType> {
             assert (testSet.getOutputSize() == 1);
             ConfusionMatrix cm;
             for (LabeledPair sample : testSet) {
-                auto result = this->response(sample.input);
+                auto result = this->classify(sample.input);
                 auto expected = sample.output[0];
                 bool epectedIsPositive = expected > 0;
                 bool resultIsPositive = result > 0;
