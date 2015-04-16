@@ -11,4 +11,5 @@ set(SOURCE_FILES
     perceptron.hh)
 
 add_executable(demo_perceptron demo_perceptron.cc ${SOURCE_FILES})
+add_executable(demo_multilayer demo_multilayer.cc ${SOURCE_FILES})
 add_executable(gen_twomoons gen_twomoons.cc ${SOURCE_FILES})

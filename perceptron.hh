@@ -25,10 +25,12 @@ epoch_parameter const_epoch_parameter(double eta) {
 
 
 class APerceptron {
-    // induced local field of activation potential $v_k$, page 11
+    /// induced local field of activation potential $v_k$, page 11
     virtual double inducedLocalField(const Input &x) const = 0;
-    // neuron's output (activation function applied to the induced local field)
+    /// neuron's output (activation function applied to the induced local field)
     virtual double output(const Input &x) const = 0;
+    /// neuron's weights; weights[0] is bias
+    virtual vector<double> getWeights() const = 0;
 };
 
 
@@ -122,15 +124,56 @@ public:
         }
     }
 
+    virtual vector<double> getWeights() const {
+        vector<double> biasAndWeights(weights);
+        biasAndWeights.insert(biasAndWeights.begin(), bias);
+        return biasAndWeights;
+    }
+
     string fmt() {
         ostringstream ss;
-        ss << bias;
-        for (auto it : weights) {
+        for (auto it : getWeights()) {
             ss << " " << it;
         }
         return ss.str();
     }
 
 };
+
+
+/// A fully connected layer of perceptrons.
+class PerceptronsLayer {
+private:
+    int nInputs;
+    int nNeurons;
+    vector<Perceptron> neurons;
+
+public:
+    PerceptronsLayer(int nInputs, int nOutputs,
+                     const ActivationFunction &af=defaultTanh) :
+        nInputs(nInputs),
+        nNeurons(nOutputs),
+        neurons(nOutputs, Perceptron(nInputs, af)) {}
+
+    vector<vector<double>> getWeightMatrix() const {
+        vector<vector<double>> weightMatrix(0);
+        for (auto n : neurons) {
+            weightMatrix.push_back(n.getWeights());
+        }
+        return weightMatrix;
+    }
+};
+
+
+ostream& operator<<(ostream& out, PerceptronsLayer& layer) {
+    auto W = layer.getWeightMatrix();
+    for (auto w_i : W) {
+        for (auto w_ij : w_i) {
+            out << w_ij << " ";
+        }
+        out << "\n";
+    }
+    return out;
+}
 
 #endif /* PERCEPTRON_H */
