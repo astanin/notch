@@ -35,12 +35,16 @@ class LogisticFunction : public ActivationFunction {
 
 
 /// phi(v) = a * tanh(b * v); Chapter 4, page 136
+///
+/// Default values for a and b were proposed by (LeCun, 1993),
+/// so that phi(1) = 1 and phi(-1) = -1, and the slope at the origin is 1.1424;
+/// Chapter 4, page 145.
 class TanhFunction : public ActivationFunction {
     private:
-        double a = 1.0;
-        double b = 1.0;
+        double a;
+        double b;
     public:
-        TanhFunction(double a=1.0, double b=1.0) : a(a), b(b) {}
+        TanhFunction(double a=1.7159, double b=0.6667) : a(a), b(b) {}
 
         virtual double operator()(double v) const {
             return a*tanh(b*v);
