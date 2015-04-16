@@ -2,7 +2,11 @@
 #define ACTIVATION_H
 
 
+#include <functional>  // function<>
 #include <cmath>      // exp
+
+
+using namespace std;
 
 
 double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
@@ -62,6 +66,7 @@ class AutoDiffFunction : public ActivationFunction {
     private:
         function<double(double)> f;
         double dx;
+
     public:
         AutoDiffFunction(function<double(double)> f, double dx=1e-3) :
             f(f), dx(dx) {}
