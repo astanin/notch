@@ -2,10 +2,20 @@
 #include <iostream>
 
 
+#include "activation.hh"
 #include "perceptron.hh"
 
 
-int main(int argc, char *argv[]) {
-    PerceptronsLayer l2(2, 2);
-    cout << l2 << "\n";
+int main(int , char*[]) {
+    PerceptronsLayer layer(2, 2);
+    Input in { 10, 20 };
+    cout << "weights:\n";
+    cout << layer << "\n";
+    cout << "input:\n";
+    cout << in << "\n";
+    auto out = layer.forwardPass(in);
+    cout << "output:\n";
+    cout << out << "\n";
+    return 0;
+
 }

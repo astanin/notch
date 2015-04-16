@@ -141,19 +141,47 @@ public:
 };
 
 
+/**
+ A basic perceptron, without built-in training facilities, with
+ reasonable defaults to be used within `PerceptronsLayers`.
+ */
+class BasicPerceptron : public APerceptron {
+private:
+    vector<double> weights;  // weights[0] is bias
+    const ActivationFunction& activationFunction;
+
+public:
+    BasicPerceptron(int n, const ActivationFunction &af=defaultTanh) :
+        weights(n + 1), activationFunction(af) { }
+
+    virtual double inducedLocalField(const Input &x) const {
+        double bias = weights[0];
+        auto weights_2nd = next(weights.begin());
+        return inner_product(weights_2nd, weights.end(), x.begin(), bias);
+    }
+
+    virtual double output(const Input &x) const {
+        return activationFunction(inducedLocalField(x));
+    }
+
+    virtual vector<double> getWeights() const {
+        return weights;
+    }
+};
+
 /// A fully connected layer of perceptrons.
 class PerceptronsLayer {
 private:
     int nInputs;
     int nNeurons;
-    vector<Perceptron> neurons;
+    vector<BasicPerceptron> neurons;
 
 public:
     PerceptronsLayer(int nInputs, int nOutputs,
                      const ActivationFunction &af=defaultTanh) :
         nInputs(nInputs),
         nNeurons(nOutputs),
-        neurons(nOutputs, Perceptron(nInputs, af)) {}
+        neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
 
     vector<vector<double>> getWeightMatrix() const {
         vector<vector<double>> weightMatrix(0);
@@ -161,6 +189,15 @@ public:
             weightMatrix.push_back(n.getWeights());
         }
         return weightMatrix;
+    }
+
+    // Pages 132-133.
+    Output forwardPass(const Input& xs) {
+        Output output(nNeurons);
+        for (int i=0; i < nNeurons; ++i) {
+            output[i] = neurons[i].output(xs);
+        }
+        return output;
     }
 };
 
@@ -173,6 +210,17 @@ ostream& operator<<(ostream& out, PerceptronsLayer& layer) {
         }
         out << "\n";
     }
+    return out;
+}
+
+
+ostream& operator<<(ostream& out, Output& xs) {
+    int n = xs.size();
+    out << "[ ";
+    for (int i=0; i < n - 1; ++i) {
+        out << xs[i] << ", ";
+    }
+    out << xs[n - 1] << " ]";
     return out;
 }
 
