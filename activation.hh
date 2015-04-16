@@ -76,6 +76,7 @@ class AutoDiffFunction : public ActivationFunction {
 };
 
 
-AutoDiffFunction signumFunction(sign);
+const TanhFunction defaultTanh;
+const AutoDiffFunction defaultSignum(sign);
 
 #endif /* ACTIVATION_H */

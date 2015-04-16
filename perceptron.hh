@@ -37,7 +37,7 @@ class Perceptron : public APerceptron,
 private:
     double bias;
     vector<double> weights;
-    ActivationFunction &activationFunction;
+    const ActivationFunction &activationFunction;
 
     void trainConverge_addSample(Input input, double output, double eta) {
          double y = this->output(input);
@@ -59,7 +59,7 @@ private:
     }
 
 public:
-    Perceptron(int n, ActivationFunction &af=signumFunction) :
+    Perceptron(int n, const ActivationFunction &af=defaultSignum) :
         bias(0), weights(n), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) const {
