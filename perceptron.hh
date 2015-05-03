@@ -9,6 +9,7 @@
 #include <assert.h>
 
 
+#include "randomgen.hh"
 #include "classifier.hh"
 #include "activation.hh"
 
@@ -136,6 +137,10 @@ public:
 };
 
 
+
+ostream &operator<<(ostream &out, const vector<double> &xs);
+
+
 /**
  A basic perceptron, without built-in training facilities, with
  reasonable defaults to be used within `PerceptronsLayers`.
@@ -149,6 +154,14 @@ public:
     BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
         : weights(n + 1), activationFunction(af) {}
 
+    void init(unique_ptr<rng_type> &rng, double sigma = 1.0) {
+        uniform_real_distribution<double> nd(-sigma, sigma);
+        generate(weights.begin(), weights.end(), [&nd, &rng] {
+                    double w = nd(*rng.get());
+                    return w;
+                 });
+    }
+
     virtual double inducedLocalField(const Input &x) const {
         double bias = weights[0];
         auto weights_2nd = next(weights.begin());
@@ -159,8 +172,11 @@ public:
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual vector<double> getWeights() const { return weights; }
+    virtual vector<double> getWeights() const {
+        return weights;
+    }
 };
+
 
 /// A fully connected layer of perceptrons.
 class PerceptronsLayer {
@@ -175,10 +191,17 @@ public:
         : nInputs(nInputs), nNeurons(nOutputs),
           neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
 
+    void init(unique_ptr<rng_type> &rng, double sigma = 1.0) {
+        for (size_t i = 0; i < neurons.size(); ++i) {
+            neurons[i].init(rng, sigma);
+        }
+    }
+
     vector<vector<double>> getWeightMatrix() const {
         vector<vector<double>> weightMatrix(0);
         for (auto n : neurons) {
-            weightMatrix.push_back(n.getWeights());
+            vector<double> ws = n.getWeights();
+            weightMatrix.push_back(ws);
         }
         return weightMatrix;
     }
@@ -196,17 +219,24 @@ public:
 
 ostream &operator<<(ostream &out, PerceptronsLayer &layer) {
     auto W = layer.getWeightMatrix();
-    for (auto w_i : W) {
-        for (auto w_ij : w_i) {
-            out << w_ij << " ";
+    for (size_t j = 0; j < W.size(); ++j) {
+        if (j == 0) {
+            out << "[";
+        } else {
+            out << " ";
         }
-        out << "\n";
+        out << W[j];
+        if (j >= W.size() - 1) {
+            out << "]";
+        } else {
+            out << ",\n";
+        }
     }
     return out;
 }
 
 
-ostream &operator<<(ostream &out, Output &xs) {
+ostream &operator<<(ostream &out, const vector<double> &xs) {
     int n = xs.size();
     out << "[ ";
     for (int i = 0; i < n - 1; ++i) {

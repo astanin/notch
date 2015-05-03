@@ -8,7 +8,8 @@ set(SOURCE_FILES
     activation.hh
     classifier.hh
     dataset.hh
-    perceptron.hh)
+    perceptron.hh
+    randomgen.hh)
 
 add_executable(demo_perceptron demo_perceptron.cc ${SOURCE_FILES})
 add_executable(demo_multilayer demo_multilayer.cc ${SOURCE_FILES})
