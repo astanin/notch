@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <random>
-#include <algorithm>  // any_of
+#include <algorithm> // any_of
 
 
 #include "dataset.hh"
@@ -15,7 +15,7 @@ using namespace std;
 
 
 const double r = 10.0; // radius
-const double w = 6.0; // width
+const double w = 6.0;  // width
 const double default_d = 1.0;
 const double default_n = 1000;
 
@@ -61,7 +61,7 @@ void generate(double r, double w, double d, int n, ostream &out) {
             n1++;
         }
     }
-    while ((n1+n2) < n) {
+    while ((n1 + n2) < n) {
         double x = x2(rng);
         double y = y2(rng);
         if (inMoon2(x, y)) {
@@ -70,30 +70,31 @@ void generate(double r, double w, double d, int n, ostream &out) {
             data.append(input, output);
             n2++;
         }
-     }
+    }
     out << data;
- }
+}
 
 
- int main(int argc, char *argv[]) {
-     auto is_help_flag = [](const char* arg) { return string(arg) == "--help" || string(arg) == "-h"; };
-     if ((argc > 1) &&
-         any_of(argv + 1, argv + argc, is_help_flag)) {
-         usage();
-     } else if (argc == 1 + 3) {
-         double d = atof(argv[1]);
-         int n = atoi(argv[2]);
-         ofstream out(argv[3], ios::out);
-         generate(r, w, d, n, out);
-     } else if (argc == 1 + 2) {
-         double d = atof(argv[1]);
-         int n = atoi(argv[2]);
-         generate(r, w, d, n, cout);
-     } else if (argc == 1 + 1) {
-         double d = atof(argv[1]);
-         int n = default_n;
-         generate(r, w, d, n, cout);
-     } else {
-         usage();
-     }
- }
+int main(int argc, char *argv[]) {
+    auto is_help_flag = [](const char *arg) {
+        return string(arg) == "--help" || string(arg) == "-h";
+    };
+    if ((argc > 1) && any_of(argv + 1, argv + argc, is_help_flag)) {
+        usage();
+    } else if (argc == 1 + 3) {
+        double d = atof(argv[1]);
+        int n = atoi(argv[2]);
+        ofstream out(argv[3], ios::out);
+        generate(r, w, d, n, out);
+    } else if (argc == 1 + 2) {
+        double d = atof(argv[1]);
+        int n = atoi(argv[2]);
+        generate(r, w, d, n, cout);
+    } else if (argc == 1 + 1) {
+        double d = atof(argv[1]);
+        int n = default_n;
+        generate(r, w, d, n, cout);
+    } else {
+        usage();
+    }
+}

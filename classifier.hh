@@ -11,16 +11,16 @@ struct ConfusionMatrix {
     int trueNegatives;
     int falseNegatives; // type II error
 
-    ConfusionMatrix() :
-        truePositives(0), falsePositives(0),
-        trueNegatives(0), falseNegatives(0) {}
+    ConfusionMatrix()
+        : truePositives(0), falsePositives(0), trueNegatives(0),
+          falseNegatives(0) {}
 
     double recall() {
-        return 1.0*truePositives/(truePositives + falseNegatives);
+        return 1.0 * truePositives / (truePositives + falseNegatives);
     }
 
     double precision() {
-        return 1.0*truePositives/(truePositives + falsePositives);
+        return 1.0 * truePositives / (truePositives + falsePositives);
     }
 
     double accuracy() {
@@ -37,39 +37,38 @@ struct ConfusionMatrix {
 };
 
 
-template<typename Out>
-class Classifier {
-    public:
-        virtual Out classify(const Input& input) const = 0;
-        virtual ConfusionMatrix test(const LabeledSet& testSet) const = 0;
+template <typename Out> class Classifier {
+public:
+    virtual Out classify(const Input &input) const = 0;
+    virtual ConfusionMatrix test(const LabeledSet &testSet) const = 0;
 };
 
 
 /// Binary classifier returns two class labels: true and false.
 class BinaryClassifier : public Classifier<bool> {
-    public:
-        virtual ConfusionMatrix test(const LabeledSet& testSet) const {
-            assert (testSet.getOutputSize() == 1);
-            ConfusionMatrix cm;
-            for (LabeledPair sample : testSet) {
-                bool result = this->classify(sample.input);
-                bool expected = sample.output[0] > 0;
-                if (expected) {
-                    if (result) {
-                        cm.truePositives++;
-                    } else {
-                        cm.falseNegatives++;
-                    }
+public:
+    virtual ConfusionMatrix test(const LabeledSet &testSet) const {
+        assert(testSet.getOutputSize() == 1);
+        ConfusionMatrix cm;
+        for (LabeledPair sample : testSet) {
+            bool result = this->classify(sample.input);
+            bool expected = sample.output[0] > 0;
+            if (expected) {
+                if (result) {
+                    cm.truePositives++;
                 } else {
-                    if (result) {
-                        cm.falsePositives++;
-                    } else {
-                        cm.trueNegatives++;
-                    }
+                    cm.falseNegatives++;
+                }
+            } else {
+                if (result) {
+                    cm.falsePositives++;
+                } else {
+                    cm.trueNegatives++;
                 }
             }
-            return cm;
         }
+        return cm;
+    }
 };
 
 

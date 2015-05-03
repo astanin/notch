@@ -34,20 +34,20 @@ class APerceptron {
 };
 
 
-class Perceptron : public APerceptron,
-                   public BinaryClassifier {
+class Perceptron : public APerceptron, public BinaryClassifier {
 private:
     double bias;
     vector<double> weights;
     const ActivationFunction &activationFunction;
 
     void trainConverge_addSample(Input input, double output, double eta) {
-         double y = this->output(input);
-         double xfactor = eta * (output - y);
-         bias += xfactor * 1.0;
-         transform(weights.begin(), weights.end(), input.begin(),
-                   weights.begin() /* output */,
-                   [&xfactor](double w_i, double x_i) { return w_i + xfactor*x_i; });
+        double y = this->output(input);
+        double xfactor = eta * (output - y);
+        bias += xfactor * 1.0;
+        transform(
+            weights.begin(), weights.end(), input.begin(),
+            weights.begin() /* output */,
+            [&xfactor](double w_i, double x_i) { return w_i + xfactor * x_i; });
     }
 
     void trainBatch_addBatch(LabeledSet batch, double eta) {
@@ -56,16 +56,18 @@ private:
             Input x = sample.input;
             bias += eta * 1.0 * d;
             transform(x.begin(), x.end(), weights.begin(), weights.begin(),
-                      [d, eta](double x_i, double w_i) { return w_i + eta * x_i * d; });
+                      [d, eta](double x_i, double w_i) {
+                          return w_i + eta * x_i * d;
+                      });
         }
     }
 
 public:
-    Perceptron(int n, const ActivationFunction &af=defaultSignum) :
-        bias(0), weights(n), activationFunction(af) {}
+    Perceptron(int n, const ActivationFunction &af = defaultSignum)
+        : bias(0), weights(n), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) const {
-        assert (x.size() == weights.size());
+        assert(x.size() == weights.size());
         return inner_product(weights.begin(), weights.end(), x.begin(), bias);
     }
 
@@ -73,23 +75,19 @@ public:
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual bool classify(const Input &x) const {
-        return output(x) > 0;
-    }
+    virtual bool classify(const Input &x) const { return output(x) > 0; }
 
     /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet,
-                       int epochs,
-                       double eta=1.0) {
+    void trainConverge(const LabeledSet &trainSet, int epochs,
+                       double eta = 1.0) {
         return trainConverge(trainSet, epochs, const_epoch_parameter(eta));
     }
 
     /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet,
-                       int epochs,
+    void trainConverge(const LabeledSet &trainSet, int epochs,
                        epoch_parameter eta) {
-        assert (trainSet.getOutputSize() == 1);
-        for (int epoch=0; epoch < epochs; ++epoch) {
+        assert(trainSet.getOutputSize() == 1);
+        for (int epoch = 0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
             for (auto sample : trainSet) {
                 trainConverge_addSample(sample.input, sample.output[0], etaval);
@@ -98,24 +96,22 @@ public:
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet,
-                    int epochs,
-                    double eta=1.0) {
+    void trainBatch(const LabeledSet &trainSet, int epochs, double eta = 1.0) {
         return trainBatch(trainSet, epochs, const_epoch_parameter(eta));
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet,
-                    int epochs,
+    void trainBatch(const LabeledSet &trainSet, int epochs,
                     epoch_parameter eta) {
-        assert (trainSet.getOutputSize() == 1);
-        assert (trainSet.getInputSize() == weights.size());
-        LabeledPairPredicate isMisclassified = [this](const Input& in, const Output& out) {
-            return (this->output(in))*out[0] <= 0;
-        };
-        // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) )      (1.40)
-        // w(n+1) = w(n) - eta(n) \nabla J(w)                               (1.42)
-        for (int epoch=0; epoch < epochs; ++epoch) {
+        assert(trainSet.getOutputSize() == 1);
+        assert(trainSet.getInputSize() == weights.size());
+        LabeledPairPredicate isMisclassified =
+            [this](const Input &in, const Output &out) {
+                return (this->output(in)) * out[0] <= 0;
+            };
+        // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
+        // w(n+1) = w(n) - eta(n) \nabla J(w) (1.42)
+        for (int epoch = 0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
             // a new batch
             LabeledSet misclassifiedSet = trainSet.filter(isMisclassified);
@@ -137,7 +133,6 @@ public:
         }
         return ss.str();
     }
-
 };
 
 
@@ -147,12 +142,12 @@ public:
  */
 class BasicPerceptron : public APerceptron {
 private:
-    vector<double> weights;  // weights[0] is bias
-    const ActivationFunction& activationFunction;
+    vector<double> weights; // weights[0] is bias
+    const ActivationFunction &activationFunction;
 
 public:
-    BasicPerceptron(int n, const ActivationFunction &af=defaultTanh) :
-        weights(n + 1), activationFunction(af) { }
+    BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
+        : weights(n + 1), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) const {
         double bias = weights[0];
@@ -164,9 +159,7 @@ public:
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual vector<double> getWeights() const {
-        return weights;
-    }
+    virtual vector<double> getWeights() const { return weights; }
 };
 
 /// A fully connected layer of perceptrons.
@@ -178,10 +171,9 @@ private:
 
 public:
     PerceptronsLayer(int nInputs, int nOutputs,
-                     const ActivationFunction &af=defaultTanh) :
-        nInputs(nInputs),
-        nNeurons(nOutputs),
-        neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
+                     const ActivationFunction &af = defaultTanh)
+        : nInputs(nInputs), nNeurons(nOutputs),
+          neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
 
     vector<vector<double>> getWeightMatrix() const {
         vector<vector<double>> weightMatrix(0);
@@ -192,9 +184,9 @@ public:
     }
 
     // Pages 132-133.
-    Output forwardPass(const Input& xs) {
+    Output forwardPass(const Input &xs) {
         Output output(nNeurons);
-        for (int i=0; i < nNeurons; ++i) {
+        for (int i = 0; i < nNeurons; ++i) {
             output[i] = neurons[i].output(xs);
         }
         return output;
@@ -202,7 +194,7 @@ public:
 };
 
 
-ostream& operator<<(ostream& out, PerceptronsLayer& layer) {
+ostream &operator<<(ostream &out, PerceptronsLayer &layer) {
     auto W = layer.getWeightMatrix();
     for (auto w_i : W) {
         for (auto w_ij : w_i) {
@@ -214,10 +206,10 @@ ostream& operator<<(ostream& out, PerceptronsLayer& layer) {
 }
 
 
-ostream& operator<<(ostream& out, Output& xs) {
+ostream &operator<<(ostream &out, Output &xs) {
     int n = xs.size();
     out << "[ ";
-    for (int i=0; i < n - 1; ++i) {
+    for (int i = 0; i < n - 1; ++i) {
         out << xs[i] << ", ";
     }
     out << xs[n - 1] << " ]";
