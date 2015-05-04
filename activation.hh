@@ -78,7 +78,39 @@ public:
 };
 
 
+class PiecewiseLinearFunction : public ActivationFunction {
+private:
+    double negativeSlope;
+    double positiveSlope;
+
+public:
+    PiecewiseLinearFunction(double negativeSlope = 0.0,
+                            double positiveSlope = 1.0)
+        : negativeSlope(negativeSlope), positiveSlope(positiveSlope) {}
+
+    virtual double operator()(double v) const {
+        if (v >= 0) {
+            return positiveSlope * v;
+        } else {
+            return negativeSlope * v;
+        }
+    }
+
+    virtual double derivative(double v) const {
+        if (v >= 0) {
+            return positiveSlope;
+        } else {
+            return negativeSlope;
+        }
+    }
+};
+
+
 const TanhFunction defaultTanh;
 const AutoDiffFunction defaultSignum(sign);
+const PiecewiseLinearFunction ReLU;
+const PiecewiseLinearFunction leakyReLU(0.01, 1.0);
+const PiecewiseLinearFunction linearActivation(1.0, 1.0);
+
 
 #endif /* ACTIVATION_H */
