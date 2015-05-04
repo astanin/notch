@@ -10,8 +10,8 @@
 int main(int, char *[]) {
     unique_ptr<rng_type> rng(seed_rng());
     PerceptronsLayer layer(2, 2);
-    layer.init(rng, 0.1);
-    Input in{10, 100};
+    layer.init(rng);
+    Input in{-1.0, 1.0};
     cout << "weights:\n";
     cout << layer << "\n";
     cout << "input:\n";

@@ -7,6 +7,7 @@
 #include <algorithm>  // transform
 #include <functional> // plus, minus
 #include <assert.h>
+#include <cmath>      // sqrt
 
 
 #include "randomgen.hh"
@@ -160,7 +161,11 @@ public:
     BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
         : weights(n + 1), activationFunction(af) {}
 
-    void init(unique_ptr<rng_type> &rng, double sigma = 1.0) {
+    // one-sided Xavier initialization
+    // see http://andyljones.tumblr.com/post/110998971763/
+    void init(unique_ptr<rng_type> &rng) {
+        int n_in = weights.size()-1;
+        double sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
         uniform_real_distribution<double> nd(-sigma, sigma);
         generate(weights.begin(), weights.end(), [&nd, &rng] {
                     double w = nd(*rng.get());
@@ -201,9 +206,9 @@ public:
         : nInputs(nInputs), nNeurons(nOutputs),
           neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
 
-    void init(unique_ptr<rng_type> &rng, double sigma = 1.0) {
+    void init(unique_ptr<rng_type> &rng) {
         for (size_t i = 0; i < neurons.size(); ++i) {
-            neurons[i].init(rng, sigma);
+            neurons[i].init(rng);
         }
     }
 
