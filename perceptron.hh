@@ -27,9 +27,9 @@ epoch_parameter const_epoch_parameter(double eta) {
 
 class APerceptron {
     /// induced local field of activation potential $v_k$, page 11
-    virtual double inducedLocalField(const Input &x) const = 0;
+    virtual double inducedLocalField(const Input &x) = 0;
     /// neuron's output (activation function applied to the induced local field)
-    virtual double output(const Input &x) const = 0;
+    virtual double output(const Input &x) = 0;
     /// neuron's weights; weights[0] is bias
     virtual vector<double> getWeights() const = 0;
 };
@@ -67,16 +67,16 @@ public:
     Perceptron(int n, const ActivationFunction &af = defaultSignum)
         : bias(0), weights(n), activationFunction(af) {}
 
-    virtual double inducedLocalField(const Input &x) const {
+    virtual double inducedLocalField(const Input &x) {
         assert(x.size() == weights.size());
         return inner_product(weights.begin(), weights.end(), x.begin(), bias);
     }
 
-    virtual double output(const Input &x) const {
+    virtual double output(const Input &x) {
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual bool classify(const Input &x) const { return output(x) > 0; }
+    virtual bool classify(const Input &x) { return output(x) > 0; }
 
     /// perceptron convergence algorithm (Table 1.1)
     void trainConverge(const LabeledSet &trainSet, int epochs,
@@ -150,6 +150,12 @@ private:
     vector<double> weights; // weights[0] is bias
     const ActivationFunction &activationFunction;
 
+    // remember the last input and internal parameters to use them
+    // again in the back-propagation step
+    double lastInducedLocalField;  // v_{i+1} = \sum w_i y_i
+    double lastActivationValue;    // y_{i+1} = \phi (v_{i+1})
+    double lastActivationGradient; // y_{i+1} = \phi^\prime (v_{i+1})
+
 public:
     BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
         : weights(n + 1), activationFunction(af) {}
@@ -162,14 +168,18 @@ public:
                  });
     }
 
-    virtual double inducedLocalField(const Input &x) const {
+    virtual double inducedLocalField(const Input &x) {
         double bias = weights[0];
         auto weights_2nd = next(weights.begin());
         return inner_product(weights_2nd, weights.end(), x.begin(), bias);
     }
 
-    virtual double output(const Input &x) const {
-        return activationFunction(inducedLocalField(x));
+    virtual double output(const Input &x) {
+        double v = inducedLocalField(x);
+        lastInducedLocalField = v;
+        lastActivationValue = activationFunction(v);
+        lastActivationGradient = activationFunction.derivative(v);
+        return lastActivationValue;
     }
 
     virtual vector<double> getWeights() const {
@@ -207,6 +217,7 @@ public:
     }
 
     // Pages 132-133.
+    // Return a vector of outputs.
     Output forwardPass(const Input &xs) {
         Output output(nNeurons);
         for (int i = 0; i < nNeurons; ++i) {
