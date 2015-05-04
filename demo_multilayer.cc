@@ -19,5 +19,25 @@ int main(int, char *[]) {
     auto out = layer.forwardPass(in);
     cout << "output:\n";
     cout << out << "\n";
+    Output label{0.0, 0.0};
+    Output error(2);
+    for (int i = 0; i < 2; ++i) {
+        error[i] = label[i] - out[i];
+    }
+    cout << "error:\n";
+    cout << error << "\n";
+    auto bpError = layer.backwardPass(in, error, 0.25);
+    cout << "propagated error:\n";
+    cout << bpError << "\n";
+    cout << "new weights after BP:\n";
+    cout << layer << "\n";
+    out = layer.forwardPass(in);
+    cout << "new output after BP:\n";
+    cout << out << "\n";
+    for (int i = 0; i < 2; ++i) {
+        error[i] = label[i] - out[i];
+    }
+    cout << "new error after BP:\n";
+    cout << error << "\n";
     return 0;
 }

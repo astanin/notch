@@ -8,6 +8,7 @@
 #include <functional> // plus, minus
 #include <assert.h>
 #include <cmath>      // sqrt
+#include <tuple>
 
 
 #include "randomgen.hh"
@@ -153,9 +154,10 @@ private:
 
     // remember the last input and internal parameters to use them
     // again in the back-propagation step
-    double lastInducedLocalField;  // v_{i+1} = \sum w_i y_i
-    double lastActivationValue;    // y_{i+1} = \phi (v_{i+1})
-    double lastActivationGradient; // y_{i+1} = \phi^\prime (v_{i+1})
+    double lastInducedLocalField;  // v_j = \sum w_i y_i
+    double lastActivationValue;    // y_j = \phi (v_j)
+    double lastActivationGradient; // y_j = \phi^\prime (v_j)
+    double lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
 
 public:
     BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
@@ -190,6 +192,46 @@ public:
     virtual vector<double> getWeights() const {
         return weights;
     }
+
+    void adjustWeights(vector<double> deltaW) {
+        assert(deltaW.size() == weights.size());
+        for (size_t i = 0; i < weights.size(); ++i) {
+            weights[i] += deltaW[i];
+        }
+    }
+
+    // Page 134. Equation (4.27) defines weight correction
+    //
+    // $$ \Delta w_{ji} (n) =
+    //    \eta
+    //      \times
+    //    \delta_j (n)
+    //      \times
+    //    y_{i} (n) $$
+    //
+    // where $w_{ji}$ is the synaptic weight connecting neuron $i$ to neuron $j$,
+    // $\eta$ is learning rate, $delta_j (n)$ is the local [error] gradient,
+    // $y_{i}$ is the input signal of the neuron $i$, $n$ is the epoch number
+    //
+    // The local gradient is the product of the activation function derivative
+    // and the error signal.
+    //
+    // Return a vector of weight corrections and the local gradient value.
+    //
+    // The method should be called _after_ `forwardPass`
+    tuple<vector<double>, double>
+    backwardPass(const Input &inputs, double errorSignal, double learningRate) {
+        assert(inputs.size() + 1 == weights.size());
+        size_t nInputs = weights.size();
+        double localGradient = lastActivationGradient * errorSignal;
+        double multiplier = learningRate * localGradient;
+        vector<double> delta_W(nInputs, multiplier);
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            delta_W[i + 1] *= inputs[i];
+        }
+        lastLocalGradient = localGradient;
+        return make_tuple(delta_W, localGradient);
+    }
 };
 
 
@@ -199,12 +241,14 @@ private:
     int nInputs;
     int nNeurons;
     vector<BasicPerceptron> neurons;
+    Output lastOutput;
 
 public:
     PerceptronsLayer(int nInputs, int nOutputs,
                      const ActivationFunction &af = defaultTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
-          neurons(nOutputs, BasicPerceptron(nInputs, af)) {}
+          neurons(nOutputs, BasicPerceptron(nInputs, af)),
+          lastOutput(nOutputs) {}
 
     void init(unique_ptr<rng_type> &rng) {
         for (size_t i = 0; i < neurons.size(); ++i) {
@@ -223,12 +267,42 @@ public:
 
     // Pages 132-133.
     // Return a vector of outputs.
-    Output forwardPass(const Input &xs) {
-        Output output(nNeurons);
+    Output forwardPass(const Input &inputs) {
         for (int i = 0; i < nNeurons; ++i) {
-            output[i] = neurons[i].output(xs);
+            lastOutput[i] = neurons[i].output(inputs);
         }
-        return output;
+        return lastOutput;
+    }
+
+    // Page 134. Update synaptic weights.
+    //
+    // Return a vector of back-propagated error signal
+    //
+    // $$ e_j = \sum_k \delta_k w_{kj} $$
+    //
+    // where $e_j$ is an error propagated from all downstream neurons to the
+    // neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
+    // $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
+    // downstream neuron $k$.
+    //
+    // The method should be called _after_ `forwardPass`
+    Input backwardPass(const Input &inputs, const Output &errorSignals,
+                       double learningRate) {
+        assert(errorSignals.size() == neurons.size());
+        auto eta = learningRate;
+        vector<double> propagatedErrorSignals(nInputs, 0.0);
+        for (int k = 0; k < nNeurons; ++k) {
+            auto error_k = errorSignals[k];
+            vector<double> delta_Wk; // weight correction
+            double delta_k;          // local gradient
+            tie(delta_Wk, delta_k) = neurons[k].backwardPass(inputs, error_k, eta);
+            vector<double> Wk = neurons[k].getWeights();
+            for (int j = 0; j < nInputs; ++j) {
+                propagatedErrorSignals[j] += delta_k * Wk[j+1];
+            }
+            neurons[k].adjustWeights(delta_Wk);
+        }
+        return propagatedErrorSignals;
     }
 };
 
