@@ -26,9 +26,10 @@ int main(int, char *[]) {
     }
     cout << "error:\n";
     cout << error << "\n";
-    auto bpError = layer.backwardPass(in, error, 0.25);
+    auto bpr = layer.backwardPass(in, error, 0.25);
     cout << "propagated error:\n";
-    cout << bpError << "\n";
+    cout << bpr.propagatedErrorSignal << "\n";
+    layer.adjustWeights(bpr.weightCorrections);
     cout << "new weights after BP:\n";
     cout << layer << "\n";
     out = layer.forwardPass(in);

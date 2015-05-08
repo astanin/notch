@@ -27,13 +27,16 @@ epoch_parameter const_epoch_parameter(double eta) {
 }
 
 
+using Weights = vector<double>;
+
+
 class APerceptron {
     /// induced local field of activation potential $v_k$, page 11
     virtual double inducedLocalField(const Input &x) = 0;
     /// neuron's output (activation function applied to the induced local field)
     virtual double output(const Input &x) = 0;
     /// neuron's weights; weights[0] is bias
-    virtual vector<double> getWeights() const = 0;
+    virtual Weights getWeights() const = 0;
 };
 
 
@@ -149,7 +152,7 @@ ostream &operator<<(ostream &out, const vector<double> &xs);
  */
 class BasicPerceptron : public APerceptron {
 private:
-    vector<double> weights; // weights[0] is bias
+    Weights weights; // weights[0] is bias
     const ActivationFunction &activationFunction;
 
     // remember the last input and internal parameters to use them
@@ -189,16 +192,21 @@ public:
         return lastActivationValue;
     }
 
-    virtual vector<double> getWeights() const {
+    virtual Weights getWeights() const {
         return weights;
     }
 
-    void adjustWeights(vector<double> deltaW) {
+    void adjustWeights(Weights deltaW) {
         assert(deltaW.size() == weights.size());
         for (size_t i = 0; i < weights.size(); ++i) {
             weights[i] += deltaW[i];
         }
     }
+
+    struct BPResult {
+        Weights weightCorrection;
+        double localGradient;
+    };
 
     // Page 134. Equation (4.27) defines weight correction
     //
@@ -219,18 +227,18 @@ public:
     // Return a vector of weight corrections and the local gradient value.
     //
     // The method should be called _after_ `forwardPass`
-    tuple<vector<double>, double>
-    backwardPass(const Input &inputs, double errorSignal, double learningRate) {
+    BPResult backwardPass(const Input &inputs, double errorSignal,
+                          double learningRate) {
         assert(inputs.size() + 1 == weights.size());
         size_t nInputs = weights.size();
         double localGradient = lastActivationGradient * errorSignal;
         double multiplier = learningRate * localGradient;
-        vector<double> delta_W(nInputs, multiplier);
+        Weights delta_W(nInputs, multiplier);
         for (size_t i = 0; i < inputs.size(); ++i) {
             delta_W[i + 1] *= inputs[i];
         }
         lastLocalGradient = localGradient;
-        return make_tuple(delta_W, localGradient);
+        return BPResult{delta_W, localGradient};
     }
 };
 
@@ -238,13 +246,13 @@ public:
 /// A fully connected layer of perceptrons.
 class PerceptronsLayer {
 private:
-    int nInputs;
-    int nNeurons;
+    unsigned int nInputs;
+    unsigned int nNeurons;
     vector<BasicPerceptron> neurons;
     Output lastOutput;
 
 public:
-    PerceptronsLayer(int nInputs, int nOutputs,
+    PerceptronsLayer(unsigned int nInputs, unsigned int nOutputs,
                      const ActivationFunction &af = defaultTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
           neurons(nOutputs, BasicPerceptron(nInputs, af)),
@@ -256,23 +264,35 @@ public:
         }
     }
 
-    vector<vector<double>> getWeightMatrix() const {
-        vector<vector<double>> weightMatrix(0);
+    vector<Weights> getWeightMatrix() const {
+        vector<Weights> weightMatrix(0);
         for (auto n : neurons) {
-            vector<double> ws = n.getWeights();
+            Weights ws = n.getWeights();
             weightMatrix.push_back(ws);
         }
         return weightMatrix;
     }
 
+    void adjustWeights(vector<Weights> weightDeltas) {
+        assert(nNeurons == weightDeltas.size());
+        for (size_t i = 0; i < neurons.size(); ++i) {
+            neurons[i].adjustWeights(weightDeltas[i]);
+        }
+    }
+
     // Pages 132-133.
     // Return a vector of outputs.
     Output forwardPass(const Input &inputs) {
-        for (int i = 0; i < nNeurons; ++i) {
+        for (auto i = 0u; i < nNeurons; ++i) {
             lastOutput[i] = neurons[i].output(inputs);
         }
         return lastOutput;
     }
+
+    struct BPResult {
+        Output propagatedErrorSignal;
+        vector<Weights> weightCorrections;
+    };
 
     // Page 134. Update synaptic weights.
     //
@@ -286,23 +306,24 @@ public:
     // downstream neuron $k$.
     //
     // The method should be called _after_ `forwardPass`
-    Input backwardPass(const Input &inputs, const Output &errorSignals,
-                       double learningRate) {
+    BPResult backwardPass(const Input &inputs, const Output &errorSignals,
+                          double learningRate) {
         assert(errorSignals.size() == neurons.size());
         auto eta = learningRate;
-        vector<double> propagatedErrorSignals(nInputs, 0.0);
-        for (int k = 0; k < nNeurons; ++k) {
+        vector<Weights> weightDeltas(0);
+        Weights propagatedErrorSignals(nInputs, 0.0);
+        for (auto k = 0u; k < nNeurons; ++k) {
             auto error_k = errorSignals[k];
-            vector<double> delta_Wk; // weight correction
-            double delta_k;          // local gradient
-            tie(delta_Wk, delta_k) = neurons[k].backwardPass(inputs, error_k, eta);
-            vector<double> Wk = neurons[k].getWeights();
-            for (int j = 0; j < nInputs; ++j) {
-                propagatedErrorSignals[j] += delta_k * Wk[j+1];
+            auto r = neurons[k].backwardPass(inputs, error_k, eta);
+            Weights delta_Wk = r.weightCorrection;
+            double delta_k = r.localGradient;
+            Weights Wk = neurons[k].getWeights();
+            for (auto j = 0u; j < nInputs; ++j) {
+                propagatedErrorSignals[j] += delta_k * Wk[j + 1];
             }
-            neurons[k].adjustWeights(delta_Wk);
+            weightDeltas.push_back(delta_Wk);
         }
-        return propagatedErrorSignals;
+        return BPResult{propagatedErrorSignals, weightDeltas};
     }
 };
 
