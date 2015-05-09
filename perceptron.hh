@@ -8,7 +8,7 @@
 #include <functional> // plus, minus
 #include <assert.h>
 #include <cmath>      // sqrt
-#include <tuple>
+#include <initializer_list>
 
 
 #include "randomgen.hh"
@@ -320,6 +320,35 @@ public:
     friend ostream &operator<<(ostream &out, const PerceptronsLayer &net);
 };
 
+
+/// Multiple layers of perceptrons stack one upon another.
+class PerceptronsNetwork {
+private:
+    vector<PerceptronsLayer> layers;
+
+public:
+    PerceptronsNetwork(initializer_list<unsigned int> shape,
+                       const ActivationFunction &af = defaultTanh)
+        : layers(0) {
+        auto pIn = shape.begin();
+        auto pOut = next(pIn);
+        for (; pOut != shape.end(); ++pIn, ++pOut) {
+            PerceptronsLayer layer(*pIn, *pOut, af);
+            layers.push_back(layer);
+        }
+    }
+
+    void init(unique_ptr<rng_type> &rng) {
+        for (auto i = 0u; i < layers.size(); ++i) {
+            layers[i].init(rng);
+        }
+    }
+
+
+    friend ostream &operator<<(ostream &out, const PerceptronsNetwork &net);
+};
+
+
 ostream &operator<<(ostream &out, const PerceptronsLayer &layer) {
     size_t n = layer.neurons.size();
     for (size_t j = 0; j < n; ++j) {
@@ -334,6 +363,14 @@ ostream &operator<<(ostream &out, const PerceptronsLayer &layer) {
         } else {
             out << ",\n";
         }
+    }
+    return out;
+}
+
+
+ostream &operator<<(ostream &out, const PerceptronsNetwork &net) {
+    for (PerceptronsLayer l : net.layers) {
+        out << l << "\n";
     }
     return out;
 }
