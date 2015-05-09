@@ -7,6 +7,7 @@
 #include <iterator>
 #include <functional> // function<>
 #include <assert.h>
+#include <initializer_list>
 
 
 using namespace std;
@@ -127,6 +128,12 @@ private:
 public:
     LabeledSet() : nSamples(0), inputSize(0), outputSize(0) {}
     LabeledSet(istream &in) { loadFANN(in); }
+    LabeledSet(initializer_list<LabeledPair> samples)
+        : nSamples(0), inputSize(0), outputSize(0) {
+        for (LabeledPair s : samples) {
+            append(s);
+        }
+    }
 
     LabeledPairsIterator begin() const {
         return LabeledPairsIterator(inputs, outputs);
