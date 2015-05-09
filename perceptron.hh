@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <cmath>      // sqrt
 #include <initializer_list>
+#include <iostream>   // cout
 
 
 #include "randomgen.hh"
@@ -40,10 +41,10 @@ class APerceptron {
 };
 
 
-class Perceptron : public APerceptron, public BinaryClassifier {
+class StandalonePerceptron : public APerceptron, public BinaryClassifier {
 private:
     double bias;
-    vector<double> weights;
+    Weights weights;
     const ActivationFunction &activationFunction;
 
     void trainConverge_addSample(Input input, double output, double eta) {
@@ -69,7 +70,7 @@ private:
     }
 
 public:
-    Perceptron(int n, const ActivationFunction &af = defaultSignum)
+    StandalonePerceptron(int n, const ActivationFunction &af = defaultSignum)
         : bias(0), weights(n), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) {
@@ -281,7 +282,7 @@ public:
     }
 
     struct BPResult {
-        Output propagatedErrorSignal;
+        Output propagatedErrorSignals;
         vector<Weights> weightCorrections;
     };
 
@@ -324,11 +325,12 @@ public:
 class PerceptronsNetwork {
 private:
     vector<PerceptronsLayer> layers;
+    vector<Input> layersInputs;
 
 public:
     PerceptronsNetwork(initializer_list<unsigned int> shape,
                        const ActivationFunction &af = defaultTanh)
-        : layers(0) {
+        : layers(0), layersInputs(0) {
         auto pIn = shape.begin();
         auto pOut = next(pIn);
         for (; pOut != shape.end(); ++pIn, ++pOut) {
@@ -343,6 +345,32 @@ public:
         }
     }
 
+    Output forwardPass(const Input &inputs) {
+        layersInputs.clear();
+        layersInputs.push_back(inputs);
+        for (auto i = 0u; i < layers.size(); ++i) {
+            auto in = layersInputs[i];
+            auto out = layers[i].forwardPass(in);
+            layersInputs.push_back(out);
+        }
+        return layersInputs[layers.size()];
+    }
+
+    PerceptronsLayer::BPResult
+    backwardPass(const Output &errorSignals, double learningRate) {
+        Output err(errorSignals);
+        PerceptronsLayer::BPResult r;
+        cout << "top errorSignals: " << err << "\n";
+
+        for (int i = layers.size()-1; i >= 0; --i) {
+            auto layerIn = layersInputs[i];
+            r = layers[i].backwardPass(layerIn, err, learningRate);
+            layers[i].adjustWeights(r.weightCorrections);
+            err = r.propagatedErrorSignals;
+            cout << "layer " << i << " propagatedErrorSignals: " << err << "\n";
+        }
+        return r;
+    }
 
     friend ostream &operator<<(ostream &out, const PerceptronsNetwork &net);
 };
