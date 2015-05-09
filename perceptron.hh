@@ -285,9 +285,8 @@ public:
         vector<Weights> weightCorrections;
     };
 
-    // Page 134. Update synaptic weights.
-    //
-    // Return a vector of back-propagated error signal
+    // Page 134. Calculate back-propagated error signal and corrections to
+    // synaptic weights.
     //
     // $$ e_j = \sum_k \delta_k w_{kj} $$
     //
