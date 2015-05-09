@@ -264,15 +264,6 @@ public:
         }
     }
 
-    vector<Weights> getWeightMatrix() const {
-        vector<Weights> weightMatrix(0);
-        for (auto n : neurons) {
-            Weights ws = n.getWeights();
-            weightMatrix.push_back(ws);
-        }
-        return weightMatrix;
-    }
-
     void adjustWeights(vector<Weights> weightDeltas) {
         assert(nNeurons == weightDeltas.size());
         for (size_t i = 0; i < neurons.size(); ++i) {
@@ -325,19 +316,20 @@ public:
         }
         return BPResult{propagatedErrorSignals, weightDeltas};
     }
+
+    friend ostream &operator<<(ostream &out, const PerceptronsLayer &net);
 };
 
-
-ostream &operator<<(ostream &out, PerceptronsLayer &layer) {
-    auto W = layer.getWeightMatrix();
-    for (size_t j = 0; j < W.size(); ++j) {
+ostream &operator<<(ostream &out, const PerceptronsLayer &layer) {
+    size_t n = layer.neurons.size();
+    for (size_t j = 0; j < n; ++j) {
         if (j == 0) {
             out << "[";
         } else {
             out << " ";
         }
-        out << W[j];
-        if (j >= W.size() - 1) {
+        out << layer.neurons[j].getWeights();
+        if (j >= n - 1) {
             out << "]";
         } else {
             out << ",\n";
