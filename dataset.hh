@@ -3,6 +3,7 @@
 
 
 #include <sstream>
+#include <ostream>
 #include <vector>
 #include <iterator>
 #include <functional> // function<>
@@ -37,6 +38,18 @@ struct LabeledPair {
         return ss.str();
     }
 };
+
+
+ostream &operator<<(ostream &out, LabeledPair &p) {
+    for (auto x : p.input) {
+        out << x << " ";
+    }
+    out << "->";
+    for (auto x : p.output) {
+        out << " " << x;
+    }
+    return out;
+}
 
 
 class LabeledPairsIterator : public iterator<input_iterator_tag, LabeledPair> {
