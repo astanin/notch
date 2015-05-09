@@ -252,7 +252,7 @@ private:
     Output lastOutput;
 
 public:
-    PerceptronsLayer(unsigned int nInputs, unsigned int nOutputs,
+    PerceptronsLayer(unsigned int nInputs = 0, unsigned int nOutputs = 0,
                      const ActivationFunction &af = defaultTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
           neurons(nOutputs, BasicPerceptron(nInputs, af)),
