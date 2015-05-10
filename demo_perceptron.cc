@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     LabeledSet trainset = LabeledSet(trainIn);
     LabeledSet testset = LabeledSet(testIn);
 
-    Perceptron p(trainset.getInputSize());
+    StandalonePerceptron p(trainset.getInputSize());
     cout << "Initial weights:                     " << p.fmt() << "\n";
     ConfusionMatrix cm = p.test(testset);
     cout << "Confusion matrix:\n";
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
     cout << "\nvs " << N_ITERS << " iterations of batch training...\n\n";
-    Perceptron p2(trainset.getInputSize());
+    StandalonePerceptron p2(trainset.getInputSize());
     p2.trainBatch(trainset, N_ITERS);
     cout << "Weights after batch training:        " << p2.fmt() << "\n";
     cm = p2.test(testset);
