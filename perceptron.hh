@@ -360,14 +360,12 @@ public:
     backwardPass(const Output &errorSignals, double learningRate) {
         Output err(errorSignals);
         PerceptronsLayer::BPResult r;
-        cout << "top errorSignals: " << err << "\n";
 
         for (int i = layers.size()-1; i >= 0; --i) {
             auto layerIn = layersInputs[i];
             r = layers[i].backwardPass(layerIn, err, learningRate);
             layers[i].adjustWeights(r.weightCorrections);
             err = r.propagatedErrorSignals;
-            cout << "layer " << i << " propagatedErrorSignals: " << err << "\n";
         }
         return r;
     }
