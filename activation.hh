@@ -6,6 +6,7 @@
 #include <cmath>      // exp
 
 
+// TODO: don't use namespace std
 using namespace std;
 
 
@@ -16,6 +17,7 @@ class ActivationFunction {
 public:
     virtual double operator()(double v) const = 0;
     virtual double derivative(double v) const = 0;
+    // TODO: add serialize() method
 };
 
 

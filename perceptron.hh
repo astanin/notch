@@ -10,6 +10,7 @@
 #include <cmath>      // sqrt
 #include <initializer_list>
 #include <iostream>   // cout
+#include <iterator>   // begin, end
 
 
 #include "randomgen.hh"
@@ -55,17 +56,17 @@ private:
         double xfactor = eta * (output - y);
         bias += xfactor * 1.0;
         transform(
-            weights.begin(), weights.end(), input.begin(),
+            weights.begin(), weights.end(), begin(input),
             weights.begin() /* output */,
             [&xfactor](double w_i, double x_i) { return w_i + xfactor * x_i; });
     }
 
     void trainBatch_addBatch(LabeledSet batch, double eta) {
         for (auto sample : batch) {
-            double d = sample.output[0]; // desired output
-            Input x = sample.input;
+            double d = sample.label[0]; // desired output
+            Input x = sample.data;
             bias += eta * 1.0 * d;
-            transform(x.begin(), x.end(), weights.begin(), weights.begin(),
+            transform(begin(x), end(x), weights.begin(), weights.begin(),
                       [d, eta](double x_i, double w_i) {
                           return w_i + eta * x_i * d;
                       });
@@ -78,7 +79,7 @@ public:
 
     virtual double inducedLocalField(const Input &x) {
         assert(x.size() == weights.size());
-        return inner_product(weights.begin(), weights.end(), x.begin(), bias);
+        return inner_product(weights.begin(), weights.end(), begin(x), bias);
     }
 
     virtual double output(const Input &x) {
@@ -96,11 +97,11 @@ public:
     /// perceptron convergence algorithm (Table 1.1)
     void trainConverge(const LabeledSet &trainSet, int epochs,
                        epoch_parameter eta) {
-        assert(trainSet.getOutputSize() == 1);
+        assert(trainSet.outputDim() == 1);
         for (int epoch = 0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
             for (auto sample : trainSet) {
-                trainConverge_addSample(sample.input, sample.output[0], etaval);
+                trainConverge_addSample(sample.data, sample.label[0], etaval);
             }
         }
     }
@@ -113,18 +114,19 @@ public:
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
     void trainBatch(const LabeledSet &trainSet, int epochs,
                     epoch_parameter eta) {
-        assert(trainSet.getOutputSize() == 1);
-        assert(trainSet.getInputSize() == weights.size());
-        LabeledPairPredicate isMisclassified =
-            [this](const Input &in, const Output &out) {
-                return (this->output(in)) * out[0] <= 0;
-            };
+        assert(trainSet.outputDim() == 1);
+        assert(trainSet.inputDim() == weights.size());
         // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
         // w(n+1) = w(n) - eta(n) \nabla J(w) (1.42)
         for (int epoch = 0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
             // a new batch
-            LabeledSet misclassifiedSet = trainSet.filter(isMisclassified);
+            LabeledSet misclassifiedSet;
+            for (auto sample : trainSet) {
+               if (output(sample.data) * sample.label[0] <= 0) {
+                  misclassifiedSet.append(sample);
+               }
+            }
             // sum cost gradient over the entire bactch
             trainBatch_addBatch(misclassifiedSet, etaval);
         }
