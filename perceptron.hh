@@ -41,12 +41,15 @@ class APerceptron {
 };
 
 
+// TODO: rename to LinearPerceptron
 class StandalonePerceptron : public APerceptron, public BinaryClassifier {
 private:
+    // TODO: use weights[0] as bias
     double bias;
     Weights weights;
     const ActivationFunction &activationFunction;
 
+    // TODO: implement via adjustWeights()
     void trainConverge_addSample(Input input, double output, double eta) {
         double y = this->output(input);
         double xfactor = eta * (output - y);
@@ -133,6 +136,7 @@ public:
         return biasAndWeights;
     }
 
+    // TODO: move to non-member function
     string fmt() {
         ostringstream ss;
         for (auto it : getWeights()) {
@@ -146,6 +150,7 @@ public:
 
 ostream &operator<<(ostream &out, const vector<double> &xs);
 
+#if 0
 
 /**
  A basic perceptron, without built-in training facilities, with
@@ -322,6 +327,7 @@ public:
 
 
 /// Multiple layers of perceptrons stack one upon another.
+// TODO: rename to MultilayerPerceptron
 class PerceptronsNetwork {
 private:
     vector<PerceptronsLayer> layers;
@@ -410,5 +416,7 @@ ostream &operator<<(ostream &out, const vector<double> &xs) {
     out << xs[n - 1] << " ]";
     return out;
 }
+
+#endif
 
 #endif /* PERCEPTRON_H */
