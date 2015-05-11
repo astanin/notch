@@ -6,14 +6,10 @@
 
 
 struct ConfusionMatrix {
-    int truePositives;
-    int falsePositives; // type I error
-    int trueNegatives;
-    int falseNegatives; // type II error
-
-    ConfusionMatrix()
-        : truePositives(0), falsePositives(0), trueNegatives(0),
-          falseNegatives(0) {}
+    int truePositives  = 0;
+    int falsePositives = 0; // type I error
+    int trueNegatives  = 0;
+    int falseNegatives = 0; // type II error
 
     double recall() {
         return 1.0 * truePositives / (truePositives + falseNegatives);
@@ -48,11 +44,11 @@ public:
 class BinaryClassifier : public Classifier<bool> {
 public:
     virtual ConfusionMatrix test(const LabeledSet &testSet) {
-        assert(testSet.getOutputSize() == 1);
+        assert(testSet.outputDim() == 1);
         ConfusionMatrix cm;
-        for (LabeledPair sample : testSet) {
-            bool result = this->classify(sample.input);
-            bool expected = sample.output[0] > 0;
+        for (LabeledData sample : testSet) {
+            bool result = this->classify(sample.data);
+            bool expected = sample.label[0] > 0;
             if (expected) {
                 if (result) {
                     cm.truePositives++;
