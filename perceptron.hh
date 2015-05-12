@@ -15,25 +15,17 @@
 
 
 #include "randomgen.hh"
-#include "classifier.hh"
 #include "activation.hh"
 
 
 using namespace std;
 
 
-using epoch_parameter = function<double(int)>;
-
-
-epoch_parameter const_epoch_parameter(double eta) {
-    return [eta](int) { return eta; };
-}
-
-
 using Weights = valarray<double>;
 
 
 class APerceptron {
+public:
     /// induced local field of activation potential $v_k$, page 11, eq (4)
     ///
     /// $$ v_k = \sum_{j = 0}^{m} w_{kj} x_j, $$
@@ -55,36 +47,10 @@ class APerceptron {
 
 
 // TODO: rename to LinearPerceptron
-class StandalonePerceptron : public APerceptron, public BinaryClassifier {
+class StandalonePerceptron : public APerceptron {
 private:
     Weights weights;
     const ActivationFunction &activationFunction;
-
-    void trainConverge_addSample(Input input, double output, double eta) {
-        double y = this->output(input);
-        double xfactor = eta * (output - y);
-        // initialize all corrections as if they're multiplied by xfactor
-        Weights deltaW(xfactor, weights.size());
-        // deltaW[0] *= 1.0; // bias, no-op
-        for (size_t i = 0; i < input.size(); ++i) {
-            deltaW[i+1] *= input[i];
-        }
-        adjustWeights(deltaW);
-    }
-
-    void trainBatch_addBatch(LabeledDataset batch, double eta) {
-        for (auto sample : batch) {
-            double desired = sample.label[0]; // desired output
-            Input input = sample.data;
-            // initialize all corrections as if multiplied by eta*desired
-            Weights deltaW(eta * desired, weights.size());
-            // deltaW[0] *= 1.0; // bias, no-op
-            for (size_t i = 0; i < input.size(); ++i) {
-                deltaW[i+1] = eta * input[i] * desired;
-            }
-            adjustWeights(deltaW);
-        }
-    }
 
 public:
     StandalonePerceptron(int n, const ActivationFunction &af = defaultSignum)
@@ -111,53 +77,6 @@ public:
         return weights;
     }
 
-    // TODO: move classifier to a separate class
-    virtual bool classify(const Input &x) { return output(x) > 0; }
-
-    /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledDataset &trainSet, int epochs,
-                       double eta = 1.0) {
-        return trainConverge(trainSet, epochs, const_epoch_parameter(eta));
-    }
-
-    /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledDataset &trainSet, int epochs,
-                       epoch_parameter eta) {
-        assert(trainSet.outputDim() == 1);
-        for (int epoch = 0; epoch < epochs; ++epoch) {
-            double etaval = eta(epoch);
-            for (auto sample : trainSet) {
-                trainConverge_addSample(sample.data, sample.label[0], etaval);
-            }
-        }
-    }
-
-    /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledDataset &trainSet, int epochs, double eta = 1.0) {
-        return trainBatch(trainSet, epochs, const_epoch_parameter(eta));
-    }
-
-    /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledDataset &trainSet, int epochs,
-                    epoch_parameter eta) {
-        assert(trainSet.outputDim() == 1);
-        assert(trainSet.inputDim() + 1 == weights.size());
-        // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
-        // w(n+1) = w(n) - eta(n) \nabla J(w) (1.42)
-        for (int epoch = 0; epoch < epochs; ++epoch) {
-            double etaval = eta(epoch);
-            // a new batch
-            LabeledDataset misclassifiedSet;
-            for (auto sample : trainSet) {
-               if (output(sample.data) * sample.label[0] <= 0) {
-                  misclassifiedSet.append(sample);
-               }
-            }
-            // sum cost gradient over the entire bactch
-            trainBatch_addBatch(misclassifiedSet, etaval);
-        }
-    }
-
     // TODO: move to non-member function
     string fmt() {
         ostringstream ss;
@@ -169,6 +88,109 @@ public:
 };
 
 
+/**
+ * Perceptron convergence algorithm
+ * --------------------------------
+ *
+ * See (Table 1.1).
+ *
+ *  1. Initialize $\mathbf{w}(0) = \mathbf{0}$.
+ *
+ *  2. For $n = 1, 2, ...$:
+ *
+ *     *  active the perceptron with an input vector $\mathbf{x}(n)$
+ *        and consider the desired response $d(n)$ (+1 or -1).
+ *
+ *     *. Apply signum activation function
+ *
+ *        $$ y(n) = sign( \mathbf{w}^T(n) \mathbf{x}(n) ) $$
+ *
+ *     *. Update the weight vector as follows:
+ *
+ *        $$ \mathbf{w}(n+1) = \mathbf{w}() +
+ *                             \eta (d(n) - y(n)) \mathbf{x}(n), $$
+ *
+ *        where $\eta$ is learning rate.
+ **/
+void trainConverge_addSample(APerceptron &p, Input input, double output, double eta) {
+    double y = p.output(input);
+    double xfactor = eta * (output - y);
+    Weights weights = p.getWeights();
+    // initialize all corrections as if they're multiplied by xfactor
+    Weights deltaW(xfactor, weights.size());
+    // deltaW[0] *= 1.0; // bias, no-op
+    for (size_t i = 0; i < input.size(); ++i) {
+        deltaW[i+1] *= input[i];
+    }
+    p.adjustWeights(deltaW);
+}
+
+void trainConverge(APerceptron &p, const LabeledDataset &trainSet,
+                   int epochs, double eta) {
+    assert(trainSet.outputDim() == 1);
+    for (int epoch = 0; epoch < epochs; ++epoch) {
+        for (auto sample : trainSet) {
+            trainConverge_addSample(p, sample.data, sample.label[0], eta);
+        }
+    }
+}
+
+/** The batch perceptron training algorithm
+ *  ---------------------------------------
+ *
+ * (Sec 1.6, Eq. 1.42)
+ *
+ * Consider the _perceptron cost function_
+ *
+ * $$ J(\mathbf{w}) = \sum_{\mathbf{x}(n) \in \Xi}
+ *                    ( - \mathbf{w}^T \mathbf{x}(n) d(n) ), $$
+ *
+ * where $\Xi$ is the set of the misclassified samples $\mathbf{x}.
+ * Differentiating the cost $J(\mathbf{w})$ with respect to $\mathbf{w}$
+ * gives the _gradient vector_
+ *
+ * $$ \nabla J(\mathbf{w}) = \sum_{\mathbf{x}(n) \in \Xi}
+ *                           ( - \mathbf{x}(n) d(n) ). $$
+ *
+ * The adjustment to the weight vector is applied in a direction
+ * opposite to the gradient vector:
+ *
+ * $$ \mathbf{w}(n+1) = \mathbf{w}(n) - \eta(n) \nabla J(\mathbf{w})
+ *       = \mathbf{w}(n) + \eta(n) \sum_{\mathbf{x}(n) \in \Xi}
+ *                                      ( - \mathbf{x}(n) d(n) ). $$
+ **/
+void trainBatch_addBatch(APerceptron &p, LabeledDataset batch, double eta) {
+    for (auto sample : batch) {
+        double desired = sample.label[0]; // desired output
+        Input input = sample.data;
+        Weights weights = p.getWeights();
+        // initialize all corrections as if multiplied by eta*desired
+        Weights deltaW(eta * desired, weights.size());
+        // deltaW[0] *= 1.0; // bias, no-op
+        for (size_t i = 0; i < input.size(); ++i) {
+            deltaW[i+1] = eta * input[i] * desired;
+        }
+        p.adjustWeights(deltaW);
+    }
+}
+
+void trainBatch(APerceptron &p, const LabeledDataset &trainSet, int epochs, double eta) {
+    assert(trainSet.outputDim() == 1);
+    assert(trainSet.inputDim() + 1 == p.getWeights().size());
+    // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
+    // w(n+1) = w(n) - eta(n) \nabla J(w) (1.42)
+    for (int epoch = 0; epoch < epochs; ++epoch) {
+        // a new batch
+        LabeledDataset misclassifiedSet;
+        for (auto sample : trainSet) {
+           if (p.output(sample.data) * sample.label[0] <= 0) {
+              misclassifiedSet.append(sample);
+           }
+        }
+        // sum cost gradient over the entire bactch
+        trainBatch_addBatch(p, misclassifiedSet, eta);
+    }
+}
 
 ostream &operator<<(ostream &out, const vector<double> &xs);
 

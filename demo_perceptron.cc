@@ -5,6 +5,7 @@
 
 #include "dataset.hh"
 #include "perceptron.hh"
+#include "classifier.hh"
 
 
 using namespace std;
@@ -22,8 +23,9 @@ int main(int argc, char *argv[]) {
     LabeledDataset testset(testIn);
 
     StandalonePerceptron p(trainset.inputDim());
+    LinearPerceptronClassifier lpc(p);
     cout << "Initial weights:                     " << p.fmt() << "\n";
-    ConfusionMatrix cm = p.test(testset);
+    ConfusionMatrix cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
          << "\n";
@@ -32,9 +34,9 @@ int main(int argc, char *argv[]) {
     cout << "Initial accuracy:                    " << cm.accuracy() << "\n";
 
     cout << "\n1 iteration...\n\n";
-    p.trainConverge(trainset, 1);
+    trainConverge(p, trainset, 1, 0.1);
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
-    cm = p.test(testset);
+    cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
          << "\n";
@@ -43,10 +45,10 @@ int main(int argc, char *argv[]) {
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
     cout << "\n" << N_ITERS - 1 << " more iterations...\n\n";
-    p.trainConverge(trainset, N_ITERS - 1);
+    trainConverge(p, trainset, N_ITERS - 1, 0.1);
 
     cout << "Weights after convergence training:  " << p.fmt() << "\n";
-    cm = p.test(testset);
+    cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
          << "\n";
@@ -56,9 +58,10 @@ int main(int argc, char *argv[]) {
 
     cout << "\nvs " << N_ITERS << " iterations of batch training...\n\n";
     StandalonePerceptron p2(trainset.inputDim());
-    p2.trainBatch(trainset, N_ITERS);
+    LinearPerceptronClassifier lpc2(p2);
+    trainBatch(p2, trainset, N_ITERS, 0.1);
     cout << "Weights after batch training:        " << p2.fmt() << "\n";
-    cm = p2.test(testset);
+    cm = lpc2.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
          << "\n";

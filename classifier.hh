@@ -68,4 +68,17 @@ public:
 };
 
 
+class LinearPerceptronClassifier : public BinaryClassifier {
+private:
+    StandalonePerceptron &perceptron;
+
+public:
+    LinearPerceptronClassifier(StandalonePerceptron &perceptron)
+        : perceptron(perceptron) {}
+
+    virtual bool classify(const Input &x) {
+        return perceptron.output(x) > 0;
+    }
+};
+
 #endif
