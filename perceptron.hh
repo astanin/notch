@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <vector>
+#include <valarray>
 #include <numeric>    // inner_product
 #include <algorithm>  // transform
 #include <functional> // plus, minus
@@ -29,7 +30,7 @@ epoch_parameter const_epoch_parameter(double eta) {
 }
 
 
-using Weights = vector<double>;
+using Weights = valarray<double>;
 
 
 class APerceptron {
@@ -56,18 +57,17 @@ class APerceptron {
 // TODO: rename to LinearPerceptron
 class StandalonePerceptron : public APerceptron, public BinaryClassifier {
 private:
-    // TODO: use weights[0] as bias
-    double bias;
     Weights weights;
     const ActivationFunction &activationFunction;
 
     void trainConverge_addSample(Input input, double output, double eta) {
         double y = this->output(input);
         double xfactor = eta * (output - y);
-        Weights deltaW(weights.size() + 1);
-        deltaW[0] = xfactor * 1.0; // bias
+        // initialize all corrections as if they're multiplied by xfactor
+        Weights deltaW(xfactor, weights.size());
+        // deltaW[0] *= 1.0; // bias, no-op
         for (size_t i = 0; i < input.size(); ++i) {
-            deltaW[i+1] = xfactor * input[i];
+            deltaW[i+1] *= input[i];
         }
         adjustWeights(deltaW);
     }
@@ -76,8 +76,9 @@ private:
         for (auto sample : batch) {
             double desired = sample.label[0]; // desired output
             Input input = sample.data;
-            Weights deltaW(weights.size() + 1);
-            deltaW[0] = eta * 1.0 * desired; // bias
+            // initialize all corrections as if multiplied by eta*desired
+            Weights deltaW(eta * desired, weights.size());
+            // deltaW[0] *= 1.0; // bias, no-op
             for (size_t i = 0; i < input.size(); ++i) {
                 deltaW[i+1] = eta * input[i] * desired;
             }
@@ -87,35 +88,30 @@ private:
 
 public:
     StandalonePerceptron(int n, const ActivationFunction &af = defaultSignum)
-        : bias(0), weights(n), activationFunction(af) {}
+        : weights(n + 1), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) {
-        assert(x.size() == weights.size());
-        return inner_product(weights.begin(), weights.end(), begin(x), bias);
+        assert(x.size() + 1 == weights.size());
+        double bias = weights[0];
+        auto begin_weights = next(begin(weights));
+        return inner_product(begin_weights, end(weights), begin(x), bias);
     }
 
     virtual double output(const Input &x) {
         return activationFunction(inducedLocalField(x));
     }
 
-    virtual vector<double> getWeights() const {
-        vector<double> biasAndWeights(weights);
-        biasAndWeights.insert(biasAndWeights.begin(), bias);
-        return biasAndWeights;
+    virtual Weights getWeights() const {
+        return weights;
     }
 
     virtual Weights adjustWeights(const Weights weightCorrection) {
-        assert(weights.size() == weightCorrection.size()-1);
-        assert(weightCorrection.size() > 0);
-        bias += weightCorrection[0];
-        auto second = ++weightCorrection.begin();
-        transform(second, weightCorrection.end(), weights.begin(),
-                  weights.begin(), [](double w_i, double delta_w) {
-                    return w_i + delta_w;
-                  });
-        return getWeights();
+        assert(weights.size() == weightCorrection.size());
+        weights += weightCorrection;
+        return weights;
     }
 
+    // TODO: move classifier to a separate class
     virtual bool classify(const Input &x) { return output(x) > 0; }
 
     /// perceptron convergence algorithm (Table 1.1)
@@ -145,7 +141,7 @@ public:
     void trainBatch(const LabeledDataset &trainSet, int epochs,
                     epoch_parameter eta) {
         assert(trainSet.outputDim() == 1);
-        assert(trainSet.inputDim() == weights.size());
+        assert(trainSet.inputDim() + 1 == weights.size());
         // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
         // w(n+1) = w(n) - eta(n) \nabla J(w) (1.42)
         for (int epoch = 0; epoch < epochs; ++epoch) {
