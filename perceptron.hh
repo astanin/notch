@@ -168,7 +168,7 @@ void trainBatch_addBatch(APerceptron &p, LabeledDataset batch, double eta) {
         Weights deltaW(eta * desired, weights.size());
         // deltaW[0] *= 1.0; // bias, no-op
         for (size_t i = 0; i < input.size(); ++i) {
-            deltaW[i+1] = eta * input[i] * desired;
+            deltaW[i+1] *= input[i];
         }
         p.adjustWeights(deltaW);
     }
