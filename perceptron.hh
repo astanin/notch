@@ -53,7 +53,7 @@ private:
     const ActivationFunction &activationFunction;
 
 public:
-    StandalonePerceptron(int n, const ActivationFunction &af = defaultSignum)
+    StandalonePerceptron(int n, const ActivationFunction &af = linearActivation)
         : weights(n + 1), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) {
@@ -113,7 +113,7 @@ public:
  *        where $\eta$ is learning rate.
  **/
 void trainConverge_addSample(APerceptron &p, Input input, double output, double eta) {
-    double y = p.output(input);
+    double y = sign(p.output(input));
     double xfactor = eta * (output - y);
     Weights weights = p.getWeights();
     // initialize all corrections as if they're multiplied by xfactor
