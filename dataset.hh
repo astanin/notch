@@ -10,6 +10,7 @@
 #include <functional> // function<>
 #include <assert.h>
 #include <initializer_list>
+#include <typeinfo>   // typeid
 
 
 /**
@@ -37,52 +38,10 @@ struct LabeledData {
 };
 
 
-/** In practice, we often store data and labels separately.
- * In this case we may want to construct `LabeledData` values on the fly,
- * when iterating two sequences together. */
-class LabeledDatasIterator : public std::iterator<std::input_iterator_tag, LabeledData> {
-private:
-    std::vector<Input> const *inputs;
-    std::vector<Output> const *outputs;
-    size_t position;
-
-public:
-    // TODO: take iterators, like std::transform
-    LabeledDatasIterator(const std::vector<Input> &inputs,
-                         const std::vector<Output> &outputs,
-                         size_t position = 0)
-        : inputs(&inputs), outputs(&outputs), position(position){};
-
-    bool operator==(const LabeledDatasIterator &rhs) const {
-        return (inputs == rhs.inputs &&
-                outputs == rhs.outputs &&
-                position == rhs.position);
-    }
-
-    bool operator!=(const LabeledDatasIterator &rhs) const {
-        return !(*this == rhs);
-    }
-
-    LabeledData operator*() const {
-        LabeledData lp{inputs->at(position), outputs->at(position)};
-        return lp;
-    }
-
-    LabeledDatasIterator &operator++() {
-        if (position < inputs->size()) {
-            ++position;
-        }
-        return *this;
-    }
-
-    LabeledDatasIterator &operator++(int) { return ++(*this); }
-};
-
-
-/** A `LabeledSet` consists of multiple `LabeledData` samples.
- *  `LabeledSet`s can be used like training or testing sets.
+/** A `LabeledDataset` consists of multiple `LabeledData` samples.
+ *  `LabeledDataset`s can be used like training or testing sets.
  */
-class LabeledSet {
+class LabeledDataset {
 private:
     size_t nSamples;
     size_t inputDimension;
@@ -110,28 +69,77 @@ private:
     }
 
 public:
-    LabeledSet() : nSamples(0), inputDimension(0), outputDimension(0) {}
-    LabeledSet(std::istream &in) { readFANN(in); }
-    LabeledSet(std::initializer_list<LabeledData> samples)
+    /// An iterator to process all labeled data samples.
+    class DatasetIterator : public std::iterator<std::input_iterator_tag, LabeledData> {
+    private:
+        using ArrayVecIter = std::vector<Input>::const_iterator;
+        ArrayVecIter in_position, in_end;
+        ArrayVecIter out_position, out_end;
+
+    public:
+        DatasetIterator(ArrayVecIter in_begin,
+                             ArrayVecIter in_end,
+                             ArrayVecIter out_begin,
+                             ArrayVecIter out_end)
+            : in_position(in_begin), in_end(in_end),
+              out_position(out_begin), out_end(out_end) {}
+
+        bool operator==(const DatasetIterator &rhs) const {
+            return (typeid(*this) == typeid(rhs) &&
+                    in_position == rhs.in_position &&
+                    out_position == rhs.out_position &&
+                    in_end == rhs.in_end &&
+                    out_end == rhs.out_end);
+        }
+
+        bool operator!=(const DatasetIterator &rhs) const {
+            return !(*this == rhs);
+        }
+
+        LabeledData operator*() const {
+            const Input &in(*in_position);
+            const Output &out(*out_position);
+            LabeledData lp{in, out};
+            return lp;
+        }
+
+        DatasetIterator &operator++() {
+            if (in_position != in_end && out_position != out_end) {
+                ++in_position;
+                ++out_position;
+            }
+            return *this;
+        }
+
+        DatasetIterator &operator++(int) { return ++(*this); }
+    };
+
+    LabeledDataset() : nSamples(0), inputDimension(0), outputDimension(0) {}
+    LabeledDataset(std::istream &in) { readFANN(in); }
+    LabeledDataset(std::initializer_list<LabeledData> samples)
         : nSamples(0), inputDimension(0), outputDimension(0) {
         for (LabeledData s : samples) {
             append(s);
         }
     }
 
-    LabeledDatasIterator begin() const {
-        return LabeledDatasIterator(inputs, outputs);
+    DatasetIterator begin() const {
+        return DatasetIterator(
+                inputs.begin(), inputs.end(),
+                outputs.begin(), outputs.end());
     }
 
-    LabeledDatasIterator end() const {
-        return LabeledDatasIterator(inputs, outputs, nSamples);
+    DatasetIterator end() const {
+        return DatasetIterator(
+                inputs.end(), inputs.end(),
+                outputs.end(), outputs.end());
     }
 
     size_t size() const { return nSamples; }
     size_t inputDim() const { return inputDimension; }
     size_t outputDim() const { return outputDimension; }
 
-    LabeledSet &append(Input &input, Output &output) {
+    LabeledDataset &append(Input &input, Output &output) {
         if (nSamples != 0) {
             assert(inputDimension == input.size());
             assert(outputDimension == output.size());
@@ -145,7 +153,7 @@ public:
         return *this;
     }
 
-    LabeledSet &append(const Input &input, const Output &output) {
+    LabeledDataset &append(const Input &input, const Output &output) {
         if (nSamples != 0) {
             assert(inputDimension == input.size());
             assert(outputDimension == output.size());
@@ -161,16 +169,16 @@ public:
         return *this;
     }
 
-    LabeledSet &append(LabeledData &sample) {
+    LabeledDataset &append(LabeledData &sample) {
         return append(sample.data, sample.label);
     }
 
-    LabeledSet &append(const LabeledData &sample) {
+    LabeledDataset &append(const LabeledData &sample) {
         return append(sample.data, sample.label);
     }
 
-    friend std::istream &operator>>(std::istream &out, LabeledSet &ls);
-    friend std::ostream &operator<<(std::ostream &out, const LabeledSet &ls);
+    friend std::istream &operator>>(std::istream &out, LabeledDataset &ls);
+    friend std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls);
 };
 
 /** Input-output
@@ -194,14 +202,14 @@ std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
 }
 
 
-/** `LabeledSet`'s input format is compatible with FANN library. */
-std::istream &operator>>(std::istream &in, LabeledSet &ls) {
+/** `LabeledDataset`'s input format is compatible with FANN library. */
+std::istream &operator>>(std::istream &in, LabeledDataset &ls) {
     ls.readFANN(in);
     return in;
 }
 
-/** `LabeledSet`'s output format is compatible with FANN library. */
-std::ostream &operator<<(std::ostream &out, const LabeledSet &ls) {
+/** `LabeledDataset`'s output format is compatible with FANN library. */
+std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
     out << ls.nSamples << " "
         << ls.inputDimension << " "
         << ls.outputDimension << "\n";

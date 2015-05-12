@@ -36,14 +36,14 @@ struct ConfusionMatrix {
 template <typename Out> class Classifier {
 public:
     virtual Out classify(const Input &input) = 0;
-    virtual ConfusionMatrix test(const LabeledSet &testSet) = 0;
+    virtual ConfusionMatrix test(const LabeledDataset &testSet) = 0;
 };
 
 
 /// Binary classifier returns two class labels: true and false.
 class BinaryClassifier : public Classifier<bool> {
 public:
-    virtual ConfusionMatrix test(const LabeledSet &testSet) {
+    virtual ConfusionMatrix test(const LabeledDataset &testSet) {
         assert(testSet.outputDim() == 1);
         ConfusionMatrix cm;
         for (LabeledData sample : testSet) {

@@ -61,7 +61,7 @@ private:
             [&xfactor](double w_i, double x_i) { return w_i + xfactor * x_i; });
     }
 
-    void trainBatch_addBatch(LabeledSet batch, double eta) {
+    void trainBatch_addBatch(LabeledDataset batch, double eta) {
         for (auto sample : batch) {
             double d = sample.label[0]; // desired output
             Input x = sample.data;
@@ -89,13 +89,13 @@ public:
     virtual bool classify(const Input &x) { return output(x) > 0; }
 
     /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet, int epochs,
+    void trainConverge(const LabeledDataset &trainSet, int epochs,
                        double eta = 1.0) {
         return trainConverge(trainSet, epochs, const_epoch_parameter(eta));
     }
 
     /// perceptron convergence algorithm (Table 1.1)
-    void trainConverge(const LabeledSet &trainSet, int epochs,
+    void trainConverge(const LabeledDataset &trainSet, int epochs,
                        epoch_parameter eta) {
         assert(trainSet.outputDim() == 1);
         for (int epoch = 0; epoch < epochs; ++epoch) {
@@ -107,12 +107,12 @@ public:
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet, int epochs, double eta = 1.0) {
+    void trainBatch(const LabeledDataset &trainSet, int epochs, double eta = 1.0) {
         return trainBatch(trainSet, epochs, const_epoch_parameter(eta));
     }
 
     /// batch-training algorithm (Sec 1.6, Eq. 1.42)
-    void trainBatch(const LabeledSet &trainSet, int epochs,
+    void trainBatch(const LabeledDataset &trainSet, int epochs,
                     epoch_parameter eta) {
         assert(trainSet.outputDim() == 1);
         assert(trainSet.inputDim() == weights.size());
@@ -121,7 +121,7 @@ public:
         for (int epoch = 0; epoch < epochs; ++epoch) {
             double etaval = eta(epoch);
             // a new batch
-            LabeledSet misclassifiedSet;
+            LabeledDataset misclassifiedSet;
             for (auto sample : trainSet) {
                if (output(sample.data) * sample.label[0] <= 0) {
                   misclassifiedSet.append(sample);

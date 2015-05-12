@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
     }
     ifstream trainIn(argv[1]);
     ifstream testIn(argv[2]);
-    LabeledSet trainset = LabeledSet(trainIn);
-    LabeledSet testset = LabeledSet(testIn);
+    LabeledDataset trainset(trainIn);
+    LabeledDataset testset(testIn);
 
     StandalonePerceptron p(trainset.inputDim());
     cout << "Initial weights:                     " << p.fmt() << "\n";
