@@ -33,12 +33,23 @@ using Weights = vector<double>;
 
 
 class APerceptron {
-    /// induced local field of activation potential $v_k$, page 11
+    /// induced local field of activation potential $v_k$, page 11, eq (4)
+    ///
+    /// $$ v_k = \sum_{j = 0}^{m} w_{kj} x_j, $$
+    ///
+    /// where $w_{kj}$ is the weight of the $j$-th input of the neuron $k$,
+    /// and $x_j$ is the $j$-th input.
     virtual double inducedLocalField(const Input &x) = 0;
-    /// neuron's output (activation function applied to the induced local field)
+    /// neuron's output, page 12, eq (5)
+    ///
+    /// $$ y_k = \varphi (v_k) $$
+    ///
+    /// @return the value activation function applied to the induced local field
     virtual double output(const Input &x) = 0;
-    /// neuron's weights; weights[0] is bias
+    /// get neuron's weights; weights[0] ($w_{k0}$) is bias
     virtual Weights getWeights() const = 0;
+    /// add weight correction to the neuron's weights
+    virtual Weights adjustWeights(const Weights weightCorrection) = 0;
 };
 
 
@@ -50,26 +61,27 @@ private:
     Weights weights;
     const ActivationFunction &activationFunction;
 
-    // TODO: implement via adjustWeights()
     void trainConverge_addSample(Input input, double output, double eta) {
         double y = this->output(input);
         double xfactor = eta * (output - y);
-        bias += xfactor * 1.0;
-        transform(
-            weights.begin(), weights.end(), begin(input),
-            weights.begin() /* output */,
-            [&xfactor](double w_i, double x_i) { return w_i + xfactor * x_i; });
+        Weights deltaW(weights.size() + 1);
+        deltaW[0] = xfactor * 1.0; // bias
+        for (size_t i = 0; i < input.size(); ++i) {
+            deltaW[i+1] = xfactor * input[i];
+        }
+        adjustWeights(deltaW);
     }
 
     void trainBatch_addBatch(LabeledDataset batch, double eta) {
         for (auto sample : batch) {
-            double d = sample.label[0]; // desired output
-            Input x = sample.data;
-            bias += eta * 1.0 * d;
-            transform(begin(x), end(x), weights.begin(), weights.begin(),
-                      [d, eta](double x_i, double w_i) {
-                          return w_i + eta * x_i * d;
-                      });
+            double desired = sample.label[0]; // desired output
+            Input input = sample.data;
+            Weights deltaW(weights.size() + 1);
+            deltaW[0] = eta * 1.0 * desired; // bias
+            for (size_t i = 0; i < input.size(); ++i) {
+                deltaW[i+1] = eta * input[i] * desired;
+            }
+            adjustWeights(deltaW);
         }
     }
 
@@ -84,6 +96,24 @@ public:
 
     virtual double output(const Input &x) {
         return activationFunction(inducedLocalField(x));
+    }
+
+    virtual vector<double> getWeights() const {
+        vector<double> biasAndWeights(weights);
+        biasAndWeights.insert(biasAndWeights.begin(), bias);
+        return biasAndWeights;
+    }
+
+    virtual Weights adjustWeights(const Weights weightCorrection) {
+        assert(weights.size() == weightCorrection.size()-1);
+        assert(weightCorrection.size() > 0);
+        bias += weightCorrection[0];
+        auto second = ++weightCorrection.begin();
+        transform(second, weightCorrection.end(), weights.begin(),
+                  weights.begin(), [](double w_i, double delta_w) {
+                    return w_i + delta_w;
+                  });
+        return getWeights();
     }
 
     virtual bool classify(const Input &x) { return output(x) > 0; }
@@ -130,12 +160,6 @@ public:
             // sum cost gradient over the entire bactch
             trainBatch_addBatch(misclassifiedSet, etaval);
         }
-    }
-
-    virtual vector<double> getWeights() const {
-        vector<double> biasAndWeights(weights);
-        biasAndWeights.insert(biasAndWeights.begin(), bias);
-        return biasAndWeights;
     }
 
     // TODO: move to non-member function
