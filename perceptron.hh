@@ -43,7 +43,7 @@ public:
     /// get neuron's weights; weights[0] ($w_{k0}$) is bias
     virtual Weights getWeights() const = 0;
     /// add weight correction to the neuron's weights
-    virtual Weights adjustWeights(const Weights weightCorrection) = 0;
+    virtual Weights adjustWeights(const Weights weightCorrections) = 0;
 };
 
 
@@ -71,9 +71,9 @@ public:
         return weights;
     }
 
-    virtual Weights adjustWeights(const Weights weightCorrection) {
-        assert(weights.size() == weightCorrection.size());
-        weights += weightCorrection;
+    virtual Weights adjustWeights(const Weights weightCorrections) {
+        assert(weights.size() == weightCorrections.size());
+        weights += weightCorrections;
         return weights;
     }
 };
@@ -138,6 +138,7 @@ void trainConverge(APerceptron &p, const LabeledDataset &trainSet,
     }
 }
 
+
 /** The batch perceptron training algorithm
  *  ---------------------------------------
  *
@@ -195,20 +196,17 @@ void trainBatch(APerceptron &p, const LabeledDataset &trainSet, int epochs, doub
     }
 }
 
-ostream &operator<<(ostream &out, const vector<double> &xs);
-
-#if 0
 
 /**
- A basic perceptron, without built-in training facilities, with
- reasonable defaults to be used within `PerceptronsLayers`.
+ * An artificial neuron with back-propagation capability.
  */
-class BasicPerceptron : public APerceptron {
+class BidirectionalNeuron : public APerceptron {
 private:
+    int nInputs;
     Weights weights; // weights[0] is bias
     const ActivationFunction &activationFunction;
 
-    // remember the last input and internal parameters to use them
+    // remember the latest internal parameters to use them
     // again in the back-propagation step
     double lastInducedLocalField;  // v_j = \sum w_i y_i
     double lastActivationValue;    // y_j = \phi (v_j)
@@ -216,25 +214,25 @@ private:
     double lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
 
 public:
-    BasicPerceptron(int n, const ActivationFunction &af = defaultTanh)
-        : weights(n + 1), activationFunction(af) {}
+    BidirectionalNeuron(int n, const ActivationFunction &af = defaultTanh)
+        : nInputs(n), weights(n + 1), activationFunction(af) {}
 
     // one-sided Xavier initialization
     // see http://andyljones.tumblr.com/post/110998971763/
     void init(unique_ptr<rng_type> &rng) {
-        int n_in = weights.size()-1;
+        int n_in = nInputs;
         double sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
         uniform_real_distribution<double> nd(-sigma, sigma);
-        generate(weights.begin(), weights.end(), [&nd, &rng] {
+        generate(begin(weights), end(weights), [&nd, &rng] {
                     double w = nd(*rng.get());
                     return w;
                  });
     }
 
     virtual double inducedLocalField(const Input &x) {
-        double bias = weights[0];
-        auto weights_2nd = next(weights.begin());
-        return inner_product(weights_2nd, weights.end(), x.begin(), bias);
+        auto bias = weights[0];
+        auto begin_weights = next(begin(weights));
+        return inner_product(begin_weights, end(weights), begin(x), bias);
     }
 
     virtual double output(const Input &x) {
@@ -249,16 +247,15 @@ public:
         return weights;
     }
 
-    void adjustWeights(Weights deltaW) {
-        assert(deltaW.size() == weights.size());
-        for (size_t i = 0; i < weights.size(); ++i) {
-            weights[i] += deltaW[i];
-        }
+    virtual Weights adjustWeights(Weights weightCorrections) {
+        assert(weights.size() == weightCorrections.size());
+        weights += weightCorrections;
+        return weights;
     }
 
-    struct BPResult {
-        Weights weightCorrection;
+    struct BackOutput {
         double localGradient;
+        Weights weightCorrections;
     };
 
     // Page 134. Equation (4.27) defines weight correction
@@ -280,35 +277,34 @@ public:
     // Return a vector of weight corrections and the local gradient value.
     //
     // The method should be called _after_ `forwardPass`
-    BPResult backwardPass(const Input &inputs, double errorSignal,
-                          double learningRate) {
-        assert(inputs.size() + 1 == weights.size());
-        size_t nInputs = weights.size();
+    BackOutput backwardPass(const Input &inputs, double errorSignal,
+                            double learningRate) {
         double localGradient = lastActivationGradient * errorSignal;
         double multiplier = learningRate * localGradient;
-        Weights delta_W(nInputs, multiplier);
+        Weights delta_W(multiplier, weights.size());
         for (size_t i = 0; i < inputs.size(); ++i) {
             delta_W[i + 1] *= inputs[i];
         }
         lastLocalGradient = localGradient;
-        return BPResult{delta_W, localGradient};
+        BackOutput ret{localGradient, delta_W};
+        return ret;
     }
 };
 
 
-/// A fully connected layer of perceptrons.
-class PerceptronsLayer {
+/// A fully connected layer of a multilayer perceptron.
+class FullyConnectedLayer {
 private:
     unsigned int nInputs;
     unsigned int nNeurons;
-    vector<BasicPerceptron> neurons;
+    vector<BidirectionalNeuron> neurons;
     Output lastOutput;
 
 public:
-    PerceptronsLayer(unsigned int nInputs = 0, unsigned int nOutputs = 0,
+    FullyConnectedLayer(unsigned int nInputs = 0, unsigned int nOutputs = 0,
                      const ActivationFunction &af = defaultTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
-          neurons(nOutputs, BasicPerceptron(nInputs, af)),
+          neurons(nOutputs, BidirectionalNeuron(nInputs, af)),
           lastOutput(nOutputs) {}
 
     void init(unique_ptr<rng_type> &rng) {
@@ -333,8 +329,8 @@ public:
         return lastOutput;
     }
 
-    struct BPResult {
-        Output propagatedErrorSignals;
+    struct BackOutput {
+        Input propagatedErrorSignals;
         vector<Weights> weightCorrections;
     };
 
@@ -349,16 +345,16 @@ public:
     // downstream neuron $k$.
     //
     // The method should be called _after_ `forwardPass`
-    BPResult backwardPass(const Input &inputs, const Output &errorSignals,
-                          double learningRate) {
+    BackOutput backwardPass(const Input &inputs, const Output &errorSignals,
+                                 double learningRate) {
         assert(errorSignals.size() == neurons.size());
         auto eta = learningRate;
         vector<Weights> weightDeltas(0);
-        Weights propagatedErrorSignals(nInputs, 0.0);
+        Weights propagatedErrorSignals(0.0, nInputs);
         for (auto k = 0u; k < nNeurons; ++k) {
             auto error_k = errorSignals[k];
             auto r = neurons[k].backwardPass(inputs, error_k, eta);
-            Weights delta_Wk = r.weightCorrection;
+            Weights delta_Wk = r.weightCorrections;
             double delta_k = r.localGradient;
             Weights Wk = neurons[k].getWeights();
             for (auto j = 0u; j < nInputs; ++j) {
@@ -366,28 +362,27 @@ public:
             }
             weightDeltas.push_back(delta_Wk);
         }
-        return BPResult{propagatedErrorSignals, weightDeltas};
+        return BackOutput{propagatedErrorSignals, weightDeltas};
     }
 
-    friend ostream &operator<<(ostream &out, const PerceptronsLayer &net);
+    friend ostream &operator<<(ostream &out, const FullyConnectedLayer &net);
 };
 
 
-/// Multiple layers of perceptrons stack one upon another.
-// TODO: rename to MultilayerPerceptron
-class PerceptronsNetwork {
+/// Multiple fully-connected layers stacked one upon another.
+class MultilayerPerceptron {
 private:
-    vector<PerceptronsLayer> layers;
+    vector<FullyConnectedLayer> layers;
     vector<Input> layersInputs;
 
 public:
-    PerceptronsNetwork(initializer_list<unsigned int> shape,
+    MultilayerPerceptron(initializer_list<unsigned int> shape,
                        const ActivationFunction &af = defaultTanh)
         : layers(0), layersInputs(0) {
         auto pIn = shape.begin();
         auto pOut = next(pIn);
         for (; pOut != shape.end(); ++pIn, ++pOut) {
-            PerceptronsLayer layer(*pIn, *pOut, af);
+            FullyConnectedLayer layer(*pIn, *pOut, af);
             layers.push_back(layer);
         }
     }
@@ -399,6 +394,7 @@ public:
     }
 
     Output forwardPass(const Input &inputs) {
+        // TODO: avoid allocationg new Inputs on every pass
         layersInputs.clear();
         layersInputs.push_back(inputs);
         for (auto i = 0u; i < layers.size(); ++i) {
@@ -409,10 +405,10 @@ public:
         return layersInputs[layers.size()];
     }
 
-    PerceptronsLayer::BPResult
+    FullyConnectedLayer::BackOutput
     backwardPass(const Output &errorSignals, double learningRate) {
         Output err(errorSignals);
-        PerceptronsLayer::BPResult r;
+        FullyConnectedLayer::BackOutput r;
 
         for (int i = layers.size()-1; i >= 0; --i) {
             auto layerIn = layersInputs[i];
@@ -423,11 +419,11 @@ public:
         return r;
     }
 
-    friend ostream &operator<<(ostream &out, const PerceptronsNetwork &net);
+    friend ostream &operator<<(ostream &out, const MultilayerPerceptron &net);
 };
 
 
-ostream &operator<<(ostream &out, const PerceptronsLayer &layer) {
+ostream &operator<<(ostream &out, const FullyConnectedLayer &layer) {
     size_t n = layer.neurons.size();
     for (size_t j = 0; j < n; ++j) {
         if (j == 0) {
@@ -446,8 +442,8 @@ ostream &operator<<(ostream &out, const PerceptronsLayer &layer) {
 }
 
 
-ostream &operator<<(ostream &out, const PerceptronsNetwork &net) {
-    for (PerceptronsLayer l : net.layers) {
+ostream &operator<<(ostream &out, const MultilayerPerceptron &net) {
+    for (FullyConnectedLayer l : net.layers) {
         out << l << "\n";
     }
     return out;
@@ -463,7 +459,5 @@ ostream &operator<<(ostream &out, const vector<double> &xs) {
     out << xs[n - 1] << " ]";
     return out;
 }
-
-#endif
 
 #endif /* PERCEPTRON_H */

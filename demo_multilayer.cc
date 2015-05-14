@@ -9,14 +9,14 @@
 #include "perceptron.hh"
 
 
-double loss(PerceptronsNetwork &net, LabeledSet &testSet) {
+double loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
     double loss = 0.0;
     for (auto sample : testSet) {
-        auto correct = sample.output;
-        auto result = net.forwardPass(sample.input);
-        transform(correct.begin(), correct.end(),
-                  result.begin(),
-                  result.begin(),
+        auto correct = sample.label;
+        auto result = net.forwardPass(sample.data);
+        transform(begin(correct), end(correct),
+                  begin(result),
+                  begin(result),
                   [](double y_c, double y) { return abs(y_c - y); });
         for (auto val: result) {
             loss += val;
@@ -28,29 +28,28 @@ double loss(PerceptronsNetwork &net, LabeledSet &testSet) {
 
 int main(int, char *[]) {
     unique_ptr<rng_type> rng(seed_rng());
-    LabeledSet trainSet {{{0,0},{0}},
+    LabeledDataset trainSet {{{0,0},{0}},
                          {{0,1},{1}},
                          {{1,0},{1}},
                          {{1,1},{0}}};
-    LabeledSet &testSet(trainSet);
+    LabeledDataset &testSet(trainSet);
     cout << "training set:\n" << trainSet << "\n";
-    PerceptronsNetwork xorNet {2, 2, 1};
+    MultilayerPerceptron xorNet {2, 2, 1};
     xorNet.init(rng);
     cout << "initial NN:\n" << xorNet << "\n";
     cout << "initial out:\n";
     for (auto s : trainSet) {
-        cout << s.input << " -> " << xorNet.forwardPass(s.input) << "\n";
+        cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
     }
     cout << "initial loss: " << loss(xorNet, testSet) << "\n";
 
     for (int j = 0; j < 20000; ++j) {
         // training cycle
         for (auto sample : trainSet) {
-            //cout << "in: " << sample.input << "\n";
-            auto actualOutput = xorNet.forwardPass(sample.input);
+            auto actualOutput = xorNet.forwardPass(sample.data);
             Output err(actualOutput.size());
             for (size_t i=0; i < actualOutput.size(); ++i) {
-                err[i] = sample.output[i] - actualOutput[i];
+                err[i] = sample.label[i] - actualOutput[i];
             }
             xorNet.backwardPass(err, 0.01);
         }
@@ -62,7 +61,7 @@ int main(int, char *[]) {
     cout << "\nfinal NN:\n" << xorNet << "\n";
     cout << "final out:\n";
     for (auto s : trainSet) {
-        cout << s.input << " -> " << xorNet.forwardPass(s.input) << "\n";
+        cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
     }
 
     return 0;
