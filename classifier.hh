@@ -70,10 +70,10 @@ public:
 
 class LinearPerceptronClassifier : public BinaryClassifier {
 private:
-    StandalonePerceptron &perceptron;
+    LinearPerceptron &perceptron;
 
 public:
-    LinearPerceptronClassifier(StandalonePerceptron &perceptron)
+    LinearPerceptronClassifier(LinearPerceptron &perceptron)
         : perceptron(perceptron) {}
 
     virtual bool classify(const Input &x) {

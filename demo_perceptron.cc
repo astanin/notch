@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     LabeledDataset trainset(trainIn);
     LabeledDataset testset(testIn);
 
-    StandalonePerceptron p(trainset.inputDim());
+    LinearPerceptron p(trainset.inputDim());
     LinearPerceptronClassifier lpc(p);
     cout << "Initial weights:                     " << p.fmt() << "\n";
     ConfusionMatrix cm = lpc.test(testset);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     cout << "Accuracy after convergence training: " << cm.accuracy() << "\n";
 
     cout << "\nvs " << N_ITERS << " iterations of batch training...\n\n";
-    StandalonePerceptron p2(trainset.inputDim());
+    LinearPerceptron p2(trainset.inputDim());
     LinearPerceptronClassifier lpc2(p2);
     trainBatch(p2, trainset, N_ITERS, 0.1);
     cout << "Weights after batch training:        " << p2.fmt() << "\n";

@@ -15,6 +15,7 @@
 
 
 #include "randomgen.hh"
+#include "dataset.hh"
 #include "activation.hh"
 
 
@@ -46,14 +47,13 @@ public:
 };
 
 
-// TODO: rename to LinearPerceptron
-class StandalonePerceptron : public APerceptron {
+class LinearPerceptron : public APerceptron {
 private:
     Weights weights;
     const ActivationFunction &activationFunction;
 
 public:
-    StandalonePerceptron(int n, const ActivationFunction &af = linearActivation)
+    LinearPerceptron(int n, const ActivationFunction &af = linearActivation)
         : weights(n + 1), activationFunction(af) {}
 
     virtual double inducedLocalField(const Input &x) {
