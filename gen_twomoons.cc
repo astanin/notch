@@ -21,7 +21,7 @@ const double default_n = 1000;
 
 
 void usage() {
-    cout << "usage: gentwomoon distance [numpoints [output_file]]";
+    cout << "usage: gen_twomoons distance [numpoints [output_file]]";
     cout << "\ndefault options:\n";
     cout << "    distance = 1.0\n";
     cout << "    numpoints = 1000\n";
@@ -31,7 +31,7 @@ void usage() {
 
 
 void generate(double r, double w, double d, int n, ostream &out) {
-    LabeledSet data;
+    LabeledDataset data;
     double epsilon = 1e-6 * w;
     uniform_real_distribution<> x1(-r - 0.5 * w, r + 0.5 * w + epsilon);
     uniform_real_distribution<> y1(0.0, r + 0.5 * w + epsilon);
