@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 
     LinearPerceptron p(trainset.inputDim());
     LinearPerceptronClassifier lpc(p);
-    cout << "Initial weights:                     " << p.fmt() << "\n";
+    cout << "Initial weights:                     " << p << "\n";
     ConfusionMatrix cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 
     cout << "\n1 iteration...\n\n";
     trainConverge(p, trainset, 1, 0.1);
-    cout << "Weights after convergence training:  " << p.fmt() << "\n";
+    cout << "Weights after convergence training:  " << p << "\n";
     cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     cout << "\n" << N_ITERS - 1 << " more iterations...\n\n";
     trainConverge(p, trainset, N_ITERS - 1, 0.1);
 
-    cout << "Weights after convergence training:  " << p.fmt() << "\n";
+    cout << "Weights after convergence training:  " << p << "\n";
     cm = lpc.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     LinearPerceptron p2(trainset.inputDim());
     LinearPerceptronClassifier lpc2(p2);
     trainBatch(p2, trainset, N_ITERS, 0.1);
-    cout << "Weights after batch training:        " << p2.fmt() << "\n";
+    cout << "Weights after batch training:        " << p2 << "\n";
     cm = lpc2.test(testset);
     cout << "Confusion matrix:\n";
     cout << "    TP=" << cm.truePositives << " FP=" << cm.falsePositives

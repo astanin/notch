@@ -76,17 +76,20 @@ public:
         weights += weightCorrection;
         return weights;
     }
-
-    // TODO: move to non-member function
-    string fmt() {
-        ostringstream ss;
-        for (auto it : getWeights()) {
-            ss << " " << it;
-        }
-        return ss.str();
-    }
 };
 
+
+ostream &operator<<(ostream &out, const APerceptron &neuron) {
+    auto ws = neuron.getWeights();
+    for (auto it = begin(ws); it != end(ws); ++it) {
+        if (next(it) != end(ws)) {
+            out << *it << " ";
+        } else {
+            out << *it;
+        }
+    }
+    return out;
+}
 
 /**
  * Perceptron convergence algorithm
