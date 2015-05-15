@@ -41,9 +41,11 @@ int main(int, char *[]) {
     for (auto s : trainSet) {
         cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
     }
+    cout << "\n";
+
     cout << "initial loss: " << loss(xorNet, testSet) << "\n";
 
-    for (int j = 0; j < 20000; ++j) {
+    for (int j = 0; j < 5000; ++j) {
         // training cycle
         for (auto sample : trainSet) {
             auto actualOutput = xorNet.forwardPass(sample.data);
@@ -57,12 +59,14 @@ int main(int, char *[]) {
             cout << "epoch " << j+1 << " loss: " << loss(xorNet, testSet) << "\n";
         }
     }
+    cout << "\n";
 
-    cout << "\nfinal NN:\n" << xorNet << "\n";
+    cout << "final NN:\n" << xorNet << "\n";
     cout << "final out:\n";
     for (auto s : trainSet) {
         cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
     }
+    cout << "\n";
 
     return 0;
 }
