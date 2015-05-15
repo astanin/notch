@@ -11,6 +11,7 @@
 #include <cmath>      // sqrt
 #include <initializer_list>
 #include <iostream>   // cout
+#include <iomanip>    // setw, setprecision
 #include <iterator>   // begin, end
 
 
@@ -289,6 +290,8 @@ public:
         BackOutput ret{localGradient, delta_W};
         return ret;
     }
+
+    friend ostream &operator<<(ostream &out, const BidirectionalNeuron &neuron);
 };
 
 
@@ -423,41 +426,33 @@ public:
 };
 
 
+ostream &operator<<(ostream &out, const BidirectionalNeuron &neuron) {
+    auto weights = neuron.getWeights();
+    for (auto w : weights) {
+        out << setw(9) << setprecision(5) << w << " ";
+    }
+    out << neuron.activationFunction;
+    return out;
+}
+
+
 ostream &operator<<(ostream &out, const FullyConnectedLayer &layer) {
-    size_t n = layer.neurons.size();
-    for (size_t j = 0; j < n; ++j) {
-        if (j == 0) {
-            out << "[";
-        } else {
-            out << " ";
-        }
-        out << layer.neurons[j].getWeights();
-        if (j >= n - 1) {
-            out << "]";
-        } else {
-            out << ",\n";
-        }
+    for (BidirectionalNeuron neuron : layer.neurons) {
+        out << "  " << neuron << "\n";
     }
     return out;
 }
 
 
 ostream &operator<<(ostream &out, const MultilayerPerceptron &net) {
+    int layerN = 1;
     for (FullyConnectedLayer l : net.layers) {
-        out << l << "\n";
+        out << "LAYER " << layerN << ":\n";
+        out << l;
+        layerN++;
     }
     return out;
 }
 
-
-ostream &operator<<(ostream &out, const vector<double> &xs) {
-    int n = xs.size();
-    out << "[ ";
-    for (int i = 0; i < n - 1; ++i) {
-        out << xs[i] << ", ";
-    }
-    out << xs[n - 1] << " ]";
-    return out;
-}
 
 #endif /* PERCEPTRON_H */

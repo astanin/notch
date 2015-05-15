@@ -17,8 +17,14 @@ class ActivationFunction {
 public:
     virtual double operator()(double v) const = 0;
     virtual double derivative(double v) const = 0;
-    // TODO: add serialize() method
+    virtual void print(ostream &out) const = 0;
 };
+
+
+ostream &operator<<(ostream &out, const ActivationFunction &af) {
+    af.print(out);
+    return out;
+}
 
 
 /// phi(v) = 1/(1 + exp(-slope*v)); Chapter 4, page 135
@@ -36,6 +42,24 @@ public:
     virtual double derivative(double v) const {
         double y = (*this)(v);
         return slope * y * (1 - y);
+    }
+
+    virtual void print(ostream &out) const {
+        out << "logistic";
+    }
+};
+
+
+class SignumFunction : public ActivationFunction {
+public:
+    SignumFunction() {}
+
+    virtual double operator()(double v) const { return sign(v); }
+
+    virtual double derivative(double) const { return 0.0; }
+
+    virtual void print(ostream &out) const {
+        out << "sign";
     }
 };
 
@@ -59,23 +83,9 @@ public:
         double y = tanh(b * v);
         return a * b * (1.0 - y * y);
     }
-};
 
-
-/// calculate derivative with numeric differentiation
-class AutoDiffFunction : public ActivationFunction {
-private:
-    function<double(double)> f;
-    double dx;
-
-public:
-    AutoDiffFunction(function<double(double)> f, double dx = 1e-3)
-        : f(f), dx(dx) {}
-
-    virtual double operator()(double v) const { return f(v); }
-
-    virtual double derivative(double v) const {
-        return (f(v + dx) - f(v - dx)) / (2.0 * dx);
+    virtual void print(ostream &out) const {
+        out << "tanh";
     }
 };
 
@@ -84,11 +94,13 @@ class PiecewiseLinearFunction : public ActivationFunction {
 private:
     double negativeSlope;
     double positiveSlope;
+    string name;
 
 public:
     PiecewiseLinearFunction(double negativeSlope = 0.0,
-                            double positiveSlope = 1.0)
-        : negativeSlope(negativeSlope), positiveSlope(positiveSlope) {}
+                            double positiveSlope = 1.0,
+                            string name = "ReLU")
+        : negativeSlope(negativeSlope), positiveSlope(positiveSlope), name(name) {}
 
     virtual double operator()(double v) const {
         if (v >= 0) {
@@ -105,14 +117,18 @@ public:
             return negativeSlope;
         }
     }
+
+    virtual void print(ostream &out) const {
+        out << name;
+    }
 };
 
 
 const TanhFunction defaultTanh;
-const AutoDiffFunction defaultSignum(sign);
+const SignumFunction defaultSignum;
 const PiecewiseLinearFunction ReLU;
-const PiecewiseLinearFunction leakyReLU(0.01, 1.0);
-const PiecewiseLinearFunction linearActivation(1.0, 1.0);
+const PiecewiseLinearFunction leakyReLU(0.01, 1.0, "leakyReLU");
+const PiecewiseLinearFunction linearActivation(1.0, 1.0, "");
 
 
 #endif /* ACTIVATION_H */
