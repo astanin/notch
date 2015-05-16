@@ -3,6 +3,8 @@ NEVRONZ
 
 C++11 implementation of the selected algorithms from
 "Neural Networks and Learning Machines, 3rd Ed."
+([libgen](http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854),
+ [amazon](http://www.amazon.co.uk/Neural-Networks-Learning-Machines-3rd/dp/8120340000/))
 
 This is (supposed to be)
 
