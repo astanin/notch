@@ -1,31 +1,63 @@
 #ifndef PERCEPTRON_H
 #define PERCEPTRON_H
 
-#include <sstream>
-#include <vector>
-#include <valarray>
-#include <numeric>    // inner_product
-#include <algorithm>  // transform
-#include <functional> // plus, minus
+
+// remove these includes:
 #include <assert.h>
-#include <cmath>      // sqrt
-#include <initializer_list>
 #include <iostream>   // cout
+
+#include <algorithm>  // transform, generate
+#include <array>      // array
+#include <cmath>      // sqrt
+#include <functional> // ref
+#include <initializer_list>
 #include <iomanip>    // setw, setprecision
 #include <iterator>   // begin, end
+#include <memory>     // unique_ptr
+#include <numeric>    // inner_product
+#include <random>
+#include <valarray>
+#include <vector>
 
 
-#include "randomgen.hh"
 #include "dataset.hh"
 #include "activation.hh"
 
+/**
+ * Framework
+ * =========
+ *
+ **/
 
-using namespace std;
+/**
+ * Random initialization
+ * ---------------------
+ **/
+using RNG = std::mt19937;
+
+/// Create and seed a new random number generator.
+std::unique_ptr<RNG> newRNG() {
+    std::random_device rd;
+    std::array<uint32_t, std::mt19937::state_size> seed_data;
+    generate(seed_data.begin(), seed_data.end(), ref(rd));
+    std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
+    std::unique_ptr<RNG> rng(new RNG());
+    rng->seed(sseq);
+    return rng;
+}
 
 
+/**
+ * Neurons and Neural Networks
+ * ===========================
+ *
+ **/
+
+/// Synaptic weights
 using Weights = valarray<double>;
 
 
+// TODO: use iterators rather than const Input&
 class ANeuron {
 public:
     /// induced local field of activation potential $v_k$, page 11, eq (4)
@@ -220,7 +252,7 @@ public:
 
     // one-sided Xavier initialization
     // see http://andyljones.tumblr.com/post/110998971763/
-    void init(unique_ptr<rng_type> &rng) {
+    void init(std::unique_ptr<RNG> &rng) {
         int n_in = nInputs;
         double sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
         uniform_real_distribution<double> nd(-sigma, sigma);
@@ -310,7 +342,7 @@ public:
           neurons(nOutputs, BidirectionalNeuron(nInputs, af)),
           lastOutput(nOutputs) {}
 
-    void init(unique_ptr<rng_type> &rng) {
+    void init(std::unique_ptr<RNG> &rng) {
         for (size_t i = 0; i < neurons.size(); ++i) {
             neurons[i].init(rng);
         }
@@ -390,7 +422,7 @@ public:
         }
     }
 
-    void init(unique_ptr<rng_type> &rng) {
+    void init(std::unique_ptr<RNG> &rng) {
         for (auto i = 0u; i < layers.size(); ++i) {
             layers[i].init(rng);
         }
