@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <iostream>   // cout
 
-#include <algorithm>  // transform, generate
+#include <algorithm>  // generate
 #include <array>      // array
 #include <cmath>      // sqrt
 #include <functional> // ref
@@ -15,6 +15,7 @@
 #include <iterator>   // begin, end
 #include <memory>     // unique_ptr
 #include <numeric>    // inner_product
+#include <ostream>    // ostream
 #include <random>
 #include <valarray>
 #include <vector>
@@ -39,7 +40,7 @@ using RNG = std::mt19937;
 std::unique_ptr<RNG> newRNG() {
     std::random_device rd;
     std::array<uint32_t, std::mt19937::state_size> seed_data;
-    generate(seed_data.begin(), seed_data.end(), ref(rd));
+    std::generate(seed_data.begin(), seed_data.end(), ref(rd));
     std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
     std::unique_ptr<RNG> rng(new RNG());
     rng->seed(sseq);
@@ -54,7 +55,7 @@ std::unique_ptr<RNG> newRNG() {
  **/
 
 /// Synaptic weights
-using Weights = valarray<double>;
+using Weights = std::valarray<double>;
 
 
 // TODO: use iterators rather than const Input&
@@ -92,8 +93,8 @@ public:
     virtual double inducedLocalField(const Input &x) {
         assert(x.size() + 1 == weights.size());
         double bias = weights[0];
-        auto begin_weights = next(begin(weights));
-        return inner_product(begin_weights, end(weights), begin(x), bias);
+        auto begin_weights = std::next(std::begin(weights));
+        return std::inner_product(begin_weights, std::end(weights), std::begin(x), bias);
     }
 
     virtual double output(const Input &x) {
@@ -112,10 +113,10 @@ public:
 };
 
 
-ostream &operator<<(ostream &out, const ANeuron &neuron) {
+std::ostream &operator<<(std::ostream &out, const ANeuron &neuron) {
     auto ws = neuron.getWeights();
-    for (auto it = begin(ws); it != end(ws); ++it) {
-        if (next(it) != end(ws)) {
+    for (auto it = std::begin(ws); it != std::end(ws); ++it) {
+        if (std::next(it) != std::end(ws)) {
             out << *it << " ";
         } else {
             out << *it;
@@ -252,11 +253,12 @@ public:
 
     // one-sided Xavier initialization
     // see http://andyljones.tumblr.com/post/110998971763/
+    // TODO: move algorithm outside of the class
     void init(std::unique_ptr<RNG> &rng) {
         int n_in = nInputs;
         double sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
-        uniform_real_distribution<double> nd(-sigma, sigma);
-        generate(begin(weights), end(weights), [&nd, &rng] {
+        std::uniform_real_distribution<double> nd(-sigma, sigma);
+        std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
                     double w = nd(*rng.get());
                     return w;
                  });
@@ -264,8 +266,8 @@ public:
 
     virtual double inducedLocalField(const Input &x) {
         auto bias = weights[0];
-        auto begin_weights = next(begin(weights));
-        return inner_product(begin_weights, end(weights), begin(x), bias);
+        auto begin_weights = std::next(std::begin(weights));
+        return std::inner_product(begin_weights, std::end(weights), std::begin(x), bias);
     }
 
     virtual double output(const Input &x) {
@@ -323,7 +325,7 @@ public:
         return ret;
     }
 
-    friend ostream &operator<<(ostream &out, const BidirectionalNeuron &neuron);
+    friend std::ostream &operator<<(std::ostream &out, const BidirectionalNeuron &neuron);
 };
 
 
@@ -332,7 +334,7 @@ class FullyConnectedLayer {
 private:
     unsigned int nInputs;
     unsigned int nNeurons;
-    vector<BidirectionalNeuron> neurons;
+    std::vector<BidirectionalNeuron> neurons;
     Output lastOutput;
 
 public:
@@ -348,7 +350,7 @@ public:
         }
     }
 
-    void adjustWeights(vector<Weights> weightDeltas) {
+    void adjustWeights(std::vector<Weights> weightDeltas) {
         assert(nNeurons == weightDeltas.size());
         for (size_t i = 0; i < neurons.size(); ++i) {
             neurons[i].adjustWeights(weightDeltas[i]);
@@ -366,7 +368,7 @@ public:
 
     struct BackOutput {
         Input propagatedErrorSignals;
-        vector<Weights> weightCorrections;
+        std::vector<Weights> weightCorrections;
     };
 
     // Page 134. Calculate back-propagated error signal and corrections to
@@ -384,7 +386,7 @@ public:
                                  double learningRate) {
         assert(errorSignals.size() == neurons.size());
         auto eta = learningRate;
-        vector<Weights> weightDeltas(0);
+        std::vector<Weights> weightDeltas(0);
         Weights propagatedErrorSignals(0.0, nInputs);
         for (auto k = 0u; k < nNeurons; ++k) {
             auto error_k = errorSignals[k];
@@ -400,22 +402,22 @@ public:
         return BackOutput{propagatedErrorSignals, weightDeltas};
     }
 
-    friend ostream &operator<<(ostream &out, const FullyConnectedLayer &net);
+    friend std::ostream &operator<<(std::ostream &out, const FullyConnectedLayer &net);
 };
 
 
 /// Multiple fully-connected layers stacked one upon another.
 class MultilayerPerceptron {
 private:
-    vector<FullyConnectedLayer> layers;
-    vector<Input> layersInputs;
+    std::vector<FullyConnectedLayer> layers;
+    std::vector<Input> layersInputs;
 
 public:
-    MultilayerPerceptron(initializer_list<unsigned int> shape,
-                       const ActivationFunction &af = defaultTanh)
+    MultilayerPerceptron(std::initializer_list<unsigned int> shape,
+                         const ActivationFunction &af = defaultTanh)
         : layers(0), layersInputs(0) {
         auto pIn = shape.begin();
-        auto pOut = next(pIn);
+        auto pOut = std::next(pIn);
         for (; pOut != shape.end(); ++pIn, ++pOut) {
             FullyConnectedLayer layer(*pIn, *pOut, af);
             layers.push_back(layer);
@@ -454,21 +456,21 @@ public:
         return r;
     }
 
-    friend ostream &operator<<(ostream &out, const MultilayerPerceptron &net);
+    friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
 
 
-ostream &operator<<(ostream &out, const BidirectionalNeuron &neuron) {
+std::ostream &operator<<(std::ostream &out, const BidirectionalNeuron &neuron) {
     auto weights = neuron.getWeights();
     for (auto w : weights) {
-        out << setw(9) << setprecision(5) << w << " ";
+        out << std::setw(9) << std::setprecision(5) << w << " ";
     }
     out << neuron.activationFunction;
     return out;
 }
 
 
-ostream &operator<<(ostream &out, const FullyConnectedLayer &layer) {
+std::ostream &operator<<(std::ostream &out, const FullyConnectedLayer &layer) {
     for (BidirectionalNeuron neuron : layer.neurons) {
         out << "  " << neuron << "\n";
     }
@@ -476,7 +478,7 @@ ostream &operator<<(ostream &out, const FullyConnectedLayer &layer) {
 }
 
 
-ostream &operator<<(ostream &out, const MultilayerPerceptron &net) {
+std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
     int layerN = 1;
     for (FullyConnectedLayer l : net.layers) {
         out << "LAYER " << layerN << ":\n";

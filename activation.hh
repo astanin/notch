@@ -6,10 +6,6 @@
 #include <cmath>      // exp
 
 
-// TODO: don't use namespace std
-using namespace std;
-
-
 double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
@@ -17,11 +13,11 @@ class ActivationFunction {
 public:
     virtual double operator()(double v) const = 0;
     virtual double derivative(double v) const = 0;
-    virtual void print(ostream &out) const = 0;
+    virtual void print(std::ostream &out) const = 0;
 };
 
 
-ostream &operator<<(ostream &out, const ActivationFunction &af) {
+std::ostream &operator<<(std::ostream &out, const ActivationFunction &af) {
     af.print(out);
     return out;
 }
@@ -44,9 +40,7 @@ public:
         return slope * y * (1 - y);
     }
 
-    virtual void print(ostream &out) const {
-        out << "logistic";
-    }
+    virtual void print(std::ostream &out) const { out << "logistic"; }
 };
 
 
@@ -58,9 +52,7 @@ public:
 
     virtual double derivative(double) const { return 0.0; }
 
-    virtual void print(ostream &out) const {
-        out << "sign";
-    }
+    virtual void print(std::ostream &out) const { out << "sign"; }
 };
 
 
@@ -84,9 +76,7 @@ public:
         return a * b * (1.0 - y * y);
     }
 
-    virtual void print(ostream &out) const {
-        out << "tanh";
-    }
+    virtual void print(std::ostream &out) const { out << "tanh"; }
 };
 
 
@@ -94,12 +84,12 @@ class PiecewiseLinearFunction : public ActivationFunction {
 private:
     double negativeSlope;
     double positiveSlope;
-    string name;
+    std::string name;
 
 public:
     PiecewiseLinearFunction(double negativeSlope = 0.0,
                             double positiveSlope = 1.0,
-                            string name = "ReLU")
+                            std::string name = "ReLU")
         : negativeSlope(negativeSlope), positiveSlope(positiveSlope), name(name) {}
 
     virtual double operator()(double v) const {
@@ -118,13 +108,12 @@ public:
         }
     }
 
-    virtual void print(ostream &out) const {
-        out << name;
-    }
+    virtual void print(std::ostream &out) const { out << name; }
 };
 
 
-const TanhFunction defaultTanh;
+const TanhFunction defaultTanh(1.0, 1.0);
+const TanhFunction scaledTanh;
 const SignumFunction defaultSignum;
 const PiecewiseLinearFunction ReLU;
 const PiecewiseLinearFunction leakyReLU(0.01, 1.0, "leakyReLU");

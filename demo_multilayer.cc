@@ -8,6 +8,9 @@
 #include "perceptron.hh"
 
 
+using namespace std;
+
+
 double loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
     double loss = 0.0;
     for (auto sample : testSet) {
@@ -26,7 +29,7 @@ double loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
 
 
 int main(int, char *[]) {
-    unique_ptr<rng_type> rng(seed_rng());
+    unique_ptr<RNG> rng(newRNG());
     LabeledDataset trainSet {{{0,0},{0}},
                          {{0,1},{1}},
                          {{1,0},{1}},
