@@ -1,15 +1,14 @@
 #ifndef PERCEPTRON_H
 #define PERCEPTRON_H
 
-
 // remove these includes:
 #include <assert.h>
 #include <iostream>   // cout
 
 #include <algorithm>  // generate
 #include <array>      // array
-#include <cmath>      // sqrt
-#include <functional> // ref
+#include <cmath>      // sqrt, exp
+#include <functional> // ref, function<>
 #include <initializer_list>
 #include <iomanip>    // setw, setprecision
 #include <iterator>   // begin, end
@@ -22,7 +21,6 @@
 
 
 #include "dataset.hh"
-#include "activation.hh"
 
 /**
  * Framework
@@ -31,9 +29,10 @@
  **/
 
 /**
- * Random initialization
- * ---------------------
+ * Random Weights Initialization
+ * -----------------------------
  **/
+
 using RNG = std::mt19937;
 
 /// Create and seed a new random number generator.
@@ -46,6 +45,125 @@ std::unique_ptr<RNG> newRNG() {
     rng->seed(sseq);
     return rng;
 }
+
+
+/**
+ * Neuron Activation Functions
+ * ---------------------------
+ **/
+
+double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
+
+
+class ActivationFunction {
+public:
+    virtual double operator()(double v) const = 0;
+    virtual double derivative(double v) const = 0;
+    virtual void print(std::ostream &out) const = 0;
+};
+
+
+std::ostream &operator<<(std::ostream &out, const ActivationFunction &af) {
+    af.print(out);
+    return out;
+}
+
+
+/// phi(v) = 1/(1 + exp(-slope*v)); Chapter 4, page 135
+class LogisticActivation : public ActivationFunction {
+private:
+    double slope = 1.0;
+
+public:
+    LogisticActivation(double slope) : slope(slope){};
+
+    virtual double operator()(double v) const {
+        return 1.0 / (1.0 + exp(-slope * v));
+    }
+
+    virtual double derivative(double v) const {
+        double y = (*this)(v);
+        return slope * y * (1 - y);
+    }
+
+    virtual void print(std::ostream &out) const { out << "logistic"; }
+};
+
+
+class SignumActivation : public ActivationFunction {
+public:
+    SignumActivation() {}
+
+    virtual double operator()(double v) const { return sign(v); }
+
+    virtual double derivative(double) const { return 0.0; }
+
+    virtual void print(std::ostream &out) const { out << "sign"; }
+};
+
+
+/// phi(v) = a * tanh(b * v); Chapter 4, page 136
+///
+/// Default values for a and b were proposed by (LeCun, 1993),
+/// so that phi(1) = 1 and phi(-1) = -1, and the slope at the origin is 1.1424;
+/// Chapter 4, page 145.
+class TanhActivation : public ActivationFunction {
+private:
+    double a;
+    double b;
+
+public:
+    TanhActivation(double a = 1.7159, double b = 0.6667) : a(a), b(b) {}
+
+    virtual double operator()(double v) const { return a * tanh(b * v); }
+
+    virtual double derivative(double v) const {
+        double y = tanh(b * v);
+        return a * b * (1.0 - y * y);
+    }
+
+    virtual void print(std::ostream &out) const { out << "tanh"; }
+};
+
+
+class PiecewiseLinearActivation : public ActivationFunction {
+private:
+    double negativeSlope;
+    double positiveSlope;
+    std::string name;
+
+public:
+    PiecewiseLinearActivation(double negativeSlope = 0.0,
+                              double positiveSlope = 1.0,
+                              std::string name = "ReLU")
+        : negativeSlope(negativeSlope), positiveSlope(positiveSlope), name(name) {}
+
+    virtual double operator()(double v) const {
+        if (v >= 0) {
+            return positiveSlope * v;
+        } else {
+            return negativeSlope * v;
+        }
+    }
+
+    virtual double derivative(double v) const {
+        if (v >= 0) {
+            return positiveSlope;
+        } else {
+            return negativeSlope;
+        }
+    }
+
+    virtual void print(std::ostream &out) const { out << name; }
+};
+
+
+const TanhActivation defaultTanh(1.0, 1.0);
+const TanhActivation scaledTanh; //< tanh with LeCun parameters
+const SignumActivation defaultSignum;
+const PiecewiseLinearActivation ReLU;
+const PiecewiseLinearActivation leakyReLU(0.01, 1.0, "leakyReLU");
+const PiecewiseLinearActivation linearActivation(1.0, 1.0, "");
 
 
 /**
@@ -248,7 +366,7 @@ private:
     double lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
 
 public:
-    BidirectionalNeuron(int n, const ActivationFunction &af = defaultTanh)
+    BidirectionalNeuron(int n, const ActivationFunction &af = scaledTanh)
         : nInputs(n), weights(n + 1), activationFunction(af) {}
 
     // one-sided Xavier initialization
@@ -339,7 +457,7 @@ private:
 
 public:
     FullyConnectedLayer(unsigned int nInputs = 0, unsigned int nOutputs = 0,
-                     const ActivationFunction &af = defaultTanh)
+                     const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
           neurons(nOutputs, BidirectionalNeuron(nInputs, af)),
           lastOutput(nOutputs) {}
@@ -414,7 +532,7 @@ private:
 
 public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
-                         const ActivationFunction &af = defaultTanh)
+                         const ActivationFunction &af = scaledTanh)
         : layers(0), layersInputs(0) {
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);

@@ -4,7 +4,6 @@
 #include <algorithm>
 
 
-#include "activation.hh"
 #include "perceptron.hh"
 
 
@@ -36,7 +35,7 @@ int main(int, char *[]) {
                          {{1,1},{0}}};
     LabeledDataset &testSet(trainSet);
     cout << "training set:\n" << trainSet << "\n";
-    MultilayerPerceptron xorNet {2, 2, 1};
+    MultilayerPerceptron xorNet({2, 2, 1}, scaledTanh);
     xorNet.init(rng);
     cout << "initial NN:\n" << xorNet << "\n";
     cout << "initial out:\n";
