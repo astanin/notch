@@ -4,7 +4,7 @@
 #include <algorithm>
 
 
-#include "perceptron.hh"
+#include "nevromancer.hpp"
 
 
 using namespace std;

@@ -8,7 +8,7 @@
 #include <algorithm> // any_of
 
 
-#include "perceptron.hh"
+#include "nevromancer.hpp"
 
 
 using namespace std;

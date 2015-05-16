@@ -5,7 +5,7 @@
  * and estimate the classifier's accuracy, precision and F-score.
  **/
 
-#include "perceptron.hh"
+#include "nevromancer.hpp"
 
 
 struct ConfusionMatrix {

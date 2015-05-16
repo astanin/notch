@@ -3,8 +3,8 @@
 #include <fstream>
 
 
-#include "perceptron.hh"
-#include "classifier.hh"
+#include "nevromancer.hpp"
+#include "classifier.hpp"
 
 
 using namespace std;

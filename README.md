@@ -1,5 +1,5 @@
-NEVRONZ
-=======
+NEVROMANCER
+===========
 
 C++11 implementation of the selected algorithms from
 "Neural Networks and Learning Machines, 3rd Ed."
