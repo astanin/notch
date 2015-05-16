@@ -1,8 +1,11 @@
 #ifndef CLASSIFIER_H
 #define CLASSIFIER_H
 
+/** This file contains code to calculate confusion matrix of a classifier
+ * and estimate the classifier's accuracy, precision and F-score.
+ **/
 
-#include "dataset.hh"
+#include "perceptron.hh"
 
 
 struct ConfusionMatrix {

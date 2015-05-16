@@ -3,7 +3,6 @@
 #include <fstream>
 
 
-#include "dataset.hh"
 #include "perceptron.hh"
 #include "classifier.hh"
 

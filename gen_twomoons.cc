@@ -8,7 +8,7 @@
 #include <algorithm> // any_of
 
 
-#include "dataset.hh"
+#include "perceptron.hh"
 
 
 using namespace std;

@@ -1,7 +1,7 @@
 #ifndef PERCEPTRON_H
 #define PERCEPTRON_H
 
-// remove these includes:
+// TODO: remove these includes:
 #include <assert.h>
 #include <iostream>   // cout
 
@@ -16,17 +16,235 @@
 #include <numeric>    // inner_product
 #include <ostream>    // ostream
 #include <random>
+#include <typeinfo>   // typeid
 #include <valarray>
 #include <vector>
 
 
-#include "dataset.hh"
+/**
+ * Library Framework
+ * =================
+ **/
 
 /**
- * Framework
- * =========
+ * Data types
+ * ----------
  *
+ * A neural network consumes a vector of numerical values, and produces a vector
+ * of numerical outputs. Without too much loss of generality we may consider
+ * them arrays of single-precision floating point numbers.
+ * // TODO: use float instead of double to be more cache-friendly
+ *
+ * We use C++ `valarray` to store network `Input` and `Output` to make code
+ * more concise and expressive (valarrays implement elementwise operations and
+ * slices).
  **/
+using Input = std::valarray<double>;
+using Output = std::valarray<double>;
+
+
+/** Supervised learning requires labeled data.
+ *  A label is a vector of numeric values.
+ *  For classification problems it is often a vector with only one element. */
+struct LabeledData {
+    Input const &data;
+    Output const &label;
+};
+
+
+/** A `LabeledDataset` consists of multiple `LabeledData` samples.
+ *  `LabeledDataset`s can be used like training or testing sets.
+ */
+class LabeledDataset {
+private:
+    size_t nSamples;
+    size_t inputDimension;
+    size_t outputDimension;
+    std::vector<Input> inputs;
+    std::vector<Output> outputs;
+
+    /// load a dataset from file (the same format as FANN)
+    void readFANN(std::istream &in) {
+        in >> nSamples >> inputDimension >> outputDimension;
+        inputs.clear();
+        outputs.clear();
+        for (size_t i = 0; i < nSamples; ++i) {
+            Input input(inputDimension);
+            Output output(outputDimension);
+            for (size_t j = 0; j < inputDimension; ++j) {
+                in >> input[j];
+            }
+            for (size_t j = 0; j < outputDimension; ++j) {
+                in >> output[j];
+            }
+            inputs.push_back(input);
+            outputs.push_back(output);
+        }
+    }
+
+public:
+
+    /// An iterator type to process all labeled data samples.
+    class DatasetIterator : public std::iterator<std::input_iterator_tag, LabeledData> {
+    private:
+        using ArrayVecIter = std::vector<Input>::const_iterator;
+        ArrayVecIter in_position, in_end;
+        ArrayVecIter out_position, out_end;
+
+    public:
+        DatasetIterator(ArrayVecIter in_begin,
+                        ArrayVecIter in_end,
+                        ArrayVecIter out_begin,
+                        ArrayVecIter out_end)
+            : in_position(in_begin), in_end(in_end),
+              out_position(out_begin), out_end(out_end) {}
+
+        bool operator==(const DatasetIterator &rhs) const {
+            return (typeid(*this) == typeid(rhs) &&
+                    in_position == rhs.in_position &&
+                    out_position == rhs.out_position &&
+                    in_end == rhs.in_end &&
+                    out_end == rhs.out_end);
+        }
+
+        bool operator!=(const DatasetIterator &rhs) const {
+            return !(*this == rhs);
+        }
+
+        LabeledData operator*() const {
+            const Input &in(*in_position);
+            const Output &out(*out_position);
+            LabeledData lp{in, out};
+            return lp;
+        }
+
+        DatasetIterator &operator++() {
+            if (in_position != in_end && out_position != out_end) {
+                ++in_position;
+                ++out_position;
+            }
+            return *this;
+        }
+
+        DatasetIterator &operator++(int) { return ++(*this); }
+    };
+
+    // constructors
+    LabeledDataset() : nSamples(0), inputDimension(0), outputDimension(0) {}
+    LabeledDataset(std::istream &in) { readFANN(in); }
+    LabeledDataset(std::initializer_list<LabeledData> samples)
+        : nSamples(0), inputDimension(0), outputDimension(0) {
+        for (LabeledData s : samples) {
+            append(s);
+        }
+    }
+
+    DatasetIterator begin() const {
+        return DatasetIterator(
+                inputs.begin(), inputs.end(),
+                outputs.begin(), outputs.end());
+    }
+
+    DatasetIterator end() const {
+        return DatasetIterator(
+                inputs.end(), inputs.end(),
+                outputs.end(), outputs.end());
+    }
+
+    size_t size() const { return nSamples; }
+    size_t inputDim() const { return inputDimension; }
+    size_t outputDim() const { return outputDimension; }
+
+    LabeledDataset &append(Input &input, Output &output) {
+        if (nSamples != 0) {
+            assert(inputDimension == input.size());
+            assert(outputDimension == output.size());
+        } else {
+            inputDimension = input.size();
+            outputDimension = output.size();
+        }
+        nSamples++;
+        inputs.push_back(input);
+        outputs.push_back(output);
+        return *this;
+    }
+
+    LabeledDataset &append(const Input &input, const Output &output) {
+        if (nSamples != 0) {
+            assert(inputDimension == input.size());
+            assert(outputDimension == output.size());
+        } else {
+            inputDimension = input.size();
+            outputDimension = output.size();
+        }
+        nSamples++;
+        Input input_copy(input);
+        Output output_copy(output);
+        inputs.push_back(input_copy);
+        outputs.push_back(output_copy);
+        return *this;
+    }
+
+    LabeledDataset &append(LabeledData &sample) {
+        return append(sample.data, sample.label);
+    }
+
+    LabeledDataset &append(const LabeledData &sample) {
+        return append(sample.data, sample.label);
+    }
+
+    friend std::istream &operator>>(std::istream &out, LabeledDataset &ls);
+    friend std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls);
+};
+
+/** Dataset Input-output
+ *  --------------------
+ *
+ *  Input and output values are space-separated lines.*/
+std::ostream &operator<<(std::ostream &out, const Input &xs) {
+    for (auto it = std::begin(xs); it != std::end(xs); ++it) {
+        if (it != std::begin(xs)) {
+            out << " ";
+        }
+        out << *it;
+    }
+    return out;
+}
+
+/** Labeled pairs are split in two lines. */
+std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
+    out << p.data << "\n" << p.label;
+    return out;
+}
+
+
+/** `LabeledDataset`'s input format is compatible with FANN library. */
+std::istream &operator>>(std::istream &in, LabeledDataset &ls) {
+    ls.readFANN(in);
+    return in;
+}
+
+/** `LabeledDataset`'s output format is compatible with FANN library. */
+std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
+    out << ls.nSamples << " "
+        << ls.inputDimension << " "
+        << ls.outputDimension << "\n";
+    for (auto sample : ls) {
+        out << sample << "\n";
+    }
+    return out;
+}
+
+
+/**
+ * Neurons and Neural Networks
+ * ===========================
+ **/
+
+
+/** Synaptic weights */
+using Weights = std::valarray<double>;
+
 
 /**
  * Random Weights Initialization
@@ -45,6 +263,30 @@ std::unique_ptr<RNG> newRNG() {
     rng->seed(sseq);
     return rng;
 }
+
+
+// TODO: use iterators rather than const Input&
+/** ANeuron is an abstract neuron class. **/
+class ANeuron {
+public:
+    /// induced local field of activation potential $v_k$, page 11, eq (4)
+    ///
+    /// $$ v_k = \sum_{j = 0}^{m} w_{kj} x_j, $$
+    ///
+    /// where $w_{kj}$ is the weight of the $j$-th input of the neuron $k$,
+    /// and $x_j$ is the $j$-th input.
+    virtual double inducedLocalField(const Input &x) = 0;
+    /// neuron's output, page 12, eq (5)
+    ///
+    /// $$ y_k = \varphi (v_k) $$
+    ///
+    /// @return the value activation function applied to the induced local field
+    virtual double output(const Input &x) = 0;
+    /// get neuron's weights; weights[0] ($w_{k0}$) is bias
+    virtual Weights getWeights() const = 0;
+    /// add weight correction to the neuron's weights
+    virtual Weights adjustWeights(const Weights weightCorrections) = 0;
+};
 
 
 /**
@@ -167,38 +409,11 @@ const PiecewiseLinearActivation linearActivation(1.0, 1.0, "");
 
 
 /**
- * Neurons and Neural Networks
- * ===========================
- *
+ * Rosenblatt's Perceptron
+ * -----------------------
  **/
 
-/// Synaptic weights
-using Weights = std::valarray<double>;
-
-
-// TODO: use iterators rather than const Input&
-class ANeuron {
-public:
-    /// induced local field of activation potential $v_k$, page 11, eq (4)
-    ///
-    /// $$ v_k = \sum_{j = 0}^{m} w_{kj} x_j, $$
-    ///
-    /// where $w_{kj}$ is the weight of the $j$-th input of the neuron $k$,
-    /// and $x_j$ is the $j$-th input.
-    virtual double inducedLocalField(const Input &x) = 0;
-    /// neuron's output, page 12, eq (5)
-    ///
-    /// $$ y_k = \varphi (v_k) $$
-    ///
-    /// @return the value activation function applied to the induced local field
-    virtual double output(const Input &x) = 0;
-    /// get neuron's weights; weights[0] ($w_{k0}$) is bias
-    virtual Weights getWeights() const = 0;
-    /// add weight correction to the neuron's weights
-    virtual Weights adjustWeights(const Weights weightCorrections) = 0;
-};
-
-
+/// A stand-alone neuron with adjustable synaptic weights and bias.
 class LinearPerceptron : public ANeuron {
 private:
     Weights weights;
@@ -350,8 +565,11 @@ void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, double e
 
 
 /**
- * An artificial neuron with back-propagation capability.
- */
+ * Multilayer Perceptrons
+ * ----------------------
+ **/
+
+/// An artificial neuron with back-propagation capability.
 class BidirectionalNeuron : public ANeuron {
 private:
     int nInputs;
