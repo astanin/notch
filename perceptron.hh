@@ -26,7 +26,7 @@ using namespace std;
 using Weights = valarray<double>;
 
 
-class APerceptron {
+class ANeuron {
 public:
     /// induced local field of activation potential $v_k$, page 11, eq (4)
     ///
@@ -48,7 +48,7 @@ public:
 };
 
 
-class LinearPerceptron : public APerceptron {
+class LinearPerceptron : public ANeuron {
 private:
     Weights weights;
     const ActivationFunction &activationFunction;
@@ -80,7 +80,7 @@ public:
 };
 
 
-ostream &operator<<(ostream &out, const APerceptron &neuron) {
+ostream &operator<<(ostream &out, const ANeuron &neuron) {
     auto ws = neuron.getWeights();
     for (auto it = begin(ws); it != end(ws); ++it) {
         if (next(it) != end(ws)) {
@@ -116,7 +116,7 @@ ostream &operator<<(ostream &out, const APerceptron &neuron) {
  *
  *        where $\eta$ is learning rate.
  **/
-void trainConverge_addSample(APerceptron &p, Input input, double output, double eta) {
+void trainConverge_addSample(ANeuron &p, Input input, double output, double eta) {
     double y = sign(p.output(input));
     double xfactor = eta * (output - y);
     Weights weights = p.getWeights();
@@ -129,7 +129,7 @@ void trainConverge_addSample(APerceptron &p, Input input, double output, double 
     p.adjustWeights(deltaW);
 }
 
-void trainConverge(APerceptron &p, const LabeledDataset &trainSet,
+void trainConverge(ANeuron &p, const LabeledDataset &trainSet,
                    int epochs, double eta) {
     assert(trainSet.outputDim() == 1);
     for (int epoch = 0; epoch < epochs; ++epoch) {
@@ -164,7 +164,7 @@ void trainConverge(APerceptron &p, const LabeledDataset &trainSet,
  *       = \mathbf{w}(n) + \eta(n) \sum_{\mathbf{x}(n) \in \Xi}
  *                                      ( - \mathbf{x}(n) d(n) ). $$
  **/
-void trainBatch_addBatch(APerceptron &p, LabeledDataset batch, double eta) {
+void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, double eta) {
     for (auto sample : batch) {
         double desired = sample.label[0]; // desired output
         Input input = sample.data;
@@ -179,7 +179,7 @@ void trainBatch_addBatch(APerceptron &p, LabeledDataset batch, double eta) {
     }
 }
 
-void trainBatch(APerceptron &p, const LabeledDataset &trainSet, int epochs, double eta) {
+void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, double eta) {
     assert(trainSet.outputDim() == 1);
     assert(trainSet.inputDim() + 1 == p.getWeights().size());
     // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
@@ -201,7 +201,7 @@ void trainBatch(APerceptron &p, const LabeledDataset &trainSet, int epochs, doub
 /**
  * An artificial neuron with back-propagation capability.
  */
-class BidirectionalNeuron : public APerceptron {
+class BidirectionalNeuron : public ANeuron {
 private:
     int nInputs;
     Weights weights; // weights[0] is bias
