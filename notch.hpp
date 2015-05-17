@@ -289,6 +289,40 @@ std::unique_ptr<RNG> newRNG() {
     return rng;
 }
 
+using WeightsInitializer = std::function<void(std::unique_ptr<RNG> &, Weights &)>;
+
+/** One-sided Xavier initialization.
+ *
+ * Pick weights from a zero-centered _normal_ distrubition with variance
+ * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+ *
+ * See http://andyljones.tumblr.com/post/110998971763/ **/
+void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
+    size_t n_in = weights.size();
+    float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
+    std::normal_distribution<float> nd(0.0, sigma);
+    std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
+                float w = nd(*rng.get());
+                return w;
+             });
+}
+
+/** Uniform one-sided Xavier initialization.
+ *
+ * Pick weights from a zero-centered _uniform_ distrubition with variance
+ * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+ *
+ * See http://andyljones.tumblr.com/post/110998971763/ **/
+void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
+    size_t n_in = weights.size();
+    float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
+    float a = sigma * sqrt(3.0);
+    std::uniform_real_distribution<float> nd(-a, a);
+    std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
+                float w = nd(*rng.get());
+                return w;
+             });
+}
 
 // TODO: use iterators rather than const Input&
 /** ANeuron is an abstract neuron class. **/
@@ -612,17 +646,8 @@ public:
     BidirectionalNeuron(int n, const ActivationFunction &af = scaledTanh)
         : nInputs(n), weights(n + 1), activationFunction(af) {}
 
-    // one-sided Xavier initialization
-    // see http://andyljones.tumblr.com/post/110998971763/
-    // TODO: move algorithm outside of the class
-    void init(std::unique_ptr<RNG> &rng) {
-        int n_in = nInputs;
-        float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
-        std::uniform_real_distribution<float> nd(-sigma, sigma);
-        std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
-                    float w = nd(*rng.get());
-                    return w;
-                 });
+    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
+        init_fn(rng, weights);
     }
 
     virtual float inducedLocalField(const Input &x) {
@@ -705,9 +730,9 @@ public:
           neurons(nOutputs, BidirectionalNeuron(nInputs, af)),
           lastOutput(nOutputs) {}
 
-    void init(std::unique_ptr<RNG> &rng) {
+    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         for (size_t i = 0; i < neurons.size(); ++i) {
-            neurons[i].init(rng);
+            neurons[i].init(rng, init_fn);
         }
     }
 
@@ -785,9 +810,10 @@ public:
         }
     }
 
-    void init(std::unique_ptr<RNG> &rng) {
+    void init(std::unique_ptr<RNG> &rng,
+              WeightsInitializer init_fn = normalXavier) {
         for (auto i = 0u; i < layers.size(); ++i) {
-            layers[i].init(rng);
+            layers[i].init(rng, init_fn);
         }
     }
 
