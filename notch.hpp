@@ -88,6 +88,7 @@ private:
     std::vector<Input> inputs;
     std::vector<Output> outputs;
 
+    // TODO: move FANN-related functionality to notch_io.hpp
     /// load a dataset from file (the same format as FANN)
     void readFANN(std::istream &in) {
         in >> nSamples >> inputDimension >> outputDimension;
@@ -875,5 +876,6 @@ std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
     return out;
 }
 
+// TODO: move loss functions to notch.hpp
 
 #endif /* NOTCH_H */
