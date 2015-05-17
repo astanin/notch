@@ -59,14 +59,13 @@ THE SOFTWARE.
  * A neural network consumes a vector of numerical values, and produces a vector
  * of numerical outputs. Without too much loss of generality we may consider
  * them arrays of single-precision floating point numbers.
- * // TODO: use float instead of double to be more cache-friendly
  *
  * We use C++ `valarray` to store network `Input` and `Output` to make code
  * more concise and expressive (valarrays implement elementwise operations and
  * slices).
  **/
-using Input = std::valarray<double>;
-using Output = std::valarray<double>;
+using Input = std::valarray<float>;
+using Output = std::valarray<float>;
 
 
 /** Supervised learning requires labeled data.
@@ -269,7 +268,7 @@ std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
 
 
 /** Synaptic weights */
-using Weights = std::valarray<double>;
+using Weights = std::valarray<float>;
 
 
 /**
@@ -301,13 +300,13 @@ public:
     ///
     /// where $w_{kj}$ is the weight of the $j$-th input of the neuron $k$,
     /// and $x_j$ is the $j$-th input.
-    virtual double inducedLocalField(const Input &x) = 0;
+    virtual float inducedLocalField(const Input &x) = 0;
     /// neuron's output, page 12, eq (5)
     ///
     /// $$ y_k = \varphi (v_k) $$
     ///
     /// @return the value activation function applied to the induced local field
-    virtual double output(const Input &x) = 0;
+    virtual float output(const Input &x) = 0;
     /// get neuron's weights; weights[0] ($w_{k0}$) is bias
     virtual Weights getWeights() const = 0;
     /// add weight correction to the neuron's weights
@@ -320,13 +319,13 @@ public:
  * ---------------------------
  **/
 
-double sign(double a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
+float sign(float a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
 
 
 class ActivationFunction {
 public:
-    virtual double operator()(double v) const = 0;
-    virtual double derivative(double v) const = 0;
+    virtual float operator()(float v) const = 0;
+    virtual float derivative(float v) const = 0;
     virtual void print(std::ostream &out) const = 0;
 };
 
@@ -340,17 +339,17 @@ std::ostream &operator<<(std::ostream &out, const ActivationFunction &af) {
 /// phi(v) = 1/(1 + exp(-slope*v)); Chapter 4, page 135
 class LogisticActivation : public ActivationFunction {
 private:
-    double slope = 1.0;
+    float slope = 1.0;
 
 public:
-    LogisticActivation(double slope) : slope(slope){};
+    LogisticActivation(float slope) : slope(slope){};
 
-    virtual double operator()(double v) const {
+    virtual float operator()(float v) const {
         return 1.0 / (1.0 + exp(-slope * v));
     }
 
-    virtual double derivative(double v) const {
-        double y = (*this)(v);
+    virtual float derivative(float v) const {
+        float y = (*this)(v);
         return slope * y * (1 - y);
     }
 
@@ -362,9 +361,9 @@ class SignumActivation : public ActivationFunction {
 public:
     SignumActivation() {}
 
-    virtual double operator()(double v) const { return sign(v); }
+    virtual float operator()(float v) const { return sign(v); }
 
-    virtual double derivative(double) const { return 0.0; }
+    virtual float derivative(float) const { return 0.0; }
 
     virtual void print(std::ostream &out) const { out << "sign"; }
 };
@@ -377,16 +376,16 @@ public:
 /// Chapter 4, page 145.
 class TanhActivation : public ActivationFunction {
 private:
-    double a;
-    double b;
+    float a;
+    float b;
 
 public:
-    TanhActivation(double a = 1.7159, double b = 0.6667) : a(a), b(b) {}
+    TanhActivation(float a = 1.7159, float b = 0.6667) : a(a), b(b) {}
 
-    virtual double operator()(double v) const { return a * tanh(b * v); }
+    virtual float operator()(float v) const { return a * tanh(b * v); }
 
-    virtual double derivative(double v) const {
-        double y = tanh(b * v);
+    virtual float derivative(float v) const {
+        float y = tanh(b * v);
         return a * b * (1.0 - y * y);
     }
 
@@ -396,17 +395,17 @@ public:
 
 class PiecewiseLinearActivation : public ActivationFunction {
 private:
-    double negativeSlope;
-    double positiveSlope;
+    float negativeSlope;
+    float positiveSlope;
     std::string name;
 
 public:
-    PiecewiseLinearActivation(double negativeSlope = 0.0,
-                              double positiveSlope = 1.0,
+    PiecewiseLinearActivation(float negativeSlope = 0.0,
+                              float positiveSlope = 1.0,
                               std::string name = "ReLU")
         : negativeSlope(negativeSlope), positiveSlope(positiveSlope), name(name) {}
 
-    virtual double operator()(double v) const {
+    virtual float operator()(float v) const {
         if (v >= 0) {
             return positiveSlope * v;
         } else {
@@ -414,7 +413,7 @@ public:
         }
     }
 
-    virtual double derivative(double v) const {
+    virtual float derivative(float v) const {
         if (v >= 0) {
             return positiveSlope;
         } else {
@@ -449,14 +448,14 @@ public:
     LinearPerceptron(int n, const ActivationFunction &af = linearActivation)
         : weights(n + 1), activationFunction(af) {}
 
-    virtual double inducedLocalField(const Input &x) {
+    virtual float inducedLocalField(const Input &x) {
         assert(x.size() + 1 == weights.size());
-        double bias = weights[0];
+        float bias = weights[0];
         auto begin_weights = std::next(std::begin(weights));
         return std::inner_product(begin_weights, std::end(weights), std::begin(x), bias);
     }
 
-    virtual double output(const Input &x) {
+    virtual float output(const Input &x) {
         return activationFunction(inducedLocalField(x));
     }
 
@@ -508,9 +507,9 @@ std::ostream &operator<<(std::ostream &out, const ANeuron &neuron) {
  *
  *        where $\eta$ is learning rate.
  **/
-void trainConverge_addSample(ANeuron &p, Input input, double output, double eta) {
-    double y = sign(p.output(input));
-    double xfactor = eta * (output - y);
+void trainConverge_addSample(ANeuron &p, Input input, float output, float eta) {
+    float y = sign(p.output(input));
+    float xfactor = eta * (output - y);
     Weights weights = p.getWeights();
     // initialize all corrections as if they're multiplied by xfactor
     Weights deltaW(xfactor, weights.size());
@@ -522,7 +521,7 @@ void trainConverge_addSample(ANeuron &p, Input input, double output, double eta)
 }
 
 void trainConverge(ANeuron &p, const LabeledDataset &trainSet,
-                   int epochs, double eta) {
+                   int epochs, float eta) {
     assert(trainSet.outputDim() == 1);
     for (int epoch = 0; epoch < epochs; ++epoch) {
         for (auto sample : trainSet) {
@@ -556,9 +555,9 @@ void trainConverge(ANeuron &p, const LabeledDataset &trainSet,
  *       = \mathbf{w}(n) + \eta(n) \sum_{\mathbf{x}(n) \in \Xi}
  *                                      ( - \mathbf{x}(n) d(n) ). $$
  **/
-void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, double eta) {
+void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, float eta) {
     for (auto sample : batch) {
-        double desired = sample.label[0]; // desired output
+        float desired = sample.label[0]; // desired output
         Input input = sample.data;
         Weights weights = p.getWeights();
         // initialize all corrections as if multiplied by eta*desired
@@ -571,7 +570,7 @@ void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, double eta) {
     }
 }
 
-void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, double eta) {
+void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, float eta) {
     assert(trainSet.outputDim() == 1);
     assert(trainSet.inputDim() + 1 == p.getWeights().size());
     // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
@@ -604,10 +603,10 @@ private:
 
     // remember the latest internal parameters to use them
     // again in the back-propagation step
-    double lastInducedLocalField;  // v_j = \sum w_i y_i
-    double lastActivationValue;    // y_j = \phi (v_j)
-    double lastActivationGradient; // y_j = \phi^\prime (v_j)
-    double lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
+    float lastInducedLocalField;  // v_j = \sum w_i y_i
+    float lastActivationValue;    // y_j = \phi (v_j)
+    float lastActivationGradient; // y_j = \phi^\prime (v_j)
+    float lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
 
 public:
     BidirectionalNeuron(int n, const ActivationFunction &af = scaledTanh)
@@ -618,22 +617,22 @@ public:
     // TODO: move algorithm outside of the class
     void init(std::unique_ptr<RNG> &rng) {
         int n_in = nInputs;
-        double sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
-        std::uniform_real_distribution<double> nd(-sigma, sigma);
+        float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
+        std::uniform_real_distribution<float> nd(-sigma, sigma);
         std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
-                    double w = nd(*rng.get());
+                    float w = nd(*rng.get());
                     return w;
                  });
     }
 
-    virtual double inducedLocalField(const Input &x) {
+    virtual float inducedLocalField(const Input &x) {
         auto bias = weights[0];
         auto begin_weights = std::next(std::begin(weights));
         return std::inner_product(begin_weights, std::end(weights), std::begin(x), bias);
     }
 
-    virtual double output(const Input &x) {
-        double v = inducedLocalField(x);
+    virtual float output(const Input &x) {
+        float v = inducedLocalField(x);
         lastInducedLocalField = v;
         lastActivationValue = activationFunction(v);
         lastActivationGradient = activationFunction.derivative(v);
@@ -651,7 +650,7 @@ public:
     }
 
     struct BackOutput {
-        double localGradient;
+        float localGradient;
         Weights weightCorrections;
     };
 
@@ -674,10 +673,10 @@ public:
     // Return a vector of weight corrections and the local gradient value.
     //
     // The method should be called _after_ `forwardPass`
-    BackOutput backwardPass(const Input &inputs, double errorSignal,
-                            double learningRate) {
-        double localGradient = lastActivationGradient * errorSignal;
-        double multiplier = learningRate * localGradient;
+    BackOutput backwardPass(const Input &inputs, float errorSignal,
+                            float learningRate) {
+        float localGradient = lastActivationGradient * errorSignal;
+        float multiplier = learningRate * localGradient;
         Weights delta_W(multiplier, weights.size());
         for (size_t i = 0; i < inputs.size(); ++i) {
             delta_W[i + 1] *= inputs[i];
@@ -745,7 +744,7 @@ public:
     //
     // The method should be called _after_ `forwardPass`
     BackOutput backwardPass(const Input &inputs, const Output &errorSignals,
-                                 double learningRate) {
+                                 float learningRate) {
         assert(errorSignals.size() == neurons.size());
         auto eta = learningRate;
         std::vector<Weights> weightDeltas(0);
@@ -754,7 +753,7 @@ public:
             auto error_k = errorSignals[k];
             auto r = neurons[k].backwardPass(inputs, error_k, eta);
             Weights delta_Wk = r.weightCorrections;
-            double delta_k = r.localGradient;
+            float delta_k = r.localGradient;
             Weights Wk = neurons[k].getWeights();
             for (auto j = 0u; j < nInputs; ++j) {
                 propagatedErrorSignals[j] += delta_k * Wk[j + 1];
@@ -805,7 +804,7 @@ public:
     }
 
     FullyConnectedLayer::BackOutput
-    backwardPass(const Output &errorSignals, double learningRate) {
+    backwardPass(const Output &errorSignals, float learningRate) {
         Output err(errorSignals);
         FullyConnectedLayer::BackOutput r;
 

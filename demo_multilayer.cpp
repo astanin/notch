@@ -10,15 +10,15 @@
 using namespace std;
 
 
-double loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
-    double loss = 0.0;
+float loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
+    float loss = 0.0;
     for (auto sample : testSet) {
         auto correct = sample.label;
         auto result = net.forwardPass(sample.data);
         transform(begin(correct), end(correct),
                   begin(result),
                   begin(result),
-                  [](double y_c, double y) { return abs(y_c - y); });
+                  [](float y_c, float y) { return abs(y_c - y); });
         for (auto val: result) {
             loss += val;
         }
