@@ -1,22 +1,27 @@
-NEVROMANCER
-===========
+NOTCH
+=====
 
-C++11 implementation of the selected algorithms from
+A C++11 implementation of the selected Neural Network algorithms from
 "Neural Networks and Learning Machines, 3rd Ed."
 ([libgen](http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854),
  [amazon](http://www.amazon.co.uk/Neural-Networks-Learning-Machines-3rd/dp/8120340000/))
 
 This is (supposed to be)
 
- * a header-only C++11 library (easy to install)
+ * a header-only C++11 library
 
- * without extra dependencies (easy to re-use)
+ * without extra dependencies
 
  * cross-platform (runs on Linux and Windows)
 
- * reasonably fast
+ * reasonably fast (for a CPU-only implementation)
 
  * but not at the cost of algorithms' readability and portability
+
+This library is named for Notch, a transmembrane protein which acts as a
+receptor and has a role, amonth other things, in neuronal function and
+development.
+
 
 
 Framework

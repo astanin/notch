@@ -5,7 +5,7 @@
  * and estimate the classifier's accuracy, precision and F-score.
  **/
 
-#include "nevromancer.hpp"
+#include "notch.hpp"
 
 
 struct ConfusionMatrix {

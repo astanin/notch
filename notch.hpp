@@ -1,5 +1,5 @@
-#ifndef NEVROMANCER_H
-#define NEVROMANCER_H
+#ifndef NOTCH_H
+#define NOTCH_H
 
 /**
 
@@ -851,4 +851,4 @@ std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
 }
 
 
-#endif /* NEVROMANCER_H */
+#endif /* NOTCH_H */
