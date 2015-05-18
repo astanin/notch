@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include <algorithm>  // generate
 #include <array>      // array
 #include <cmath>      // sqrt, exp
+#include <fstream>    // ifstream
 #include <functional> // ref, function<>
 #include <initializer_list>
 #include <iomanip>    // setw, setprecision
@@ -209,6 +210,11 @@ public:
 /// Load labeled datasets from FANN text file format.
 class FANNReader {
 public:
+    static LabeledDataset read(const std::string &path) {
+        std::ifstream in(path);
+        return FANNReader::read(in);
+    }
+
     static LabeledDataset read(std::istream &in) {
         LabeledDataset ds;
         size_t nSamples, inputDimension, outputDimension;
