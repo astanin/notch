@@ -644,14 +644,12 @@ private:
     unsigned int nInputs;
     unsigned int nNeurons;
     std::vector<BidirectionalNeuron> neurons;
-    Output lastOutput;
 
 public:
     FullyConnectedLayer(unsigned int nInputs = 0, unsigned int nOutputs = 0,
                      const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nNeurons(nOutputs),
-          neurons(nOutputs, BidirectionalNeuron(nInputs, af)),
-          lastOutput(nOutputs) {}
+          neurons(nOutputs, BidirectionalNeuron(nInputs, af)) {}
 
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         for (size_t i = 0; i < neurons.size(); ++i) {
@@ -669,10 +667,15 @@ public:
     // Pages 132-133.
     // Return a vector of outputs.
     Output forwardPass(const Input &inputs) {
+        Output outputs(nNeurons);
+        return forwardPass(inputs, outputs);
+    }
+
+    Output &forwardPass(const Input &inputs, Output &outputs) {
         for (auto i = 0u; i < nNeurons; ++i) {
-            lastOutput[i] = neurons[i].output(inputs);
+            outputs[i] = neurons[i].output(inputs);
         }
-        return lastOutput;
+        return outputs;
     }
 
     struct BackOutput {
@@ -725,12 +728,22 @@ public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
         : layers(0), layersInputs(0) {
+        assert(shape.size() > 0);
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);
         for (; pOut != shape.end(); ++pIn, ++pOut) {
-            FullyConnectedLayer layer(*pIn, *pOut, af);
+            auto inSize = *pIn;
+            auto outSize = *pOut;
+            FullyConnectedLayer layer(inSize, outSize, af);
             layers.push_back(layer);
+            // the corresponding input buffer
+            Input input(0.0, inSize);
+            layersInputs.push_back(input);
         }
+        // output of the last layer
+        auto outSize = *pIn;
+        Input output(0.0, outSize);
+        layersInputs.push_back(output);
     }
 
     void init(std::unique_ptr<RNG> &rng,
@@ -740,14 +753,13 @@ public:
         }
     }
 
-    Output forwardPass(const Input &inputs) {
-        // TODO: avoid allocationg new Inputs on every pass
-        layersInputs.clear();
-        layersInputs.push_back(inputs);
+    Output &forwardPass(const Input &inputs) {
+        assert(layers.size() > 0);
+        layersInputs[0] = inputs;
         for (auto i = 0u; i < layers.size(); ++i) {
-            auto in = layersInputs[i];
-            auto out = layers[i].forwardPass(in);
-            layersInputs.push_back(out);
+            Input &in = layersInputs[i];
+            Input &out = layersInputs[i+1];
+            layers[i].forwardPass(in, out);
         }
         return layersInputs[layers.size()];
     }
