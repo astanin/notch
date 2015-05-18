@@ -562,7 +562,7 @@ private:
     // again in the back-propagation step
     float lastInducedLocalField;  // v_j = \sum w_i y_i
     float lastActivationValue;    // y_j = \phi (v_j)
-    float lastActivationGradient; // y_j = \phi^\prime (v_j)
+    float lastActivationGradient; // dy_j = \phi^\prime (v_j)
     float lastLocalGradient;      // delta_j = \phi^\prime(v_j) e_j
 
 public:
