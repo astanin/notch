@@ -198,14 +198,30 @@ public:
     LabeledDataset &append(const LabeledData &sample) {
         return append(sample.data, sample.label);
     }
-
-    friend std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls);
 };
 
 
 /** Dataset Input-output
  *  --------------------
  **/
+
+/** Input and Output values are space-separated values.*/
+std::istream &operator>>(std::istream &in, Input &xs) {
+    for (size_t i = 0; i < xs.size(); ++i) {
+        in >> xs[i];
+    }
+    return in;
+}
+
+std::ostream &operator<<(std::ostream &out, const Input &xs) {
+    for (auto it = std::begin(xs); it != std::end(xs); ++it) {
+        if (it != std::begin(xs)) {
+            out << " ";
+        }
+        out << *it;
+    }
+    return out;
+}
 
 /** Load labeled datasets from FANN text file format.
  *
@@ -232,28 +248,12 @@ public:
         for (size_t i = 0; i < nSamples; ++i) {
             Input input(inputDimension);
             Output output(outputDimension);
-            for (size_t j = 0; j < inputDimension; ++j) {
-                in >> input[j];
-            }
-            for (size_t j = 0; j < outputDimension; ++j) {
-                in >> output[j];
-            }
+            in >> input >> output;
             ds.append(input, output);
         }
         return ds;
     }
 };
-
-/** Input and output values are space-separated lines.*/
-std::ostream &operator<<(std::ostream &out, const Input &xs) {
-    for (auto it = std::begin(xs); it != std::end(xs); ++it) {
-        if (it != std::begin(xs)) {
-            out << " ";
-        }
-        out << *it;
-    }
-    return out;
-}
 
 /** Labeled pairs are split in two lines. */
 std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
@@ -264,9 +264,9 @@ std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
 
 /** `LabeledDataset`'s output format is compatible with FANN library. */
 std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
-    out << ls.nSamples << " "
-        << ls.inputDimension << " "
-        << ls.outputDimension << "\n";
+    out << ls.size() << " "
+        << ls.inputDim() << " "
+        << ls.outputDim() << "\n";
     for (auto sample : ls) {
         out << sample << "\n";
     }
