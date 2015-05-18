@@ -618,14 +618,13 @@ public:
     // The local gradient is the product of the activation function derivative
     // and the error signal.
     //
-    // Return a vector of weight corrections and the local gradient value.
+    // Return a vector of weight corrections (not multiplied by the learning
+    // rate yet) and the local gradient value.
     //
     // The method should be called _after_ `forwardPass`
-    BackOutput backwardPass(const Input &inputs, float errorSignal,
-                            float learningRate) {
+    BackOutput backwardPass(const Input &inputs, float errorSignal) {
         float localGradient = lastActivationGradient * errorSignal;
-        float multiplier = learningRate * localGradient;
-        Weights delta_W(multiplier, weights.size());
+        Weights delta_W(localGradient, weights.size());
         for (size_t i = 0; i < inputs.size(); ++i) {
             delta_W[i + 1] *= inputs[i];
         }
@@ -657,10 +656,10 @@ public:
         }
     }
 
-    void adjustWeights(std::vector<Weights> weightDeltas) {
+    void adjustWeights(std::vector<Weights> weightDeltas, float learningRate) {
         assert(nNeurons == weightDeltas.size());
         for (size_t i = 0; i < neurons.size(); ++i) {
-            neurons[i].adjustWeights(weightDeltas[i]);
+            neurons[i].adjustWeights(weightDeltas[i] * learningRate);
         }
     }
 
@@ -694,15 +693,13 @@ public:
     // downstream neuron $k$.
     //
     // The method should be called _after_ `forwardPass`
-    BackOutput backwardPass(const Input &inputs, const Output &errorSignals,
-                                 float learningRate) {
+    BackOutput backwardPass(const Input &inputs, const Output &errorSignals) {
         assert(errorSignals.size() == neurons.size());
-        auto eta = learningRate;
         std::vector<Weights> weightDeltas(0);
         Weights propagatedErrorSignals(0.0, nInputs);
         for (auto k = 0u; k < nNeurons; ++k) {
             auto error_k = errorSignals[k];
-            auto r = neurons[k].backwardPass(inputs, error_k, eta);
+            auto r = neurons[k].backwardPass(inputs, error_k);
             Weights delta_Wk = r.weightCorrections;
             float delta_k = r.localGradient;
             Weights Wk = neurons[k].getWeights();
@@ -764,6 +761,7 @@ public:
         return layersInputs[layers.size()];
     }
 
+    // TODO: unify backwardPass intefrace of the neuron, layer and network
     FullyConnectedLayer::BackOutput
     backwardPass(const Output &errorSignals, float learningRate) {
         Output err(errorSignals);
@@ -771,8 +769,8 @@ public:
 
         for (int i = layers.size()-1; i >= 0; --i) {
             auto layerIn = layersInputs[i];
-            r = layers[i].backwardPass(layerIn, err, learningRate);
-            layers[i].adjustWeights(r.weightCorrections);
+            r = layers[i].backwardPass(layerIn, err);
+            layers[i].adjustWeights(r.weightCorrections, learningRate);
             err = r.propagatedErrorSignals;
         }
         return r;
