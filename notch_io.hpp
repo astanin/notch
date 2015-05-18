@@ -1,7 +1,7 @@
 #ifndef NOTCH_IO_H
 #define NOTCH_IO_H
 
-/// notch_io.hpp -- optional input-output hepers for Notch library
+/// notch_io.hpp -- optional input-output helpers for Notch library
 
 /**
 
@@ -97,20 +97,21 @@ public:
     }
 };
 
-// TODO: add *Writer classes
-/** Labeled pairs are split in two lines. */
-std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
-    out << p.data << "\n" << p.label;
-    return out;
-}
+/** A formatter to write a labeled dataset to FANN text file format. */
+class FANNWriter {
+private:
+    const LabeledDataset &dataset;
+public:
+    FANNWriter(const LabeledDataset &dataset) : dataset(dataset) {}
+    friend std::ostream &operator<<(std::ostream &out, const FANNWriter &w);
+};
 
-/** `LabeledDataset`'s output format is compatible with FANN library. */
-std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
-    out << ls.size() << " "
-        << ls.inputDim() << " "
-        << ls.outputDim() << "\n";
-    for (auto sample : ls) {
-        out << sample << "\n";
+std::ostream &operator<<(std::ostream &out, const FANNWriter &w) {
+    out << w.dataset.size() << " "
+        << w.dataset.inputDim() << " "
+        << w.dataset.outputDim() << "\n";
+    for (auto sample : w.dataset) {
+        out << sample.data << "\n" << sample.label << "\n";
     }
     return out;
 }

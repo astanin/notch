@@ -18,7 +18,7 @@ int main(int, char *[]) {
                          {{1,0},{1}},
                          {{1,1},{0}}};
     LabeledDataset &testSet(trainSet);
-    cout << "training set:\n" << trainSet << "\n";
+    cout << "training set:\n" << FANNWriter(trainSet) << "\n";
     MultilayerPerceptron xorNet({2, 2, 1}, scaledTanh);
     xorNet.init(rng);
     cout << "initial NN:\n" << xorNet << "\n";
