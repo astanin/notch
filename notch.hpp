@@ -876,6 +876,39 @@ std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
     return out;
 }
 
-// TODO: move loss functions to notch.hpp
+/**
+ * Loss Functions
+ * --------------
+ *
+ **/
+
+using LossFunction = std::function<float(const Output &, const Output &)>;
+
+/** Euclidean loss.
+ *
+ * $$ E_2(\mathbf{a}, \mathbf{b}) = \sqrt{ \sum_i (a_i - b_i)^2 } $$
+ *
+ * It may be used for regressing real-valued labels.
+ * https://en.wikipedia.org/wiki/Convolutional_neural_network#Loss_layer */
+float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
+    float loss2 = std::inner_product(
+            std::begin(actualOutput), std::end(actualOutput),
+            std::begin(expectedOutput),
+            0.0,
+            [](float s_i, float s_inext) { return s_i + s_inext; },
+            [](float a_i, float b_i) { return (a_i - b_i)*(a_i + b_i); });
+    return sqrt(loss2);
+}
+
+float totalLoss(LossFunction loss,
+                MultilayerPerceptron &net,
+                const LabeledDataset& testSet) {
+    float totalLoss = 0.0;
+    for (auto sample : testSet) {
+        auto out = net.forwardPass(sample.data);
+        totalLoss += loss(out, sample.label);
+    }
+    return totalLoss;
+}
 
 #endif /* NOTCH_H */

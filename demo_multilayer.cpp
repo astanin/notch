@@ -10,23 +10,6 @@
 using namespace std;
 
 
-float loss(MultilayerPerceptron &net, LabeledDataset &testSet) {
-    float loss = 0.0;
-    for (auto sample : testSet) {
-        auto correct = sample.label;
-        auto result = net.forwardPass(sample.data);
-        transform(begin(correct), end(correct),
-                  begin(result),
-                  begin(result),
-                  [](float y_c, float y) { return abs(y_c - y); });
-        for (auto val: result) {
-            loss += val;
-        }
-    }
-    return loss;
-}
-
-
 int main(int, char *[]) {
     unique_ptr<RNG> rng(newRNG());
     LabeledDataset trainSet {{{0,0},{0}},
@@ -44,7 +27,7 @@ int main(int, char *[]) {
     }
     cout << "\n";
 
-    cout << "initial loss: " << loss(xorNet, testSet) << "\n";
+    cout << "initial loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
 
     for (int j = 0; j < 5000; ++j) {
         // training cycle
@@ -57,7 +40,7 @@ int main(int, char *[]) {
             xorNet.backwardPass(err, 0.01);
         }
         if (j % 500 == 0) {
-            cout << "epoch " << j+1 << " loss: " << loss(xorNet, testSet) << "\n";
+            cout << "epoch " << j+1 << " loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
         }
     }
     cout << "\n";
