@@ -16,10 +16,11 @@ int main(int argc, char *argv[]) {
         cerr << "Usage: demo_perceptron train.data test.data\n";
         exit(-1);
     }
+
     ifstream trainIn(argv[1]);
     ifstream testIn(argv[2]);
-    LabeledDataset trainset(trainIn);
-    LabeledDataset testset(testIn);
+    LabeledDataset trainset(FANNReader::read(trainIn));
+    LabeledDataset testset(FANNReader::read(testIn));
 
     LinearPerceptron p(trainset.inputDim());
     LinearPerceptronClassifier lpc(p);

@@ -88,26 +88,6 @@ private:
     std::vector<Input> inputs;
     std::vector<Output> outputs;
 
-    // TODO: move FANN-related functionality to notch_io.hpp
-    /// load a dataset from file (the same format as FANN)
-    void readFANN(std::istream &in) {
-        in >> nSamples >> inputDimension >> outputDimension;
-        inputs.clear();
-        outputs.clear();
-        for (size_t i = 0; i < nSamples; ++i) {
-            Input input(inputDimension);
-            Output output(outputDimension);
-            for (size_t j = 0; j < inputDimension; ++j) {
-                in >> input[j];
-            }
-            for (size_t j = 0; j < outputDimension; ++j) {
-                in >> output[j];
-            }
-            inputs.push_back(input);
-            outputs.push_back(output);
-        }
-    }
-
 public:
 
     /// An iterator type to process all labeled data samples.
@@ -157,7 +137,6 @@ public:
 
     // constructors
     LabeledDataset() : nSamples(0), inputDimension(0), outputDimension(0) {}
-    LabeledDataset(std::istream &in) { readFANN(in); }
     LabeledDataset(std::initializer_list<LabeledData> samples)
         : nSamples(0), inputDimension(0), outputDimension(0) {
         for (LabeledData s : samples) {
@@ -219,14 +198,37 @@ public:
         return append(sample.data, sample.label);
     }
 
-    friend std::istream &operator>>(std::istream &out, LabeledDataset &ls);
     friend std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls);
 };
 
+
 /** Dataset Input-output
  *  --------------------
- *
- *  Input and output values are space-separated lines.*/
+ **/
+
+/// Load labeled datasets from FANN text file format.
+class FANNReader {
+public:
+    static LabeledDataset read(std::istream &in) {
+        LabeledDataset ds;
+        size_t nSamples, inputDimension, outputDimension;
+        in >> nSamples >> inputDimension >> outputDimension;
+        for (size_t i = 0; i < nSamples; ++i) {
+            Input input(inputDimension);
+            Output output(outputDimension);
+            for (size_t j = 0; j < inputDimension; ++j) {
+                in >> input[j];
+            }
+            for (size_t j = 0; j < outputDimension; ++j) {
+                in >> output[j];
+            }
+            ds.append(input, output);
+        }
+        return ds;
+    }
+};
+
+/** Input and output values are space-separated lines.*/
 std::ostream &operator<<(std::ostream &out, const Input &xs) {
     for (auto it = std::begin(xs); it != std::end(xs); ++it) {
         if (it != std::begin(xs)) {
@@ -243,12 +245,6 @@ std::ostream &operator<<(std::ostream &out, const LabeledData &p) {
     return out;
 }
 
-
-/** `LabeledDataset`'s input format is compatible with FANN library. */
-std::istream &operator>>(std::istream &in, LabeledDataset &ls) {
-    ls.readFANN(in);
-    return in;
-}
 
 /** `LabeledDataset`'s output format is compatible with FANN library. */
 std::ostream &operator<<(std::ostream &out, const LabeledDataset &ls) {
