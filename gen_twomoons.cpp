@@ -9,6 +9,7 @@
 
 
 #include "notch.hpp"
+#include "notch_io.hpp"
 
 
 using namespace std;

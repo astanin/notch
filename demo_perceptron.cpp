@@ -4,6 +4,7 @@
 
 
 #include "notch.hpp"
+#include "notch_io.hpp"
 #include "classifier.hpp"
 
 
