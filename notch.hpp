@@ -802,7 +802,7 @@ float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
             std::begin(expectedOutput),
             0.0,
             [](float s_i, float s_inext) { return s_i + s_inext; },
-            [](float a_i, float b_i) { return (a_i - b_i)*(a_i + b_i); });
+            [](float a_i, float b_i) { return (a_i - b_i)*(a_i - b_i); });
     return sqrt(loss2);
 }
 
