@@ -14,11 +14,11 @@ This is (supposed to be)
 
  * cross-platform (runs on Linux and Windows)
 
- * reasonably fast (for a CPU-only implementation)
+ * reasonably fast (for a CPU-only implementations, TODO)
 
  * but not at the cost of algorithms' readability and portability
 
-This library is named for Notch, a transmembrane protein which acts as a
+This library is named after Notch, a transmembrane protein which acts as a
 receptor and has a role, amonth other things, in neuronal function and
 development.
 
