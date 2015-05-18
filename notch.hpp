@@ -207,7 +207,17 @@ public:
  *  --------------------
  **/
 
-/// Load labeled datasets from FANN text file format.
+/** Load labeled datasets from FANN text file format.
+ *
+ * N_samples N_in N_out
+ * X[0,0] X[0,1] ... X[0,N_in - 1]
+ * Y[0,0] Y[0,1] ... Y[0,N_out - 1]
+ * X[1,0] X[1,1] ... X[1,N_in - 1]
+ * Y[1,0] Y[1,1] ... Y[1,N_out - 1]
+ * ...
+ * X[N_samples - 1,0] X[N_samples - 1,1] ... X[N_samples - 1,N_in - 1]
+ * Y[N_samples - 1,0] Y[N_samples - 1,1] ... Y[N_samples - 1,N_out - 1]
+ **/
 class FANNReader {
 public:
     static LabeledDataset read(const std::string &path) {
