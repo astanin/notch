@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <fstream>    // ifstream
 #include <istream>
 #include <ostream>
+#include <sstream>    // ostringstream
 
 #include "notch.hpp"
 
@@ -116,6 +117,50 @@ std::ostream &operator<<(std::ostream &out, const FANNWriter &w) {
     return out;
 }
 
+/** A formatter to write a labeled dataset to CSV file. */
+class CSVWriter {
+private:
+    const LabeledDataset &dataset;
+public:
+    CSVWriter(const LabeledDataset &dataset) : dataset(dataset) {}
+    friend std::ostream &operator<<(std::ostream &out, const CSVWriter &w);
+};
+
+std::ostream &operator<<(std::ostream &out, const CSVWriter &writer) {
+    auto inDim = writer.dataset.inputDim();
+    auto outDim = writer.dataset.outputDim();
+    auto w = 11;
+    auto p = 5;
+    // header row
+    for (auto i = 1u; i <= inDim; ++i) {
+        std::ostringstream ss;
+        ss << "feature_" << i;
+        out << std::setw(w) << ss.str() << ",";
+    }
+    for (auto i = 1u; i <= outDim; ++i) {
+        std::ostringstream ss;
+        ss << "label_" << i;
+        out << std::setw(w) << ss.str();
+        if (i < outDim) {
+           out << ",";
+        }
+    }
+    out << "\n";
+    // data rows
+    for (auto sample : writer.dataset) {
+        for (auto v : sample.data) {
+           out << std::setw(w) << std::setprecision(p) << v << ",";
+        }
+        for (auto i = 0u; i < outDim; ++i) {
+           out << std::setw(w) << std::setprecision(p) << sample.label[i];
+           if (i + 1 < outDim) {
+               out << ",";
+           }
+        }
+        out << "\n";
+    }
+    return out;
+}
 
 /**
  * Neural Networks Input-Output
