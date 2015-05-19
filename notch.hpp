@@ -399,8 +399,8 @@ const TanhActivation defaultTanh(1.0, 1.0);
 const TanhActivation scaledTanh; //< tanh with LeCun parameters
 const SignumActivation defaultSignum;
 const PiecewiseLinearActivation ReLU;
-const PiecewiseLinearActivation leakyReLU(0.01, 1.0, "leakyReLU");
-const PiecewiseLinearActivation linearActivation(1.0, 1.0, "");
+const PiecewiseLinearActivation leakyReLU(0.01f, 1.0f, "leakyReLU");
+const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "");
 
 
 /**

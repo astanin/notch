@@ -38,7 +38,7 @@ int main(int, char *[]) {
             for (size_t i=0; i < actualOutput.size(); ++i) {
                 err[i] = sample.label[i] - actualOutput[i];
             }
-            xorNet.backwardPass(err, 0.01);
+            xorNet.backwardPass(err, 0.01f);
         }
         if (j % 500 == 0) {
             cout << "epoch " << j+1 << " loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";

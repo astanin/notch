@@ -38,12 +38,12 @@ int main(int argc, char *argv[]) {
     print_stats(p, testSet);
 
     cout << "\nAfter " << N_ITERS << " iterations of convergence training:\n\n";
-    trainConverge(p, trainSet, N_ITERS, 0.1);
+    trainConverge(p, trainSet, N_ITERS, 0.1f);
     print_stats(p, testSet);
 
     LinearPerceptron p2(trainSet.inputDim());
     cout << "\nvs after " << N_ITERS << " iterations of batch training...\n\n";
-    trainBatch(p2, trainSet, N_ITERS, 0.1);
+    trainBatch(p2, trainSet, N_ITERS, 0.1f);
     print_stats(p2, testSet);
 }
 
