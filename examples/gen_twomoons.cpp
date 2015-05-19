@@ -72,7 +72,7 @@ void generate(float r, float w, float d, int n, ostream &out) {
             n2++;
         }
     }
-    out << data;
+    out << FANNWriter(data);
 }
 
 

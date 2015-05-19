@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include <numeric>    // inner_product
 #include <ostream>    // ostream
 #include <random>
+#include <string>
 #include <typeinfo>   // typeid
 #include <valarray>
 #include <vector>
