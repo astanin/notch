@@ -286,7 +286,7 @@ public:
     /// get neuron's weights; weights[0] ($w_{k0}$) is bias
     virtual Weights getWeights() const = 0;
     /// add weight correction to the neuron's weights
-    virtual Weights adjustWeights(const Weights weightCorrections) = 0;
+    virtual Weights adjustWeights(const Weights &weightCorrections) = 0;
 };
 
 
@@ -433,7 +433,7 @@ public:
         return weights;
     }
 
-    virtual Weights adjustWeights(const Weights weightCorrections) {
+    virtual Weights adjustWeights(const Weights &weightCorrections) {
         assert(weights.size() == weightCorrections.size());
         weights += weightCorrections;
         return weights;
@@ -592,7 +592,7 @@ public:
         return weights;
     }
 
-    virtual Weights adjustWeights(Weights weightCorrections) {
+    virtual Weights adjustWeights(const Weights &weightCorrections) {
         assert(weights.size() == weightCorrections.size());
         weights += weightCorrections;
         return weights;
