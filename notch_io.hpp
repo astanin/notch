@@ -222,7 +222,7 @@ private:
     }
 
     static MixedTable
-    parseTable(const TextTable &table) {
+    convertToMixed(const TextTable &table) {
        MixedTable cellTable(0);
        for (auto row : table) {
            MixedRow cellRow(0);
@@ -289,7 +289,7 @@ public:
          int skiprows=0, int skipcols=0) {
         LabeledDataset ds;
         auto rows = readCSV(in, skiprows, skipcols);
-        auto mixedRows = parseTable(rows);
+        auto mixedRows = convertToMixed(rows);
         auto numericRows = convertToNumeric(mixedRows);
         for (auto row : numericRows) {
             // build label vector
