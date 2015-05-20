@@ -76,6 +76,18 @@ using Output = Array;
 using Dataset = std::vector<Array>;
 
 
+/** A common interface to preprocess data.
+ *  Transformations are supposed to be adaptive (`fit`) and invertable. */
+class ADatasetTransformer {
+public:
+    virtual ADatasetTransformer& fit(const Dataset &) = 0;
+    virtual Dataset transform(const Dataset &) = 0;
+    virtual Array transform(const Array &) = 0;
+    virtual Dataset inverse_transform(const Dataset &) = 0;
+    virtual Array inverse_transform(const Array &) = 0;
+};
+
+
 /** Supervised learning requires labeled data.
  *  A label is a vector of numeric values.
  *  For classification problems it is often a vector with only one element. */
@@ -204,6 +216,22 @@ public:
 
     LabeledDataset &append(const LabeledData &sample) {
         return append(sample.data, sample.label);
+    }
+
+    const Dataset &getInputs() { return inputs; }
+
+    const Dataset &getOutputs() { return outputs; }
+
+    /// Preprocess `Input` data
+    void transform(ADatasetTransformer &t) {
+        inputs = t.transform(inputs);
+        inputDimension = inputs.size();
+    }
+
+    /// Preprocess `Output` labels
+    void transformLabels(ADatasetTransformer &t) {
+        outputs = t.transform(outputs);
+        outputDimension = outputs.size();
     }
 };
 
