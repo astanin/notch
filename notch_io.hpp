@@ -277,6 +277,14 @@ private:
     }
 
 public:
+    /** Read a `LabeledDataset` from a CSV file.
+     *
+     * @param path       CSV file name
+     * @param labelcols  indices of the columns to be used as labels;
+     *                   indices can be negative (-1 is the last column)
+     * @param skiprows   discard the first @skiprows lines
+     * @param skipcols   discard the first @skipcols lines
+     **/
     static LabeledDataset
     read(const std::string &path, std::vector<int> labelcols = {-1},
          int skiprows=0, int skipcols=0) {
@@ -284,6 +292,14 @@ public:
         return CSVReader::read(in, skiprows, skipcols);
     }
 
+    /** Read a `LabeledDataset` from an `std::istream`.
+     *
+     * @param in         stream to read CSV data from
+     * @param labelcols  indices of the columns to be used as labels;
+     *                   indices can be negative (-1 is the last column)
+     * @param skiprows   discard the first @skiprows lines
+     * @param skipcols   discard the first @skipcols lines
+     **/
     static LabeledDataset
     read(std::istream &in, std::vector<int> labelcols = {-1},
          int skiprows=0, int skipcols=0) {
