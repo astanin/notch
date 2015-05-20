@@ -1,6 +1,11 @@
 #ifndef NOTCH_H
 #define NOTCH_H
 
+// TODO: doxygen-compatible comments
+// TODO: optional OpenMP implementation
+// TODO: benchmarks
+// TODO: tests
+
 /// notch.hpp -- main header file of the Notch neural networks library
 
 /**
@@ -813,6 +818,15 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
 
+// TODO: implement layers with a single matrix for all neurons
+// TODO: optional blas linking
+// TODO: SGD training utility
+// TODO: CNN layer
+// TODO: max-pooling layer
+// TODO: decouple activation function from layer
+// TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...
+// TODO: NN formatters
+// TODO: sliding window search for CNNs
 
 /**
  * Loss Functions
@@ -848,5 +862,9 @@ float totalLoss(LossFunction loss,
     }
     return totalLoss;
 }
+
+// TODO: softmax layer
+// TODO: cross-entropy loss
+// TODO: Hinge loss
 
 #endif /* NOTCH_H */

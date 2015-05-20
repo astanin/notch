@@ -38,6 +38,12 @@ THE SOFTWARE.
 
 #include "notch.hpp"
 
+// TODO: StandardScaler (mu, sigmae)
+// TODO: MinMaxScaler
+// TODO: Normalizer
+// TODO: Dataset shuffle
+// TODO: train and test set splitter
+// TODO: K-fold split
 
 /** Encode categorical features as vectors.
  *
