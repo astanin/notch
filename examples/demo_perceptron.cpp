@@ -1,6 +1,7 @@
 // Demo for Chapter 1. Rosenblatt's Perceptron.
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 
 #include "notch.hpp"
@@ -24,13 +25,26 @@ void print_stats(LinearPerceptron &p, const LabeledDataset &testSet) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        cerr << "Usage: demo_perceptron train.data test.data\n";
+    if ((argc != 1 && argc != 3) || (argc > 1 && string("--help") == argv[1])) {
+        cerr << "Usage: demo_perceptron [train.data test.data]\n";
         exit(-1);
     }
-
-    LabeledDataset trainSet(FANNReader::read(argv[1]));
-    LabeledDataset testSet(FANNReader::read(argv[2]));
+    string trainFile("../data/twomoons-train.fann");
+    string testFile("../data/twomoons-test.fann");
+    if (argc == 3) {
+        trainFile = argv[1];
+        testFile = argv[2];
+    }
+    cout << "Loading " << trainFile << " and " << testFile << "\n";
+    LabeledDataset trainSet;
+    LabeledDataset testSet;
+    try {
+        trainSet = (FANNReader::read(trainFile));
+        testSet = (FANNReader::read(testFile));
+    } catch (runtime_error &e) {
+        cout << e.what() << "\n";
+        exit(-2);
+    }
 
     LinearPerceptron p(trainSet.inputDim());
 
