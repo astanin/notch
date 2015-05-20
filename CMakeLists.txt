@@ -17,14 +17,15 @@ set(SOURCE_FILES
     notch.hpp
     notch_io.hpp)
 
-add_executable(demo_multilayer examples/demo_multilayer.cpp ${SOURCE_FILES})
-target_include_directories(demo_multilayer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(gen_twomoons examples/gen_twomoons.cpp ${SOURCE_FILES})
+target_include_directories(gen_twomoons PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(demo_perceptron examples/demo_perceptron.cpp ${SOURCE_FILES})
 target_include_directories(demo_perceptron PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(demo_multilayer_xor examples/demo_multilayer_xor.cpp ${SOURCE_FILES})
+target_include_directories(demo_multilayer_xor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(demo_multilayer_iris examples/demo_multilayer_iris.cpp ${SOURCE_FILES})
 target_include_directories(demo_multilayer_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(gen_twomoons examples/gen_twomoons.cpp ${SOURCE_FILES})
-target_include_directories(gen_twomoons PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
