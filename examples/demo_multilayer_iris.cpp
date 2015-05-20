@@ -4,6 +4,7 @@
 #include <fstream>
 #include <ostream>
 #include <string>
+#include <iomanip>
 
 
 #include "notch.hpp"
@@ -33,8 +34,37 @@ int main(int argc, char *argv[]) {
         cerr << "cannot open " << csvFile << "\n";
         exit(-1);
     }
-    LabeledDataset ds = CSVReader<>::read(f);
-    OneHotEncoder labelEnc(ds.getLabels());
-    ds.transformLabels(labelEnc);
-    cout << ArrowFormat(ds);
+
+    LabeledDataset trainSet = CSVReader<>::read(f);
+    OneHotEncoder labelEnc(trainSet.getLabels());
+    trainSet.transformLabels(labelEnc);
+    //cout << ArrowFormat(trainSet);
+
+    MultilayerPerceptron net({4, 6, 3}, scaledTanh);
+    unique_ptr<RNG> rng(newRNG());
+    net.init(rng);
+    cout << net << "\n\n";
+
+    cout << "initial loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
+    for (int j = 0; j < 1000; ++j) {
+        // training cycle
+        for (auto sample : trainSet) {
+            Array actualOutput = net.forwardPass(sample.data);
+            Array err = sample.label - actualOutput;
+            net.backwardPass(err, 0.01f);
+        }
+        if (j % 50 == 49) {
+            cout << "epoch " << j+1
+                << " loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
+        }
+    }
+    cout << "\n";
+    cout << net << "\n";
+
+    for (auto s : trainSet) {
+        cout << s.data << " -> ";
+        cout << labelEnc.inverse_transform(net.forwardPass(s.data)) << "\n";
+    }
+    cout << "\n";
+
 }
