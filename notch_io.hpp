@@ -318,15 +318,15 @@ public:
 };
 
 /** A formatter to write a labeled dataset to FANN text file format. */
-class FANNWriter {
+class FANNFormat {
 private:
     const LabeledDataset &dataset;
 public:
-    FANNWriter(const LabeledDataset &dataset) : dataset(dataset) {}
-    friend std::ostream &operator<<(std::ostream &out, const FANNWriter &w);
+    FANNFormat(const LabeledDataset &dataset) : dataset(dataset) {}
+    friend std::ostream &operator<<(std::ostream &out, const FANNFormat &w);
 };
 
-std::ostream &operator<<(std::ostream &out, const FANNWriter &w) {
+std::ostream &operator<<(std::ostream &out, const FANNFormat &w) {
     out << w.dataset.size() << " "
         << w.dataset.inputDim() << " "
         << w.dataset.outputDim() << "\n";
@@ -337,15 +337,15 @@ std::ostream &operator<<(std::ostream &out, const FANNWriter &w) {
 }
 
 /** A formatter to write a labeled dataset to CSV file. */
-class CSVWriter {
+class CSVFormat {
 private:
     const LabeledDataset &dataset;
 public:
-    CSVWriter(const LabeledDataset &dataset) : dataset(dataset) {}
-    friend std::ostream &operator<<(std::ostream &out, const CSVWriter &w);
+    CSVFormat(const LabeledDataset &dataset) : dataset(dataset) {}
+    friend std::ostream &operator<<(std::ostream &out, const CSVFormat &w);
 };
 
-std::ostream &operator<<(std::ostream &out, const CSVWriter &writer) {
+std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
     auto inDim = writer.dataset.inputDim();
     auto outDim = writer.dataset.outputDim();
     auto w = 11;

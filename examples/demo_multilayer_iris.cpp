@@ -24,5 +24,5 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
     LabeledDataset ds = CSVReader<>::read(f);
-    cout << FANNWriter(ds);
+    cout << FANNFormat(ds);
 }
