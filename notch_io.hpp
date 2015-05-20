@@ -339,6 +339,22 @@ std::ostream &operator<<(std::ostream &out, const FANNFormat &w) {
     return out;
 }
 
+/** A formatter to write datasets as one mapping per line. */
+class ArrowFormat {
+private:
+    const LabeledDataset &dataset;
+public:
+    ArrowFormat(const LabeledDataset &dataset) : dataset(dataset) {}
+    friend std::ostream &operator<<(std::ostream &out, const ArrowFormat &w);
+};
+
+std::ostream &operator<<(std::ostream &out, const ArrowFormat &w) {
+    for (auto sample : w.dataset) {
+        out << sample.data << " -> " << sample.label << "\n";
+    }
+    return out;
+}
+
 /** A formatter to write a labeled dataset to CSV file. */
 class CSVFormat {
 private:

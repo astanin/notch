@@ -36,5 +36,5 @@ int main(int argc, char *argv[]) {
     LabeledDataset ds = CSVReader<>::read(f);
     OneHotEncoder oh(ds.getOutputs());
     ds.transformLabels(oh);
-    cout << FANNFormat(ds);
+    cout << ArrowFormat(ds);
 }
