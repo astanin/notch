@@ -67,8 +67,13 @@ THE SOFTWARE.
  * more concise and expressive (valarrays implement elementwise operations and
  * slices).
  **/
-using Input = std::valarray<float>;
-using Output = std::valarray<float>;
+using Array = std::valarray<float>;
+using Input = Array;
+using Output = Array;
+
+
+/** Unlabeled dataset are collections or `Input`s or `Output`s. */
+using Dataset = std::vector<Array>;
 
 
 /** Supervised learning requires labeled data.
@@ -88,15 +93,15 @@ private:
     size_t nSamples;
     size_t inputDimension;
     size_t outputDimension;
-    std::vector<Input> inputs;
-    std::vector<Output> outputs;
+    Dataset inputs;
+    Dataset outputs;
 
 public:
 
     /// An iterator type to process all labeled data samples.
     class DatasetIterator : public std::iterator<std::input_iterator_tag, LabeledData> {
     private:
-        using ArrayVecIter = std::vector<Input>::const_iterator;
+        using ArrayVecIter = Dataset::const_iterator;
         ArrayVecIter in_position, in_end;
         ArrayVecIter out_position, out_end;
 
@@ -720,7 +725,7 @@ public:
 class MultilayerPerceptron {
 private:
     std::vector<FullyConnectedLayer> layers;
-    std::vector<Input> layersInputs;
+    Dataset layersInputs;
 
 public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,

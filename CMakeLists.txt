@@ -15,7 +15,8 @@ ENDIF(MSVC)
 
 set(SOURCE_FILES
     notch.hpp
-    notch_io.hpp)
+    notch_io.hpp
+    notch_pre.hpp)
 
 add_executable(gen_twomoons examples/gen_twomoons.cpp ${SOURCE_FILES})
 target_include_directories(gen_twomoons PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
