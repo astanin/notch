@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
     LabeledDataset ds = CSVReader<>::read(f);
-    OneHotEncoder oh(ds.getOutputs());
-    ds.transformLabels(oh);
+    OneHotEncoder labelEnc(ds.getLabels());
+    ds.transformLabels(labelEnc);
     cout << ArrowFormat(ds);
 }

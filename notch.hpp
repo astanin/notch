@@ -218,9 +218,9 @@ public:
         return append(sample.data, sample.label);
     }
 
-    const Dataset &getInputs() { return inputs; }
+    const Dataset &getData() { return inputs; }
 
-    const Dataset &getOutputs() { return outputs; }
+    const Dataset &getLabels() { return outputs; }
 
     /// Preprocess `Input` data
     void transform(ADatasetTransformer &t) {
