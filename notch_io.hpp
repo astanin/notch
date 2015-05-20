@@ -84,6 +84,9 @@ class FANNReader {
 public:
     static LabeledDataset read(const std::string &path) {
         std::ifstream in(path);
+        if (!in.is_open()) {
+            throw std::runtime_error("cannot open " + path);
+        }
         return FANNReader::read(in);
     }
 
