@@ -1,4 +1,4 @@
-// Demo for Chapter 1. Rosenblatt's Perceptron.
+/// @file demo_perceptron.cpp -- Rosenblatt's Perceptron
 #include <iostream>
 #include <fstream>
 #include <stdexcept>

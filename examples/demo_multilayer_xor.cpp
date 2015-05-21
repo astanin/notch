@@ -1,4 +1,5 @@
-/// Demo for Chapter 4. Multilayer Perceptrons
+/// @file demo_multilayer_xor.cpp -- A multilayer perceptron for XOR problem
+
 #include <iostream>
 #include <cmath>
 #include <algorithm>
