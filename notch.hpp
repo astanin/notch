@@ -308,14 +308,15 @@ void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
 /** ANeuron is an abstract neuron class. **/
 class ANeuron {
 public:
-    /// induced local field of activation potential $v_k$, page 11, eq (4)
+    /// Induced local field of activation potential $v_k$,
+    /// NNLM3, page 11, eq (4)
     ///
     /// $$ v_k = \sum_{j = 0}^{m} w_{kj} x_j, $$
     ///
     /// where $w_{kj}$ is the weight of the $j$-th input of the neuron $k$,
     /// and $x_j$ is the $j$-th input.
     virtual float inducedLocalField(const Input &x) = 0;
-    /// neuron's output, page 12, eq (5)
+    /// neuron's output, NNLM3, page 12, eq (5)
     ///
     /// $$ y_k = \varphi (v_k) $$
     ///
@@ -344,7 +345,7 @@ public:
 };
 
 
-/// phi(v) = 1/(1 + exp(-slope*v)); Chapter 4, page 135
+/// phi(v) = 1/(1 + exp(-slope*v)); NNLM3, Chapter 4, page 135
 class LogisticActivation : public ActivationFunction {
 private:
     float slope = 1.0;
@@ -377,11 +378,13 @@ public:
 };
 
 
-/// phi(v) = a * tanh(b * v); Chapter 4, page 136
+/// phi(v) = a * tanh(b * v); NNLM3, Chapter 4, page 136
 ///
-/// Default values for a and b were proposed by (LeCun, 1993),
+/// Default values for a and b were proposed by Yann LeCun,
 /// so that phi(1) = 1 and phi(-1) = -1, and the slope at the origin is 1.1424;
-/// Chapter 4, page 145.
+///
+/// NNLM3, Chapter 4, page 145;
+/// Y. le Cun (1989) Generalization and Network Design Strategies. page 7.
 class TanhActivation : public ActivationFunction {
 private:
     float a;
