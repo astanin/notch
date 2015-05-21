@@ -23,7 +23,7 @@ development.
 How to use
 ----------
 
-See `examples/'.
+See `examples/`.
 
 
 How to build examples
@@ -41,7 +41,7 @@ make
 
 ### On Windows
 
-Install MinGW and CMake:
+To build using GNU C++, install MinGW and CMake:
 
 ```
 mkdir build
@@ -56,19 +56,18 @@ For a debug build use
 cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
-To build with Visual Studio 2013
+To build using Visual Studio 2013 (Community):
 
 ```
-cmake.exe -G "" ..
+cmake.exe -G "Visual Studio 12 2013" ..
 ```
+
+then open the solution.
+
 
 Bibliography
 ------------
 
  * NNLM3: Neural networks and learning machines / Simon Haykin. -- 3rd ed.
-   ([libgen][libgen], [amazon.uk][amazon])
-
-
-[nnlm3-libgen]: http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854
-[nnlm3-amazon]: http://www.amazon.co.uk/Neural-Networks-Learning-Machines-3rd/dp/8120340000/
-
+   ([libgen](http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854),
+    [amazon.uk](http://www.amazon.co.uk/Neural-Networks-Learning-Machines-3rd/dp/8120340000/))
