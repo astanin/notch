@@ -593,29 +593,31 @@ void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, float et
  **/
 
 struct BackpropResult {
-    Array   propagatedErrorSignals;
+    Array propagatedErrorSignals;
     Weights weightCorrections;
+    Array biasCorrections;
 };
 
-/** A common interface of all layers capable of backpropagation. */
+/** A common interface of all layers capable of both forward and
+ * backpropagation. */
 class ABackpropLayer {
 public:
     /// a forward propagaiton pass
     virtual Array output(const Array &inputs) = 0;
     /// a forward propagation pass (in-place update)
-    virtual Array& output(const Array &inputs, Array &outputs) = 0;
+    virtual Array &output(const Array &inputs, Array &outputs) = 0;
     /// a backpropagation pass
-    virtual BackpropResult backprop(const Array &inputs, const Array &errorSignals) = 0;
+    virtual BackpropResult backprop(const Array &errorSignals) = 0;
     /// a backpropagation pass (in-place update)
-    virtual BackpropResult& backprop(const Array &inputs, const Array &errorSignals, BackpropResult &backOut) = 0;
+    virtual BackpropResult &
+    backprop(const Array &errorSignals, BackpropResult &backOut) = 0;
 };
 
-/// Ersatz matrix-vector product on STL iterators, similar to BLAS _gemv function.
-/// It calculates `M*v + b` and saves result in `b`.
+/** Ersatz matrix-vector product on STL iterators, similar to BLAS _gemv
+ * function. It calculates `M*v + b` and saves result in `b`. */
 template <class MatrixIt, class VectorXIt, class VectorBIt>
-void stl_gemv(MatrixIt m_begin, MatrixIt m_end,
-              VectorXIt v_begin, VectorXIt v_end,
-              VectorBIt b_begin, VectorBIt b_end) {
+void stl_gemv(MatrixIt m_begin, MatrixIt m_end, VectorXIt v_begin,
+              VectorXIt v_end, VectorBIt b_begin, VectorBIt b_end) {
     size_t cols = std::distance(v_begin, v_end);
     size_t r = 0; // current row number
     for (auto b = b_begin; b != b_end; ++b, ++r) {
@@ -630,33 +632,96 @@ class FullyConnectedLayer : public ABackpropLayer {
 private:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer
-    Weights weights; //< weights matrix for the entire layer, row-major order
-    Weights bias;    //< bias values for the entire layer, one per neuron
+    Weights weights; //< weights matrix $w_ji$ for the entire layer, row-major order
+    Weights bias;    //< bias values $b_j$ for the entire layer, one per neuron
     const ActivationFunction &activationFunction;
 
+    Array lastInputs;        //< $x_i$
     Array inducedLocalField; //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;    //< $\phi^\prime (v_j)$
+    Array localGrad;         //< $\delta_j = \phi^\prime(v_j) e_j$
 
+    void rememberInputs(const Array& inputs) {
+        lastInputs = inputs;  // remember for calcWeightCorrectins()
+    }
+
+    /** Linear response of all neurons in the layer. */
     void calcInducedLocalField(const Array &inputs) {
         inducedLocalField = bias; // will be added and overwritten
         // TODO: use cblas_sgemv ifdef NOTCH_USE_CBLAS
-        stl_gemv(std::begin(weights), std::end(weights),
-                 std::begin(inputs), std::end(inputs),
-                 std::begin(inducedLocalField), std::end(inducedLocalField));
+        stl_gemv(std::begin(weights), std::end(weights), std::begin(inputs),
+                 std::end(inputs), std::begin(inducedLocalField),
+                 std::end(inducedLocalField));
     }
 
+    /** Derivatives of the activation functions. */
     void calcActivationGrad() {
-        std::transform(std::begin(inducedLocalField),
-                       std::end(inducedLocalField),
-                       std::begin(activationGrad),
-                       [&](float y){ return activationFunction.derivative(y);});
+        std::transform(
+            std::begin(inducedLocalField), std::end(inducedLocalField),
+            std::begin(activationGrad),
+            [&](float y) { return activationFunction.derivative(y); });
     }
 
+    /** Non-linear response of all neurons in the layer. */
     void calcOutput(Array &outputs) {
         std::transform(std::begin(inducedLocalField),
                        std::end(inducedLocalField),
                        std::begin(outputs),
-                       [&](float y){ return activationFunction(y);});
+                       [&](float y) { return activationFunction(y); });
+    }
+
+    /** The local gradient is the product of the activation function derivative
+     * and the error signal. */
+    void calcLocalGrad(const Array &errorSignals) {
+        localGrad = activationGrad * errorSignals;
+    }
+
+    /** Calculates corrections to the matrix of the synaptic weights and biases.
+     *
+     * NNLM3, Page 134, Eq. (4.27) defines weight correction as
+     *
+     *  $$ \Delta w_{ji} (n) = \eta \times \delta_j (n) \times y_{i} (n) $$
+     *
+     * where $w_{ji}$ is the synaptic weight connecting neuron $i$ to neuron $j$,
+     * $\eta$ is learning rate, $delta_j (n)$ is the local [error] gradient,
+     * $y_{i}$ is the input signal of the neuron $i$, $n$ is the epoch number
+     *
+     * We discard $\eta$ at the moment (we use it in training). */
+    void calcWeightCorrectins(Weights &deltaW, Array &deltaBias) {
+        if (deltaW.size() != weights.size()) {
+            deltaW.resize(weights.size());
+        }
+        if (deltaBias.size() != bias.size()) {
+            deltaBias.resize(bias.size());
+        }
+        for (size_t j = 0; j < nOutputs; ++j) { // for all neurons
+            for (size_t i = 0; i < nInputs; ++i) { // for all inputs
+                deltaW[j*nInputs + i] = localGrad[j] * lastInputs[i];
+            }
+        }
+        deltaBias = localGrad;
+    }
+
+    /** Calculate back-propagated error signal and corrections to synaptic weights.
+    * NNLM3r, Page 134.
+    *
+    * $$ e_j = \sum_k \delta_k w_{kj} $$
+    *
+    * where $e_j$ is an error propagated from all downstream neurons to the
+    * neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
+    * $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
+    * downstream neuron $k$. */
+    void calcPropagatedSignals(Array &propagatedErrorSignals) {
+        if (propagatedErrorSignals.size() != nInputs) {
+            propagatedErrorSignals.resize(nInputs);
+        }
+        for (size_t j = 0; j < nInputs; ++j) { // for all inputs
+            float e_j = 0.0;
+            for (size_t k = 0; k < nOutputs; ++k) { // for all neurons
+                e_j += localGrad[k] * weights[k*nInputs + j];
+            }
+            propagatedErrorSignals[j] = e_j;
+        }
     }
 
 public:
@@ -680,23 +745,25 @@ public:
         if (outputs.size() != nOutputs) {
             outputs.resize(nOutputs);
         }
+        rememberInputs(inputs);
         calcInducedLocalField(inputs);
         calcActivationGrad();
         calcOutput(outputs);
         return outputs;
     }
 
-    virtual BackpropResult backprop(const Array &inputs,
-                                    const Array &errorSignals) {
+    virtual BackpropResult backprop(const Array &errorSignals) {
         BackpropResult out;
-        backprop(inputs, errorSignals, out);
+        backprop(errorSignals, out);
         return out;
     }
 
     virtual BackpropResult &
-    backprop(const Array &inputs, const Array &errorSignals,
-             BackpropResult &backOut) {
-        return backOut;
+    backprop(const Array &errorSignals, BackpropResult &out) {
+        calcLocalGrad(errorSignals);
+        calcWeightCorrectins(out.weightCorrections, out.biasCorrections);
+        calcPropagatedSignals(out.propagatedErrorSignals);
+        return out;
     }
 };
 
@@ -781,35 +848,6 @@ public:
         lastLocalGradient = localGradient;
         BackOutput ret{localGradient, delta_W};
         return ret;
-    }
-
-    // Page 134. Calculate back-propagated error signal and corrections to
-    // synaptic weights.
-    //
-    // $$ e_j = \sum_k \delta_k w_{kj} $$
-    //
-    // where $e_j$ is an error propagated from all downstream neurons to the
-    // neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
-    // $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
-    // downstream neuron $k$.
-    //
-    // The method should be called _after_ `forwardPass`
-    BackOutput backwardPass(const Input &inputs, const Output &errorSignals) {
-        assert(errorSignals.size() == neurons.size());
-        std::vector<Weights> weightDeltas(0);
-        Weights propagatedErrorSignals(0.0, nInputs);
-        for (auto k = 0u; k < nNeurons; ++k) {
-            auto error_k = errorSignals[k];
-            auto r = neurons[k].backwardPass(inputs, error_k);
-            Weights delta_Wk = r.weightCorrections;
-            float delta_k = r.localGradient;
-            Weights Wk = neurons[k].getWeights();
-            for (auto j = 0u; j < nInputs; ++j) {
-                propagatedErrorSignals[j] += delta_k * Wk[j + 1];
-            }
-            weightDeltas.push_back(delta_Wk);
-        }
-        return BackOutput{propagatedErrorSignals, weightDeltas};
     }
 
     friend std::ostream &operator<<(std::ostream &out, const BidirectionalNeuron &neuron);
