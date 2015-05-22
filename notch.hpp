@@ -765,6 +765,15 @@ public:
         calcPropagatedSignals(out.propagatedErrorSignals);
         return out;
     }
+
+    void adjustWeights(const Weights &weightCorrections,
+                       const Array &biasCorrections) {
+        weights += weightCorrections;
+        bias += biasCorrections;
+    }
+
+    friend std::ostream &
+    operator<<(std::ostream &out, const FullyConnectedLayer &layer);
 };
 
 #if 0
