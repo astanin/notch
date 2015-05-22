@@ -603,13 +603,11 @@ struct BackpropResult {
 class ABackpropLayer {
 public:
     /// a forward propagaiton pass
-    virtual Array output(const Array &inputs) = 0;
-    /// a forward propagation pass (in-place update)
-    virtual Array &output(const Array &inputs, Array &outputs) = 0;
+    virtual Array &output(const Array &inputs) = 0;
     /// a backpropagation pass
     virtual BackpropResult backprop(const Array &errorSignals) = 0;
     /// a backpropagation pass (in-place update)
-    virtual BackpropResult &
+    virtual BackpropResult
     backprop(const Array &errorSignals, BackpropResult &backOut) = 0;
 };
 
@@ -640,6 +638,8 @@ private:
     Array inducedLocalField; //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;    //< $\phi^\prime (v_j)$
     Array localGrad;         //< $\delta_j = \phi^\prime(v_j) e_j$
+    Array lastOutputs;       //< $y_j = \phi(v_j)$
+    // TODO: implement sharing of data between connected layers
 
     void rememberInputs(const Array& inputs) {
         lastInputs = inputs;  // remember for calcWeightCorrectins()
@@ -668,6 +668,16 @@ private:
                        std::end(inducedLocalField),
                        std::begin(outputs),
                        [&](float y) { return activationFunction(y); });
+    }
+
+    void output(const Array &inputs, Array &outputs) {
+        if (outputs.size() != nOutputs) {
+            outputs.resize(nOutputs);
+        }
+        rememberInputs(inputs);
+        calcInducedLocalField(inputs);
+        calcActivationGrad();
+        calcOutput(outputs);
     }
 
     /** The local gradient is the product of the activation function derivative
@@ -728,28 +738,17 @@ public:
     FullyConnectedLayer(size_t nInputs, size_t nOutputs,
                         const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
-          bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
-          activationGrad(nOutputs) {}
+          bias(nOutputs), activationFunction(af), lastInputs(nInputs),
+          inducedLocalField(nOutputs), activationGrad(nOutputs),
+          lastOutputs(nOutputs) {}
 
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
     }
 
-    virtual Array output(const Array &inputs) {
-        Array out(nOutputs);
-        output(inputs, out);
-        return out;
-    }
-
-    virtual Array &output(const Array &inputs, Array &outputs) {
-        if (outputs.size() != nOutputs) {
-            outputs.resize(nOutputs);
-        }
-        rememberInputs(inputs);
-        calcInducedLocalField(inputs);
-        calcActivationGrad();
-        calcOutput(outputs);
-        return outputs;
+    virtual Array &output(const Array &inputs) {
+        output(inputs, lastOutputs);
+        return lastOutputs;
     }
 
     virtual BackpropResult backprop(const Array &errorSignals) {
@@ -758,7 +757,7 @@ public:
         return out;
     }
 
-    virtual BackpropResult &
+    virtual BackpropResult
     backprop(const Array &errorSignals, BackpropResult &out) {
         calcLocalGrad(errorSignals);
         calcWeightCorrectins(out.weightCorrections, out.biasCorrections);
@@ -776,17 +775,16 @@ public:
     operator<<(std::ostream &out, const FullyConnectedLayer &layer);
 };
 
-#if 0
 /// Multiple fully-connected layers stacked one upon another.
-class MultilayerPerceptron {
+class MultilayerPerceptron : public ABackpropLayer {
 private:
     std::vector<FullyConnectedLayer> layers;
-    Dataset layersInputs;
+    std::vector<BackpropResult> bpResults;
 
 public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
-        : layers(0), layersInputs(0) {
+        : layers(0) {
         assert(shape.size() > 0);
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);
@@ -795,46 +793,47 @@ public:
             auto outSize = *pOut;
             FullyConnectedLayer layer(inSize, outSize, af);
             layers.push_back(layer);
-            // the corresponding input buffer
-            Input input(0.0, inSize);
-            layersInputs.push_back(input);
         }
-        // output of the last layer
-        auto outSize = *pIn;
-        Input output(0.0, outSize);
-        layersInputs.push_back(output);
+        bpResults.resize(layers.size());
     }
 
-    void init(std::unique_ptr<RNG> &rng,
-              WeightsInitializer init_fn = normalXavier) {
+    void
+    init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn = normalXavier) {
         for (auto i = 0u; i < layers.size(); ++i) {
             layers[i].init(rng, init_fn);
         }
     }
 
-    Output &forwardPass(const Input &inputs) {
-        assert(layers.size() > 0);
-        layersInputs[0] = inputs;
-        for (auto i = 0u; i < layers.size(); ++i) {
-            Input &in = layersInputs[i];
-            Input &out = layersInputs[i+1];
-            layers[i].forwardPass(in, out);
+    virtual Array &output(const Array &inputs) {
+        if (layers.empty()) {
+            throw std::logic_error("no layers defined");
         }
-        return layersInputs[layers.size()];
+        Array &out;
+        for (auto i = 0u; i < layers.size(); ++i) {
+            if (i == 0) {
+                out = layers[i].output(inputs);
+            } else {
+                out = layers[i].output(out);
+            }
+        }
+        return out;
     }
 
-    FullyConnectedLayer::BackOutput
-    backwardPass(const Output &errorSignals, float learningRate) {
-        Output err(errorSignals);
-        FullyConnectedLayer::BackOutput r;
+    virtual BackpropResult backprop(const Array &errorSignals) {
+        BackpropResult out;
+        backprop(errorSignals, out);
+        return out;
+    }
 
+    virtual BackpropResult
+    backprop(const Array &errorSignals, BackpropResult &out) {
+        const Array &e = errorSignals;
         for (int i = layers.size()-1; i >= 0; --i) {
-            auto layerIn = layersInputs[i];
-            r = layers[i].backwardPass(layerIn, err);
-            layers[i].adjustWeights(r.weightCorrections, learningRate);
-            err = r.propagatedErrorSignals;
+            layers[i].backprop(e, bpResults[i]);
+            e = bpResults[i].propagatedErrorSignals;
         }
-        return r;
+        out = bpResults[bpResults.size()-1];
+        return out;
     }
 
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
