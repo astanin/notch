@@ -440,18 +440,17 @@ std::ostream &operator<<(std::ostream &out, const ANeuron &neuron) {
     return out;
 }
 
-std::ostream &operator<<(std::ostream &out, const BidirectionalNeuron &neuron) {
-    auto weights = neuron.getWeights();
-    for (auto w : weights) {
-        out << std::setw(9) << std::setprecision(5) << w << " ";
-    }
-    out << neuron.activationFunction;
-    return out;
-}
-
 std::ostream &operator<<(std::ostream &out, const FullyConnectedLayer &layer) {
-    for (BidirectionalNeuron neuron : layer.neurons) {
-        out << "  " << neuron << "\n";
+    out << "  inputs: " << layer.nInputs << "\n";
+    out << "  outputs: " << layer.nOutputs << "\n";
+    out << "  activation: " << layer.activationFunction << "\n";
+    out << "  weights_and_bias:\n";
+    for (size_t r = 0; r < layer.nOutputs; ++r) {
+        out << "   ";
+        for (size_t c = 0; c < layer.nInputs; ++c) {
+            out << " " << layer.weights[r*layer.nInputs + c];
+        }
+        out << "\n";
     }
     return out;
 }

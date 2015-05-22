@@ -25,21 +25,23 @@ int main(int, char *[]) {
     cout << "initial NN:\n" << xorNet << "\n";
     cout << "initial out:\n";
     for (auto s : trainSet) {
-        cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
+        cout << s.data << " -> " << *xorNet.output(s.data) << "\n";
     }
     cout << "\n";
 
     cout << "initial loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
 
+    float learningRate = 0.01f;
     for (int j = 0; j < 5000; ++j) {
         // training cycle
         for (auto sample : trainSet) {
-            auto actualOutput = xorNet.forwardPass(sample.data);
-            Output err(actualOutput.size());
-            for (size_t i=0; i < actualOutput.size(); ++i) {
-                err[i] = sample.label[i] - actualOutput[i];
+            auto actualOutput = xorNet.output(sample.data);
+            Output err(actualOutput->size());
+            for (size_t i=0; i < actualOutput->size(); ++i) {
+                err[i] = sample.label[i] - (*actualOutput)[i];
             }
-            xorNet.backwardPass(err, 0.01f);
+            auto bpr = xorNet.backprop(err);
+            xorNet.adjustWeights(learningRate);
         }
         if (j % 500 == 0) {
             cout << "epoch " << j+1 << " loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
@@ -50,7 +52,7 @@ int main(int, char *[]) {
     cout << "final NN:\n" << xorNet << "\n";
     cout << "final out:\n";
     for (auto s : trainSet) {
-        cout << s.data << " -> " << xorNet.forwardPass(s.data) << "\n";
+        cout << s.data << " -> " << *xorNet.output(s.data) << "\n";
     }
     cout << "\n";
 

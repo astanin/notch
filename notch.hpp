@@ -599,16 +599,20 @@ struct BackpropResult {
 };
 
 /** A common interface of all layers capable of both forward and
- * backpropagation. */
+ * backpropagation.
+ *
+ * Output results (Array) can be shared between layers, because
+ * the output of the layer $j$ is the input of the layer $j+1$.
+ *
+ * Backpropagation results (BackpropResult) can be shared between
+ * layers too.*/
 class ABackpropLayer {
 public:
     /// a forward propagaiton pass
-    virtual Array &output(const Array &inputs) = 0;
+    virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
     /// a backpropagation pass
-    virtual BackpropResult backprop(const Array &errorSignals) = 0;
-    /// a backpropagation pass (in-place update)
-    virtual BackpropResult
-    backprop(const Array &errorSignals, BackpropResult &backOut) = 0;
+    virtual std::shared_ptr<BackpropResult>
+    backprop(const Array &errorSignals) = 0;
 };
 
 /** Ersatz matrix-vector product on STL iterators, similar to BLAS _gemv
@@ -617,6 +621,11 @@ template <class MatrixIt, class VectorXIt, class VectorBIt>
 void stl_gemv(MatrixIt m_begin, MatrixIt m_end, VectorXIt v_begin,
               VectorXIt v_end, VectorBIt b_begin, VectorBIt b_end) {
     size_t cols = std::distance(v_begin, v_end);
+    size_t rows = std::distance(b_begin, b_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        throw std::invalid_argument("stl_gemv: incompatible matrix and vector shapes");
+    }
     size_t r = 0; // current row number
     for (auto b = b_begin; b != b_end; ++b, ++r) {
         auto row_begin = m_begin + r * cols;
@@ -634,15 +643,16 @@ private:
     Weights bias;    //< bias values $b_j$ for the entire layer, one per neuron
     const ActivationFunction &activationFunction;
 
-    Array lastInputs;        //< $x_i$
-    Array inducedLocalField; //< $v_j = \sum_i w_ji x_i + b_j$
-    Array activationGrad;    //< $\phi^\prime (v_j)$
-    Array localGrad;         //< $\delta_j = \phi^\prime(v_j) e_j$
-    Array lastOutputs;       //< $y_j = \phi(v_j)$
-    // TODO: implement sharing of data between connected layers
+    Array inducedLocalField;            //< $v_j = \sum_i w_ji x_i + b_j$
+    Array activationGrad;               //< $\phi^\prime (v_j)$
+    Array localGrad;                    //< $\delta_j = \phi^\prime(v_j) e_j$
+    std::shared_ptr<Array> lastInputs;  //< $x_i$
+    std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
+    std::shared_ptr<BackpropResult> thisBPR; // backpropagation results of this layer
+    std::shared_ptr<BackpropResult> nextBPR; // backpropagation results of the next layer
 
     void rememberInputs(const Array& inputs) {
-        lastInputs = inputs;  // remember for calcWeightCorrectins()
+        *lastInputs = inputs;  // remember for calcWeightCorrectins()
     }
 
     /** Linear response of all neurons in the layer. */
@@ -706,7 +716,7 @@ private:
         }
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs
-                deltaW[j*nInputs + i] = localGrad[j] * lastInputs[i];
+                deltaW[j*nInputs + i] = localGrad[j] * (*lastInputs)[i];
             }
         }
         deltaBias = localGrad;
@@ -734,35 +744,61 @@ private:
         }
     }
 
-public:
-    FullyConnectedLayer(size_t nInputs, size_t nOutputs,
-                        const ActivationFunction &af = scaledTanh)
-        : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
-          bias(nOutputs), activationFunction(af), lastInputs(nInputs),
-          inducedLocalField(nOutputs), activationGrad(nOutputs),
-          lastOutputs(nOutputs) {}
-
-    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
-        init_fn(rng, weights, nInputs, nOutputs);
-    }
-
-    virtual Array &output(const Array &inputs) {
-        output(inputs, lastOutputs);
-        return lastOutputs;
-    }
-
-    virtual BackpropResult backprop(const Array &errorSignals) {
-        BackpropResult out;
-        backprop(errorSignals, out);
-        return out;
-    }
-
-    virtual BackpropResult
+    /// Backpropagation algorithm
+    void
     backprop(const Array &errorSignals, BackpropResult &out) {
         calcLocalGrad(errorSignals);
         calcWeightCorrectins(out.weightCorrections, out.biasCorrections);
         calcPropagatedSignals(out.propagatedErrorSignals);
-        return out;
+    }
+
+    /// Allocates lastInputs and lastOutputs buffers if they're not allocated yet.
+    void allocateInOutBuffers() {
+        if (!lastInputs) {
+            lastInputs = std::make_shared<Array>(nInputs);
+        }
+        if (!lastOutputs) {
+            lastOutputs = std::make_shared<Array>(nOutputs);
+        }
+        if (!thisBPR) {
+            thisBPR = std::make_shared<BackpropResult>();
+        }
+        if (!nextBPR) {
+            nextBPR = std::make_shared<BackpropResult>();
+        }
+    }
+
+public:
+    FullyConnectedLayer(size_t nInputs, size_t nOutputs,
+                        const ActivationFunction &af = scaledTanh)
+        : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
+          bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
+          activationGrad(nOutputs), lastInputs(nullptr), lastOutputs(nullptr) {}
+
+    /// Initialize synaptic weights.
+    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
+        init_fn(rng, weights, nInputs, nOutputs);
+    }
+
+    /// Interlayer connections allow to share input-output buffers between two layers.
+    void connectTo(FullyConnectedLayer& nextLayer) {
+        if (nextLayer.nInputs != this->nOutputs) {
+            throw std::invalid_argument("incompatible shape of the nextLayer");
+        }
+        allocateInOutBuffers();
+        nextLayer.lastInputs = this->lastOutputs;
+        nextLayer.thisBPR = this->nextBPR;
+    }
+
+    virtual std::shared_ptr<Array> output(const Array &inputs) {
+        output(inputs, *lastOutputs);
+        return lastOutputs;
+    }
+
+    virtual std::shared_ptr<BackpropResult>
+    backprop(const Array &errorSignals) {
+        backprop(errorSignals, *thisBPR);
+        return thisBPR;
     }
 
     void adjustWeights(const Weights &weightCorrections,
@@ -779,7 +815,7 @@ public:
 class MultilayerPerceptron : public ABackpropLayer {
 private:
     std::vector<FullyConnectedLayer> layers;
-    std::vector<BackpropResult> bpResults;
+    std::vector<std::shared_ptr<BackpropResult>> bpResults;
 
 public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
@@ -793,6 +829,10 @@ public:
             auto outSize = *pOut;
             FullyConnectedLayer layer(inSize, outSize, af);
             layers.push_back(layer);
+            if (layers.size() >= 2) { // connect the last two layers
+                auto n = layers.size();
+                layers[n-2].connectTo(layers[n-1]);
+            }
         }
         bpResults.resize(layers.size());
     }
@@ -804,37 +844,43 @@ public:
         }
     }
 
-    virtual Array &output(const Array &inputs) {
+    // TODO: implement connectTo for MultilayerPerceptron
+    // TODO: enforce alternation output/backprop/output/backprop...
+
+    virtual std::shared_ptr<Array> output(const Array &inputs) {
         if (layers.empty()) {
             throw std::logic_error("no layers defined");
         }
-        Array &out;
-        for (auto i = 0u; i < layers.size(); ++i) {
-            if (i == 0) {
-                out = layers[i].output(inputs);
-            } else {
-                out = layers[i].output(out);
-            }
+        std::shared_ptr<Array> out = layers[0].output(inputs);
+        for (auto i = 1u; i < layers.size(); ++i) {
+            out = layers[i].output(*out);
         }
         return out;
     }
 
-    virtual BackpropResult backprop(const Array &errorSignals) {
-        BackpropResult out;
-        backprop(errorSignals, out);
-        return out;
+    virtual std::shared_ptr<BackpropResult>
+    backprop(const Array &errorSignals) {
+        if (layers.empty()) {
+            throw std::logic_error("no layers defined");
+        }
+        size_t n = layers.size();
+        bpResults[n - 1] = layers[n - 1].backprop(errorSignals);
+        for (size_t offset = 1; offset < n; ++offset) {
+            size_t i = n - 1 - offset;
+            Array &e(bpResults[i + 1]->propagatedErrorSignals);
+            bpResults[i] = layers[i].backprop(e);
+        }
+        return bpResults[0];
     }
 
-    virtual BackpropResult
-    backprop(const Array &errorSignals, BackpropResult &out) {
-        const Array &e = errorSignals;
-        for (int i = layers.size()-1; i >= 0; --i) {
-            layers[i].backprop(e, bpResults[i]);
-            e = bpResults[i].propagatedErrorSignals;
+    void adjustWeights(float learningRate) {
+        for (size_t i = 0; i < layers.size(); ++i) {
+            Weights &dW = bpResults[i]->weightCorrections;
+            Array &db = bpResults[i]->biasCorrections;
+            layers[i].adjustWeights(learningRate * dW, learningRate * db);
         }
-        out = bpResults[bpResults.size()-1];
-        return out;
     }
+
 
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
@@ -878,8 +924,8 @@ float totalLoss(LossFunction loss,
                 const LabeledDataset& testSet) {
     float totalLoss = 0.0;
     for (auto sample : testSet) {
-        auto out = net.forwardPass(sample.data);
-        totalLoss += loss(out, sample.label);
+        auto out = net.output(sample.data);
+        totalLoss += loss(*out, sample.label);
     }
     return totalLoss;
 }
@@ -887,6 +933,5 @@ float totalLoss(LossFunction loss,
 // TODO: softmax layer
 // TODO: cross-entropy loss
 // TODO: Hinge loss
-#endif
 
 #endif /* NOTCH_H */
