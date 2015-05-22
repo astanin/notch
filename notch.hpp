@@ -38,7 +38,7 @@ THE SOFTWARE.
 #include <assert.h>
 #include <iostream>   // cout
 
-#include <algorithm>  // generate
+#include <algorithm>  // generate, transform
 #include <array>      // array
 #include <cmath>      // sqrt, exp
 #include <functional> // ref, function<>
@@ -269,7 +269,8 @@ std::unique_ptr<RNG> newRNG() {
     return rng;
 }
 
-using WeightsInitializer = std::function<void(std::unique_ptr<RNG> &, Weights &)>;
+using WeightsInitializer =
+    std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
 /** One-sided Xavier initialization.
  *
@@ -277,14 +278,13 @@ using WeightsInitializer = std::function<void(std::unique_ptr<RNG> &, Weights &)
  * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
  *
  * See http://andyljones.tumblr.com/post/110998971763/ **/
-void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
-    size_t n_in = weights.size();
-    float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
+void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
+    float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
     std::normal_distribution<float> nd(0.0, sigma);
     std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
-                float w = nd(*rng.get());
-                return w;
-             });
+        float w = nd(*rng.get());
+        return w;
+    });
 }
 
 /** Uniform one-sided Xavier initialization.
@@ -293,8 +293,7 @@ void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
  * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
  *
  * See http://andyljones.tumblr.com/post/110998971763/ **/
-void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights) {
-    size_t n_in = weights.size();
+void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
     float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
     float a = sigma * sqrt(3.0);
     std::uniform_real_distribution<float> nd(-a, a);
@@ -593,6 +592,115 @@ void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, float et
  * ----------------------
  **/
 
+struct BackpropResult {
+    Array   propagatedErrorSignals;
+    Weights weightCorrections;
+};
+
+/** A common interface of all layers capable of backpropagation. */
+class ABackpropLayer {
+public:
+    /// a forward propagaiton pass
+    virtual Array output(const Array &inputs) = 0;
+    /// a forward propagation pass (in-place update)
+    virtual Array& output(const Array &inputs, Array &outputs) = 0;
+    /// a backpropagation pass
+    virtual BackpropResult backprop(const Array &inputs, const Array &errorSignals) = 0;
+    /// a backpropagation pass (in-place update)
+    virtual BackpropResult& backprop(const Array &inputs, const Array &errorSignals, BackpropResult &backOut) = 0;
+};
+
+/// Ersatz matrix-vector product on STL iterators, similar to BLAS _gemv function.
+/// It calculates `M*v + b` and saves result in `b`.
+template <class MatrixIt, class VectorXIt, class VectorBIt>
+void stl_gemv(MatrixIt m_begin, MatrixIt m_end,
+              VectorXIt v_begin, VectorXIt v_end,
+              VectorBIt b_begin, VectorBIt b_end) {
+    size_t cols = std::distance(v_begin, v_end);
+    size_t r = 0; // current row number
+    for (auto b = b_begin; b != b_end; ++b, ++r) {
+        auto row_begin = m_begin + r * cols;
+        auto row_end = row_begin + cols;
+        *b = std::inner_product(row_begin, row_end, v_begin, *b);
+    }
+}
+
+/** A fully connected layer of neurons with backpropagation. */
+class FullyConnectedLayer : public ABackpropLayer {
+private:
+    size_t nInputs;
+    size_t nOutputs; //< the number of neurons in the layer
+    Weights weights; //< weights matrix for the entire layer, row-major order
+    Weights bias;    //< bias values for the entire layer, one per neuron
+    const ActivationFunction &activationFunction;
+
+    Array inducedLocalField; //< $v_j = \sum_i w_ji x_i + b_j$
+    Array activationGrad;    //< $\phi^\prime (v_j)$
+
+    void calcInducedLocalField(const Array &inputs) {
+        inducedLocalField = bias; // will be added and overwritten
+        // TODO: use cblas_sgemv ifdef NOTCH_USE_CBLAS
+        stl_gemv(std::begin(weights), std::end(weights),
+                 std::begin(inputs), std::end(inputs),
+                 std::begin(inducedLocalField), std::end(inducedLocalField));
+    }
+
+    void calcActivationGrad() {
+        std::transform(std::begin(inducedLocalField),
+                       std::end(inducedLocalField),
+                       std::begin(activationGrad),
+                       [&](float y){ return activationFunction.derivative(y);});
+    }
+
+    void calcOutput(Array &outputs) {
+        std::transform(std::begin(inducedLocalField),
+                       std::end(inducedLocalField),
+                       std::begin(outputs),
+                       [&](float y){ return activationFunction(y);});
+    }
+
+public:
+    FullyConnectedLayer(size_t nInputs, size_t nOutputs,
+                        const ActivationFunction &af = scaledTanh)
+        : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
+          bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
+          activationGrad(nOutputs) {}
+
+    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
+        init_fn(rng, weights, nInputs, nOutputs);
+    }
+
+    virtual Array output(const Array &inputs) {
+        Array out(nOutputs);
+        output(inputs, out);
+        return out;
+    }
+
+    virtual Array &output(const Array &inputs, Array &outputs) {
+        if (outputs.size() != nOutputs) {
+            outputs.resize(nOutputs);
+        }
+        calcInducedLocalField(inputs);
+        calcActivationGrad();
+        calcOutput(outputs);
+        return outputs;
+    }
+
+    virtual BackpropResult backprop(const Array &inputs,
+                                    const Array &errorSignals) {
+        BackpropResult out;
+        backprop(inputs, errorSignals, out);
+        return out;
+    }
+
+    virtual BackpropResult &
+    backprop(const Array &inputs, const Array &errorSignals,
+             BackpropResult &backOut) {
+        return backOut;
+    }
+};
+
+#if 0
 /// An artificial neuron with back-propagation capability.
 class BidirectionalNeuron : public ANeuron {
 private:
@@ -673,6 +781,35 @@ public:
         lastLocalGradient = localGradient;
         BackOutput ret{localGradient, delta_W};
         return ret;
+    }
+
+    // Page 134. Calculate back-propagated error signal and corrections to
+    // synaptic weights.
+    //
+    // $$ e_j = \sum_k \delta_k w_{kj} $$
+    //
+    // where $e_j$ is an error propagated from all downstream neurons to the
+    // neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
+    // $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
+    // downstream neuron $k$.
+    //
+    // The method should be called _after_ `forwardPass`
+    BackOutput backwardPass(const Input &inputs, const Output &errorSignals) {
+        assert(errorSignals.size() == neurons.size());
+        std::vector<Weights> weightDeltas(0);
+        Weights propagatedErrorSignals(0.0, nInputs);
+        for (auto k = 0u; k < nNeurons; ++k) {
+            auto error_k = errorSignals[k];
+            auto r = neurons[k].backwardPass(inputs, error_k);
+            Weights delta_Wk = r.weightCorrections;
+            float delta_k = r.localGradient;
+            Weights Wk = neurons[k].getWeights();
+            for (auto j = 0u; j < nInputs; ++j) {
+                propagatedErrorSignals[j] += delta_k * Wk[j + 1];
+            }
+            weightDeltas.push_back(delta_Wk);
+        }
+        return BackOutput{propagatedErrorSignals, weightDeltas};
     }
 
     friend std::ostream &operator<<(std::ostream &out, const BidirectionalNeuron &neuron);
@@ -803,7 +940,6 @@ public:
         return layersInputs[layers.size()];
     }
 
-    // TODO: unify backwardPass intefrace of the neuron, layer and network
     FullyConnectedLayer::BackOutput
     backwardPass(const Output &errorSignals, float learningRate) {
         Output err(errorSignals);
@@ -869,5 +1005,6 @@ float totalLoss(LossFunction loss,
 // TODO: softmax layer
 // TODO: cross-entropy loss
 // TODO: Hinge loss
+#endif
 
 #endif /* NOTCH_H */
