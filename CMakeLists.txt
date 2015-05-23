@@ -13,6 +13,16 @@ IF(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARN_FLAGS}")
 ENDIF(MSVC)
 
+find_library(CBLAS_LIBRARY NAMES openblas cblas)
+find_path(CBLAS_INCLUDE_DIR cblas.h)
+IF(CBLAS_LIBRARY)
+    set(CBLAS_FOUND ON)
+    message(STATUS "Found CBLAS " ${CBLAS_LIBRARY})
+    add_definitions(-DNOTCH_USE_CBLAS)
+    set(CBLAS_LIBRARIES ${CBLAS_LIBRARY})
+    set(CBLAS_INCLUDE_DIRS ${CBLAS_INCLUDE_DIR})
+ENDIF(CBLAS_LIBRARY)
+
 set(SOURCE_FILES
     notch.hpp
     notch_io.hpp
@@ -30,3 +40,7 @@ target_include_directories(demo_multilayer_xor PRIVATE ${CMAKE_CURRENT_SOURCE_DI
 add_executable(demo_multilayer_iris examples/demo_multilayer_iris.cpp ${SOURCE_FILES})
 target_include_directories(demo_multilayer_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+IF(CBLAS_FOUND)
+    target_link_libraries(demo_multilayer_xor ${CBLAS_LIBRARIES})
+    target_link_libraries(demo_multilayer_iris ${CBLAS_LIBRARIES})
+ENDIF(CBLAS_FOUND)

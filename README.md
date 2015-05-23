@@ -7,7 +7,7 @@ This is (supposed to be)
 
  * a header-only C++11 library
 
- * without extra dependencies
+ * without extra dependencies (CBLAS dependency is optional)
 
  * cross-platform (Linux and Windows)
 

@@ -51,9 +51,13 @@ THE SOFTWARE.
 #include <random>
 #include <string>
 #include <typeinfo>   // typeid
+#include <type_traits> // enable_if, is_pointer
 #include <valarray>
 #include <vector>
 
+#ifdef NOTCH_USE_CBLAS
+#include <cblas.h>
+#endif
 
 /**
  * Library Framework
@@ -615,24 +619,64 @@ public:
     backprop(const Array &errorSignals) = 0;
 };
 
-/** Ersatz matrix-vector product on STL iterators, similar to BLAS _gemv
- * function. It calculates `M*v + b` and saves result in `b`. */
-template <class MatrixIt, class VectorXIt, class VectorBIt>
-void stl_gemv(MatrixIt m_begin, MatrixIt m_end, VectorXIt v_begin,
-              VectorXIt v_end, VectorBIt b_begin, VectorBIt b_end) {
-    size_t cols = std::distance(v_begin, v_end);
+#ifdef NOTCH_USE_CBLAS
+
+/** Matrix-vector product using CBLAS.
+ * Calculate $M*x + b$ and save result to $b$.
+ *
+ * Note: CBLAS requires pointers to data.
+ * The type of std::begin(std::valarray&) is not specified by the standard,
+ * but GNU and Clang implementations return a plain pointer.
+ * We can enable interoperation with CBLAS only for compilers like GNU. */
+template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
+typename std::enable_if<std::is_pointer<Matrix_Iter>::value &&
+                        std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorB_Iter>::value, void>::type
+gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
+     VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorB_Iter b_begin, VectorB_Iter b_end) {
+    size_t cols = std::distance(x_begin, x_end);
     size_t rows = std::distance(b_begin, b_end);
     size_t n = std::distance(m_begin, m_end);
     if (n != rows * cols) {
-        throw std::invalid_argument("stl_gemv: incompatible matrix and vector shapes");
+        std::string what = "blas_gemv: incompatible matrix and vector shapes";
+        throw std::invalid_argument(what);
+    }
+    cblas_sgemv(CblasRowMajor, CblasNoTrans,
+                rows, cols,
+                1.0 /* M multiplier */,
+                m_begin, cols /* leading dimension of M */,
+                x_begin, 1,
+                1.0 /* b multiplier */,
+                b_begin, 1);
+}
+
+#else /* NOTCH_USE_CBLAS is not defined */
+
+/** Matrix-vector product on STL iterators, similar to BLAS _gemv function.
+ * Calculate $M x + b$ and saves result in $b$. */
+template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
+void
+gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
+     VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorB_Iter b_begin, VectorB_Iter b_end) {
+    size_t cols = std::distance(x_begin, x_end);
+    size_t rows = std::distance(b_begin, b_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        std::string what = "stl_gemv: incompatible matrix and vector shapes";
+        throw std::invalid_argument(what);
     }
     size_t r = 0; // current row number
     for (auto b = b_begin; b != b_end; ++b, ++r) {
         auto row_begin = m_begin + r * cols;
         auto row_end = row_begin + cols;
-        *b = std::inner_product(row_begin, row_end, v_begin, *b);
+        *b = std::inner_product(row_begin, row_end, x_begin, *b);
     }
 }
+
+#endif /* ifdef NOTCH_USE_CBLAS */
+
 
 /** A fully connected layer of neurons with backpropagation. */
 class FullyConnectedLayer : public ABackpropLayer {
@@ -665,10 +709,9 @@ private:
     /** Linear response of all neurons in the layer. */
     void calcInducedLocalField(const Array &inputs) {
         inducedLocalField = bias; // will be added and overwritten
-        // TODO: use cblas_sgemv ifdef NOTCH_USE_CBLAS
-        stl_gemv(std::begin(weights), std::end(weights), std::begin(inputs),
-                 std::end(inputs), std::begin(inducedLocalField),
-                 std::end(inducedLocalField));
+        gemv(std::begin(weights), std::end(weights), std::begin(inputs),
+             std::end(inputs), std::begin(inducedLocalField),
+             std::end(inducedLocalField));
     }
 
     /** Derivatives of the activation functions. */
@@ -896,7 +939,6 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
 
-// TODO: optional blas linking
 // TODO: SGD training utility
 // TODO: CNN layer
 // TODO: max-pooling layer
