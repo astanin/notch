@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <set>
 #include <valarray>
 #include <vector>
+#include <sstream>
 
 #include "notch.hpp"
 
