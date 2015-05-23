@@ -42,6 +42,7 @@ THE SOFTWARE.
 // TODO: StandardScaler (mu, sigmae)
 // TODO: MinMaxScaler
 // TODO: Normalizer
+// TODO: decorrelation for elements
 // TODO: Dataset shuffle
 // TODO: train and test set splitter
 // TODO: K-fold split

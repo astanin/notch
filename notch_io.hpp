@@ -337,6 +337,7 @@ public:
 };
 
 // TODO: IDX (MNIST) format reader
+// TODO: LIBSVM format reader
 
 /** A formatter to write a labeled dataset to FANN text file format. */
 class FANNFormat {

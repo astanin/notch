@@ -80,6 +80,7 @@ using Array = std::valarray<float>;
 using Input = Array;
 using Output = Array;
 
+// TODO: NDArray, mostly compatible with Array; like struct { shape; data; };
 
 /** Unlabeled dataset are collections or `Input`s or `Output`s. */
 using Dataset = std::vector<Array>;
