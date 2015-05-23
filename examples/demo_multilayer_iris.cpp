@@ -48,12 +48,16 @@ int main(int argc, char *argv[]) {
     cout << net << "\n\n";
 
     cout << "initial loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
+
+    float learningRate = 0.01f;
     for (int j = 0; j < 1000; ++j) {
         // training cycle
         for (auto sample : trainSet) {
-            Array actualOutput = net.forwardPass(sample.data);
+            Array actualOutput = *net.output(sample.data);
             Array err = sample.label - actualOutput;
-            net.backwardPass(err, 0.01f);
+            auto backpropResult = net.backprop(err);
+            net.adjustWeights(learningRate);
+
         }
         if (j % 50 == 49) {
             cout << "epoch " << j+1
@@ -65,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     for (auto s : trainSet) {
         cout << s.data << " -> ";
-        cout << labelEnc.inverse_transform(net.forwardPass(s.data)) << "\n";
+        cout << labelEnc.inverse_transform(*net.output(s.data)) << "\n";
     }
     cout << "\n";
 
