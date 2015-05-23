@@ -319,7 +319,7 @@ public:
             for (int i = row.size()-1; i >= 0; --i) {
                 auto found = std::find_if(labelcols.begin(), labelcols.end(),
                              [=](int labelcol) {
-                                return (labelcol + ncols) % ncols == i;
+                                return (labelcol + ncols) % ncols == size_t(i);
                              });
                 if (found != labelcols.end()) {
                     row.erase(row.begin() + i);
