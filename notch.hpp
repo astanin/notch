@@ -646,10 +646,17 @@ private:
     Array inducedLocalField;            //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;               //< $\phi^\prime (v_j)$
     Array localGrad;                    //< $\delta_j = \phi^\prime(v_j) e_j$
+
+    // Forward and backpropagation results can be shared between layers.
+    // The buffers are allocated once either in init() or at the begining of the
+    // forward or backprop pass respectively (see output() and backprop()).
+    // Actual allocation is implemented in allocateInOutBuffers() method,
+    // connectTo() method implements sharing.
     std::shared_ptr<Array> lastInputs;  //< $x_i$
     std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
-    std::shared_ptr<BackpropResult> thisBPR; // backpropagation results of this layer
-    std::shared_ptr<BackpropResult> nextBPR; // backpropagation results of the next layer
+    std::shared_ptr<BackpropResult> thisBPR; //< backpropagation results of this layer
+    std::shared_ptr<BackpropResult> nextBPR; //< backpropagation results of the next layer
+    bool buffersAreReady = false; //< true if input/output and backprop buffers are allocated
 
     void rememberInputs(const Array& inputs) {
         *lastInputs = inputs;  // remember for calcWeightCorrectins()
@@ -754,6 +761,9 @@ private:
 
     /// Allocates lastInputs and lastOutputs buffers if they're not allocated yet.
     void allocateInOutBuffers() {
+        if (buffersAreReady) {
+            return;
+        }
         if (!lastInputs) {
             lastInputs = std::make_shared<Array>(nInputs);
         }
@@ -766,6 +776,7 @@ private:
         if (!nextBPR) {
             nextBPR = std::make_shared<BackpropResult>();
         }
+        buffersAreReady = true;
     }
 
 public:
@@ -775,10 +786,11 @@ public:
           bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
           activationGrad(nOutputs), lastInputs(nullptr), lastOutputs(nullptr) {}
 
-    /// Initialize synaptic weights.
+    /// Initialize synaptic weights and allocate buffers.
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
         init_fn(rng, bias, nInputs, nOutputs);
+        allocateInOutBuffers();
     }
 
     /// Interlayer connections allow to share input-output buffers between two layers.
@@ -786,18 +798,19 @@ public:
         if (nextLayer.nInputs != this->nOutputs) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
-        allocateInOutBuffers();
         nextLayer.lastInputs = this->lastOutputs;
         nextLayer.thisBPR = this->nextBPR;
     }
 
     virtual std::shared_ptr<Array> output(const Array &inputs) {
+        allocateInOutBuffers(); // just in case the user didn't init()
         output(inputs, *lastOutputs);
         return lastOutputs;
     }
 
     virtual std::shared_ptr<BackpropResult>
     backprop(const Array &errorSignals) {
+        allocateInOutBuffers(); // just in case the user didn't init()
         backprop(errorSignals, *thisBPR);
         return thisBPR;
     }
