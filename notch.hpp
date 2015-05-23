@@ -820,7 +820,7 @@ private:
 public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
-        : layers(0) {
+        : layers() {
         assert(shape.size() > 0);
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);
