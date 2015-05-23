@@ -65,6 +65,24 @@ THE SOFTWARE.
  **/
 
 /**
+ * Random number generation
+ * ------------------------
+ */
+
+using RNG = std::mt19937;
+
+/// Create and seed a new random number generator.
+std::unique_ptr<RNG> newRNG() {
+    std::random_device rd;
+    std::array<uint32_t, std::mt19937::state_size> seed_data;
+    std::generate(seed_data.begin(), seed_data.end(), ref(rd));
+    std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
+    std::unique_ptr<RNG> rng(new RNG());
+    rng->seed(sseq);
+    return rng;
+}
+
+/**
  * Data types
  * ----------
  *
@@ -243,6 +261,22 @@ public:
         outputs = t.transform(outputs);
         outputDimension = outputs.size();
     }
+
+    /// Randomly shuffle `LabeledData`.
+    void shuffle(std::unique_ptr<RNG> rng) {
+        // Modern version of Fischer-Yates shuffle.
+        // The same random permutation should be applied to both
+        // inputs and outputs, so std::shuffle is not applicable.
+        size_t n = inputs.size();
+        for (size_t i = n - 1; i >= 1; --i) {
+            std::uniform_int_distribution<> ud(0, i);
+            size_t j = ud(*rng);
+            if (i != j) {
+                std::swap(inputs[i], inputs[j]);
+                std::swap(outputs[i], outputs[j]);
+            }
+        }
+    }
 };
 
 
@@ -260,19 +294,6 @@ using Weights = std::valarray<float>;
  * Random Weights Initialization
  * -----------------------------
  **/
-
-using RNG = std::mt19937;
-
-/// Create and seed a new random number generator.
-std::unique_ptr<RNG> newRNG() {
-    std::random_device rd;
-    std::array<uint32_t, std::mt19937::state_size> seed_data;
-    std::generate(seed_data.begin(), seed_data.end(), ref(rd));
-    std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
-    std::unique_ptr<RNG> rng(new RNG());
-    rng->seed(sseq);
-    return rng;
-}
 
 using WeightsInitializer =
     std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
