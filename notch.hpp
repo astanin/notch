@@ -778,6 +778,7 @@ public:
     /// Initialize synaptic weights.
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
+        init_fn(rng, bias, nInputs, nOutputs);
     }
 
     /// Interlayer connections allow to share input-output buffers between two layers.
