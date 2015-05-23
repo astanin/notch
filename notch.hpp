@@ -687,7 +687,7 @@ private:
                        [&](float y) { return activationFunction(y); });
     }
 
-    void output(const Array &inputs, Array &outputs) {
+    void outputInplace(const Array &inputs, Array &outputs) {
         if (outputs.size() != nOutputs) {
             outputs.resize(nOutputs);
         }
@@ -753,7 +753,7 @@ private:
 
     /// Backpropagation algorithm
     void
-    backprop(const Array &errorSignals, BackpropResult &out) {
+    backpropInplace(const Array &errorSignals, BackpropResult &out) {
         calcLocalGrad(errorSignals);
         calcWeightCorrectins(out.weightCorrections, out.biasCorrections);
         calcPropagatedSignals(out.propagatedErrorSignals);
@@ -804,14 +804,14 @@ public:
 
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        output(inputs, *lastOutputs);
+        outputInplace(inputs, *lastOutputs);
         return lastOutputs;
     }
 
     virtual std::shared_ptr<BackpropResult>
     backprop(const Array &errorSignals) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        backprop(errorSignals, *thisBPR);
+        backpropInplace(errorSignals, *thisBPR);
         return thisBPR;
     }
 
@@ -858,9 +858,6 @@ public:
         }
     }
 
-    // TODO: implement connectTo for MultilayerPerceptron
-    // TODO: enforce alternation output/backprop/output/backprop...
-
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         if (layers.empty()) {
             throw std::logic_error("no layers defined");
@@ -899,7 +896,6 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
 
-// TODO: implement layers with a single matrix for all neurons
 // TODO: optional blas linking
 // TODO: SGD training utility
 // TODO: CNN layer
@@ -933,6 +929,7 @@ float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
     return sqrt(loss2);
 }
 
+/** Calculate total loss across the entire testSet. */
 float totalLoss(LossFunction loss,
                 MultilayerPerceptron &net,
                 const LabeledDataset& testSet) {
