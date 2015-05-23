@@ -444,9 +444,10 @@ std::ostream &operator<<(std::ostream &out, const FullyConnectedLayer &layer) {
     out << "  inputs: " << layer.nInputs << "\n";
     out << "  outputs: " << layer.nOutputs << "\n";
     out << "  activation: " << layer.activationFunction << "\n";
-    out << "  weights_and_bias:\n";
+    out << "  bias_and_weights:\n";
     for (size_t r = 0; r < layer.nOutputs; ++r) {
         out << "   ";
+        out << " " << layer.bias[r];
         for (size_t c = 0; c < layer.nInputs; ++c) {
             out << " " << layer.weights[r*layer.nInputs + c];
         }
