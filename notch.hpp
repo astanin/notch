@@ -391,18 +391,6 @@ public:
 };
 
 
-class SignumActivation : public ActivationFunction {
-public:
-    SignumActivation() {}
-
-    virtual float operator()(float v) const { return sign(v); }
-
-    virtual float derivative(float) const { return 0.0; }
-
-    virtual void print(std::ostream &out) const { out << "sign"; }
-};
-
-
 /// phi(v) = a * tanh(b * v); NNLM3, Chapter 4, page 136
 ///
 /// Default values for a and b were proposed by Yann LeCun,
@@ -463,7 +451,6 @@ public:
 
 const TanhActivation defaultTanh(1.0, 1.0);
 const TanhActivation scaledTanh; //< tanh with LeCun parameters
-const SignumActivation defaultSignum;
 const PiecewiseLinearActivation ReLU;
 const PiecewiseLinearActivation leakyReLU(0.01f, 1.0f, "leakyReLU");
 const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "");
