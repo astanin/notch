@@ -518,7 +518,7 @@ public:
  *
  *        where $\eta$ is learning rate.
  **/
-void trainConverge_addSample(ANeuron &p, Input input, float output, float eta) {
+void trainPerceptron_addSample(ANeuron &p, Input input, float output, float eta) {
     float y = sign(p.output(input));
     float xfactor = eta * (output - y);
     Weights weights = p.getWeights();
@@ -531,12 +531,12 @@ void trainConverge_addSample(ANeuron &p, Input input, float output, float eta) {
     p.adjustWeights(deltaW);
 }
 
-void trainConverge(ANeuron &p, const LabeledDataset &trainSet,
+void trainPerceptron(ANeuron &p, const LabeledDataset &trainSet,
                    int epochs, float eta) {
     assert(trainSet.outputDim() == 1);
     for (int epoch = 0; epoch < epochs; ++epoch) {
         for (auto sample : trainSet) {
-            trainConverge_addSample(p, sample.data, sample.label[0], eta);
+            trainPerceptron_addSample(p, sample.data, sample.label[0], eta);
         }
     }
 }
@@ -566,7 +566,7 @@ void trainConverge(ANeuron &p, const LabeledDataset &trainSet,
  *       = \mathbf{w}(n) + \eta(n) \sum_{\mathbf{x}(n) \in \Xi}
  *                                      ( - \mathbf{x}(n) d(n) ). $$
  **/
-void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, float eta) {
+void batchTrainPerceptron_addBatch(ANeuron &p, LabeledDataset batch, float eta) {
     for (auto sample : batch) {
         float desired = sample.label[0]; // desired output
         Input input = sample.data;
@@ -581,7 +581,7 @@ void trainBatch_addBatch(ANeuron &p, LabeledDataset batch, float eta) {
     }
 }
 
-void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, float eta) {
+void batchTrainPerceptron(ANeuron &p, const LabeledDataset &trainSet, int epochs, float eta) {
     assert(trainSet.outputDim() == 1);
     assert(trainSet.inputDim() + 1 == p.getWeights().size());
     // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
@@ -595,7 +595,7 @@ void trainBatch(ANeuron &p, const LabeledDataset &trainSet, int epochs, float et
            }
         }
         // sum cost gradient over the entire bactch
-        trainBatch_addBatch(p, misclassifiedSet, eta);
+        batchTrainPerceptron_addBatch(p, misclassifiedSet, eta);
     }
 }
 
