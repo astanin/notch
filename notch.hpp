@@ -622,9 +622,14 @@ void batchTrainPerceptron(ANeuron &p, const LabeledDataset &trainSet,
 // TODO: update with momentum (ASGD)
 
 struct BackpropResult {
+    BackpropResult(size_t nInputs, size_t nOutputs)
+        : propagatedErrorSignals(0.0, nInputs),
+          weightCorrections(0.0, nInputs*nOutputs),
+          biasCorrections(0.0, nOutputs) {}
+
     Array propagatedErrorSignals;
     Weights weightCorrections;
-    Array biasCorrections;
+    Weights biasCorrections;
 };
 
 /** A common interface of all layers capable of both forward and
@@ -776,6 +781,8 @@ private:
     /** The local gradient is the product of the activation function derivative
      * and the error signal. */
     void calcLocalGrad(const Array &errorSignals) {
+        assert(activationGrad.size() == errorSignals.size());
+        assert(localGrad.size() == errorSignals.size());
         localGrad = activationGrad * errorSignals;
     }
 
@@ -791,14 +798,12 @@ private:
      *
      * We discard $\eta$ at the moment (we use it in training). */
     void calcWeightCorrectins(Weights &deltaW, Array &deltaBias) {
-        if (deltaW.size() != weights.size()) {
-            deltaW.resize(weights.size());
-        }
-        if (deltaBias.size() != bias.size()) {
-            deltaBias.resize(bias.size());
-        }
-        for (size_t j = 0; j < nOutputs; ++j) { // for all neurons
-            for (size_t i = 0; i < nInputs; ++i) { // for all inputs
+        assert(deltaW.size() == weights.size());
+        assert(deltaBias.size() == bias.size());
+        assert(localGrad.size() == nOutputs);
+        assert(lastInputs->size() == nInputs);
+        for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
+            for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
                 deltaW[j*nInputs + i] = localGrad[j] * (*lastInputs)[i];
             }
         }
@@ -841,16 +846,16 @@ private:
             return;
         }
         if (!lastInputs) {
-            lastInputs = std::make_shared<Array>(nInputs);
+            lastInputs = std::make_shared<Array>(0.0, nInputs);
         }
         if (!lastOutputs) {
-            lastOutputs = std::make_shared<Array>(nOutputs);
+            lastOutputs = std::make_shared<Array>(0.0, nOutputs);
         }
         if (!thisBPR) {
-            thisBPR = std::make_shared<BackpropResult>();
+            thisBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
         }
         if (!nextBPR) {
-            nextBPR = std::make_shared<BackpropResult>();
+            nextBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
         }
         buffersAreReady = true;
     }
@@ -858,9 +863,13 @@ private:
 public:
     FullyConnectedLayer(size_t nInputs, size_t nOutputs,
                         const ActivationFunction &af = scaledTanh)
-        : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
-          bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
-          activationGrad(nOutputs), lastInputs(nullptr), lastOutputs(nullptr),
+        : nInputs(nInputs), nOutputs(nOutputs),
+          weights(nInputs * nOutputs), bias(nOutputs), activationFunction(af),
+          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          // shared buffers are allocated dynamically
+          lastInputs(nullptr), lastOutputs(nullptr),
+          thisBPR(nullptr), nextBPR(nullptr),
+          // historical values for corrections can be initialized immediately
           weightCorrections(0.0, nInputs * nOutputs),
           biasCorrections(0.0, nOutputs) {}
 
