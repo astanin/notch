@@ -263,7 +263,7 @@ public:
     }
 
     /// Randomly shuffle `LabeledData`.
-    void shuffle(std::unique_ptr<RNG> rng) {
+    void shuffle(std::unique_ptr<RNG> &rng) {
         // Modern version of Fischer-Yates shuffle.
         // The same random permutation should be applied to both
         // inputs and outputs, so std::shuffle is not applicable.
