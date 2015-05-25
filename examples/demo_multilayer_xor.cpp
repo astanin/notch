@@ -29,9 +29,9 @@ int main(int, char *[]) {
     }
     cout << "\n";
 
-    xorNet.setLearningPolicy(0.01f);
-    trainWithSGD(xorNet, trainSet, rng, /* epochs */ 8000,
-                 /* callbackEvery */ 1000,
+    xorNet.setLearningPolicy(0.01f, 0.9);
+    trainWithSGD(xorNet, trainSet, rng, /* epochs */ 500,
+                 /* callbackEvery */ 25,
                  /* callback */ [&](int i, ABackpropLayer& net) {
                      printLoss(i, net, testSet);
                 });
