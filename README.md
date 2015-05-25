@@ -64,6 +64,10 @@ cmake.exe -G "Visual Studio 12 2013" ..
 
 then open the solution.
 
+### Linking with CBLAS
+
+To enable CBLAS linking in examples, pass `-DUSE_CBLAS=YES` to cmake.
+
 
 Bibliography
 ------------
