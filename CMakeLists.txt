@@ -41,6 +41,8 @@ add_executable(demo_multilayer_iris examples/demo_multilayer_iris.cpp ${SOURCE_F
 target_include_directories(demo_multilayer_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 IF(CBLAS_FOUND)
+    target_link_libraries(gen_twomoons ${CBLAS_LIBRARIES})
+    target_link_libraries(demo_perceptron ${CBLAS_LIBRARIES})
     target_link_libraries(demo_multilayer_xor ${CBLAS_LIBRARIES})
     target_link_libraries(demo_multilayer_iris ${CBLAS_LIBRARIES})
 ENDIF(CBLAS_FOUND)
