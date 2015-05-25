@@ -8,8 +8,9 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 IF(MSVC)
     # disable some warnings:
     # C4244: conversion with possible loss of data (e.g. double to float)
+    # C4290: C++ exception specification is ignored
     # C4996: potentially unsafe inner_product
-    set(WARN_FLAGS "/W3 /wd4244 /wd4996")
+    set(WARN_FLAGS "/W3 /wd4244 /wd4290 /wd4996")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARN_FLAGS}")
 ENDIF(MSVC)
 
