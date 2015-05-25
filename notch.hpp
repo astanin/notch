@@ -1028,8 +1028,7 @@ float totalLoss(LossFunction loss,
     return totalLoss;
 }
 
-using TrainCallback =
-    std::function<void(int epoch, ABackpropLayer &, const LabeledDataset&)>;
+using TrainCallback = std::function<void(int epoch, ABackpropLayer &)>;
 
 void printLoss(int epoch, ABackpropLayer &net, const LabeledDataset& testSet) {
     std::cout << "epoch " << epoch
@@ -1038,37 +1037,30 @@ void printLoss(int epoch, ABackpropLayer &net, const LabeledDataset& testSet) {
 
 /** Traing using stochastic gradient descent.
  *
- * Use net.setLearningPolicy() to change learning parameters.
+ * Use net.setLearningPolicy() to change learning parameters of the network
+ * _before_ calling `trainWithSGD`.
+ *
+ * @param net       Neural network to be trained.
+ * @param trainSet  Training set.
+ * @param rng       Random number generator for shuffling.
+ * @param epochs    How many iterations to run.
+ * @param cbEvery   A period of callback invocation if not zero.
+ * @param cb        A callback to be invoked.
  *
  * See:
  *
  *  - Efficient BackProp (2012) LeCun et al
- *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
+ *  http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
 // TODO: refactor trainWithSGD interface to allow callbacks and stop criteria
-void
-trainWithSGD(ABackpropLayer &net,
-             LabeledDataset &trainSet,
-             const LabeledDataset &testSet,
-             std::unique_ptr<RNG> &rng, int epochs,
-             int cbEvery=0, TrainCallback cb=printLoss) {
-    for (int j = 0; j < epochs; ++j) {
-        if (cbEvery > 0 && j % cbEvery == 0) {
-            cb(0, net, testSet);
-        }
-        trainSet.shuffle(rng);
-        for (auto sample : trainSet) {
-            auto out_ptr = net.output(sample.data);
+void trainWithSGD(ABackpropLayer &net, LabeledDataset &trainSet,
+        std::unique_ptr<RNG> &rng, int epochs, int cbEvery=0, TrainCallback
+        cb=nullptr) { for (int j = 0; j < epochs; ++j) { if (cb && cbEvery > 0
+            && j % cbEvery == 0) { cb(j, net); } trainSet.shuffle(rng); for
+            (auto sample : trainSet) { auto out_ptr = net.output(sample.data);
             // TODO: pass $d(E)/d(o_i)$ where $E$ is any loss function
-            Array err = sample.label - *out_ptr;
-            net.backprop(err);
-            net.update();
-        }
-    }
-    if (cbEvery > 0) {
-        cb(epochs, net, testSet);
-    }
-}
+            Array err = sample.label - *out_ptr; net.backprop(err);
+            net.update(); } } if (cb && cbEvery > 0) { cb(epochs, net); } }
 
 // TODO: softmax layer
 // TODO: cross-entropy loss

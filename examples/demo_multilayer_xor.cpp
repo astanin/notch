@@ -30,7 +30,11 @@ int main(int, char *[]) {
     cout << "\n";
 
     xorNet.setLearningPolicy(0.01f);
-    trainWithSGD(xorNet, trainSet, testSet, rng, /* epochs */ 5000, /* cbEvery */ 500);
+    trainWithSGD(xorNet, trainSet, rng, /* epochs */ 8000,
+                 /* callbackEvery */ 1000,
+                 /* callback */ [&](int i, ABackpropLayer& net) {
+                     printLoss(i, net, testSet);
+                });
     cout << "\n";
 
     cout << "final NN:\n" << xorNet << "\n";

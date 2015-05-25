@@ -47,7 +47,11 @@ int main(int argc, char *argv[]) {
     cout << net << "\n\n";
 
     net.setLearningPolicy(0.01f);
-    trainWithSGD(net, irisData, irisData, rng, 1000, /* cbEvery */ 50);
+    trainWithSGD(net, irisData, rng, 1000,
+                 /* callbackEvery */ 100,
+                 /* callback */ [&](int i, ABackpropLayer& net) {
+                     printLoss(i, net, irisData);
+                 });
     cout << "\n";
     cout << net << "\n";
 
