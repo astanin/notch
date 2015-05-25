@@ -45,21 +45,20 @@ int main(int argc, char *argv[]) {
     MultilayerPerceptron net({4, 6, 3}, scaledTanh);
     unique_ptr<RNG> rng(newRNG());
     net.init(rng);
+    net.setLearningPolicy(0.01f);
     cout << net << "\n\n";
 
     cout << "initial loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
 
-    float learningRate = 0.01f;
     for (int j = 0; j < 1000; ++j) {
         // training cycle
         for (auto sample : trainSet) {
             Array actualOutput = *net.output(sample.data);
             Array err = sample.label - actualOutput;
-            auto backpropResult = net.backprop(err);
-            net.adjustWeights(learningRate);
-
+            net.backprop(err);
+            net.update();
         }
-        if (j % 50 == 49) {
+        if (j % 50 == 49 || j < 5) {
             cout << "epoch " << j+1
                 << " loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
         }

@@ -31,17 +31,15 @@ int main(int, char *[]) {
 
     cout << "initial loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
 
-    float learningRate = 0.01f;
+    xorNet.setLearningPolicy(0.01f);
     for (int j = 0; j < 5000; ++j) {
         // training cycle
+        trainSet.shuffle(rng);
         for (auto sample : trainSet) {
-            auto actualOutput = xorNet.output(sample.data);
-            Output err(actualOutput->size());
-            for (size_t i=0; i < actualOutput->size(); ++i) {
-                err[i] = sample.label[i] - (*actualOutput)[i];
-            }
-            auto bpr = xorNet.backprop(err);
-            xorNet.adjustWeights(learningRate);
+            auto out_ptr = xorNet.output(sample.data);
+            Array err = sample.label - *out_ptr;
+            xorNet.backprop(err);
+            xorNet.update();
         }
         if (j % 500 == 0) {
             cout << "epoch " << j+1 << " loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";

@@ -617,6 +617,10 @@ void batchTrainPerceptron(ANeuron &p, const LabeledDataset &trainSet,
  * ----------------------
  **/
 
+// TODO: FixedRate $\eta = \mathrm{const}$
+// TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
+// TODO: update with momentum (ASGD)
+
 struct BackpropResult {
     Array propagatedErrorSignals;
     Weights weightCorrections;
@@ -638,6 +642,10 @@ public:
     /// a backpropagation pass
     virtual std::shared_ptr<BackpropResult>
     backprop(const Array &errorSignals) = 0;
+    /// specify how the weights have to be adjusted
+    virtual void setLearningPolicy(float learningRate, float momentum=0.0) = 0;
+    /// adjust layer weights after the backpropagation pass
+    virtual void update() = 0;
 };
 
 #ifdef NOTCH_USE_CBLAS
@@ -722,6 +730,10 @@ private:
     std::shared_ptr<BackpropResult> thisBPR; //< backpropagation results of this layer
     std::shared_ptr<BackpropResult> nextBPR; //< backpropagation results of the next layer
     bool buffersAreReady = false; //< true if input/output and backprop buffers are allocated
+    float learningRate;
+    float momentum;
+    Weights weightCorrections;
+    Weights biasCorrections;
 
     void rememberInputs(const Array& inputs) {
         *lastInputs = inputs;  // remember for calcWeightCorrectins()
@@ -848,7 +860,9 @@ public:
                         const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nOutputs(nOutputs), weights(nInputs * nOutputs),
           bias(nOutputs), activationFunction(af), inducedLocalField(nOutputs),
-          activationGrad(nOutputs), lastInputs(nullptr), lastOutputs(nullptr) {}
+          activationGrad(nOutputs), lastInputs(nullptr), lastOutputs(nullptr),
+          weightCorrections(0.0, nInputs * nOutputs),
+          biasCorrections(0.0, nOutputs) {}
 
     /// Initialize synaptic weights and allocate buffers.
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
@@ -879,8 +893,16 @@ public:
         return thisBPR;
     }
 
-    void adjustWeights(const Weights &weightCorrections,
-                       const Array &biasCorrections) {
+    virtual void setLearningPolicy(float learningRate, float momentum=0.0) {
+        this->learningRate = learningRate;
+        this->momentum = momentum;
+    }
+
+    virtual void update() {
+        weightCorrections = (momentum * weightCorrections)
+                          + (learningRate * thisBPR->weightCorrections);
+        biasCorrections = (momentum * biasCorrections)
+                        + (learningRate * thisBPR->biasCorrections);
         weights += weightCorrections;
         bias += biasCorrections;
     }
@@ -948,14 +970,17 @@ public:
         return bpResults[0];
     }
 
-    void adjustWeights(float learningRate) {
+    virtual void setLearningPolicy(float learningRate, float momentum=0.0) {
         for (size_t i = 0; i < layers.size(); ++i) {
-            Weights &dW = bpResults[i]->weightCorrections;
-            Array &db = bpResults[i]->biasCorrections;
-            layers[i].adjustWeights(learningRate * dW, learningRate * db);
+            layers[i].setLearningPolicy(learningRate, momentum);
         }
     }
 
+    virtual void update() {
+        for (size_t i = 0; i < layers.size(); ++i) {
+            layers[i].update();
+        }
+    }
 
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
