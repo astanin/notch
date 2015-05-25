@@ -23,6 +23,7 @@ IF(USE_CBLAS)
         add_definitions(-DNOTCH_USE_CBLAS)
         set(CBLAS_LIBRARIES ${CBLAS_LIBRARY})
         set(CBLAS_INCLUDE_DIRS ${CBLAS_INCLUDE_DIR})
+        include_directories(${CBLAS_INCLUDE_DIRS})
     ENDIF(CBLAS_LIBRARY)
 ENDIF(USE_CBLAS)
 
