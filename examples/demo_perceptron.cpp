@@ -6,22 +6,39 @@
 
 #include "notch.hpp"
 #include "notch_io.hpp"
-#include "classifier.hpp"
+#include "notch_metrics.hpp"
 
 
 using namespace std;
 int N_ITERS = 100;
 
 
+class LinearPerceptronClassifier : public AClassifier<bool, true> {
+private:
+	LinearPerceptron &perceptron;
+
+public:
+	LinearPerceptronClassifier(LinearPerceptron &perceptron)
+		: perceptron(perceptron) {}
+
+	virtual bool aslabel(const Output &y) {
+		return (y[0] > 0);
+	}
+
+	virtual bool classify(const Input &x) {
+		return (perceptron.output(x) > 0);
+	}
+};
+
+
 void print_stats(LinearPerceptron &p, const LabeledDataset &testSet) {
     LinearPerceptronClassifier lpc(p);
-    ConfusionMatrix cm = lpc.test(testSet);
+    ConfusionMatrix<bool, true> cm = lpc.test(testSet);
     cout << "Synaptic weights:\n";
     cout << "  " << p << "\n";
-    cout << "Confusion matrix:\n";
-    cout << "  TP=" << cm.truePositives << " FP=" << cm.falsePositives << "\n";
-    cout << "  FN=" << cm.falseNegatives << " TN=" << cm.trueNegatives << "\n";
-    cout << "Accuracy:\n  " << cm.accuracy() << "\n";
+	cout << "Precision:  " << cm.precision() << "\n";
+	cout << "Recall:     " << cm.recall() << "\n";
+	cout << "Accuracy:   " << cm.accuracy() << "\n";
 }
 
 int main(int argc, char *argv[]) {
