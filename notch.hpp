@@ -303,7 +303,10 @@ using WeightsInitializer =
  * Pick weights from a zero-centered _normal_ distrubition with variance
  * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
  *
- * See http://andyljones.tumblr.com/post/110998971763/ **/
+ * See
+ *
+ *  - NNLM3, Chapter 4, page 149;
+ *  - http://andyljones.tumblr.com/post/110998971763/ **/
 void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
     float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
     std::normal_distribution<float> nd(0.0, sigma);
@@ -318,7 +321,10 @@ void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
  * Pick weights from a zero-centered _uniform_ distrubition with variance
  * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
  *
- * See http://andyljones.tumblr.com/post/110998971763/ **/
+ * See
+ *
+ *  - NNLM3, Chapter 4, page 149;
+ *  - http://andyljones.tumblr.com/post/110998971763/ **/
 void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
     float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
     float a = sigma * sqrt(3.0);
@@ -518,6 +524,8 @@ public:
  *
  *        where $\eta$ is learning rate.
  **/
+
+/** A step of the perceptron convergence algorithm. */
 void trainPerceptron_addSample(ANeuron &p, Input input, float output, float eta) {
     float y = sign(p.output(input));
     float xfactor = eta * (output - y);
@@ -566,6 +574,8 @@ void trainPerceptron(ANeuron &p, const LabeledDataset &trainSet,
  *       = \mathbf{w}(n) + \eta(n) \sum_{\mathbf{x}(n) \in \Xi}
  *                                      ( - \mathbf{x}(n) d(n) ). $$
  **/
+
+/** A step of the perceptron batch-training algorithm. */
 void batchTrainPerceptron_addBatch(ANeuron &p, LabeledDataset batch, float eta) {
     for (auto sample : batch) {
         float desired = sample.label[0]; // desired output
@@ -581,7 +591,9 @@ void batchTrainPerceptron_addBatch(ANeuron &p, LabeledDataset batch, float eta) 
     }
 }
 
-void batchTrainPerceptron(ANeuron &p, const LabeledDataset &trainSet, int epochs, float eta) {
+/** Perceptron batch-training algorithm. */
+void batchTrainPerceptron(ANeuron &p, const LabeledDataset &trainSet,
+                          int epochs, float eta) {
     assert(trainSet.outputDim() == 1);
     assert(trainSet.inputDim() + 1 == p.getWeights().size());
     // \nabla J(w) = \sum_{\vec{x}(n) \in H} ( - \vec{x}(n) d(n) ) (1.40)
