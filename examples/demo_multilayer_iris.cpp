@@ -37,36 +37,21 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
-    LabeledDataset trainSet = CSVReader<>::read(f);
-    OneHotEncoder labelEnc(trainSet.getLabels());
-    trainSet.transformLabels(labelEnc);
-    //cout << ArrowFormat(trainSet);
+    LabeledDataset irisData = CSVReader<>::read(f);
+    OneHotEncoder labelEnc(irisData.getLabels());
+    irisData.transformLabels(labelEnc);
 
     MultilayerPerceptron net({4, 6, 3}, scaledTanh);
     unique_ptr<RNG> rng(newRNG());
     net.init(rng);
-    net.setLearningPolicy(0.01f);
     cout << net << "\n\n";
 
-    cout << "initial loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
-
-    for (int j = 0; j < 1000; ++j) {
-        // training cycle
-        for (auto sample : trainSet) {
-            Array actualOutput = *net.output(sample.data);
-            Array err = sample.label - actualOutput;
-            net.backprop(err);
-            net.update();
-        }
-        if (j % 50 == 49 || j < 5) {
-            cout << "epoch " << j+1
-                << " loss: " << totalLoss(L2_loss, net, trainSet) << "\n";
-        }
-    }
+    net.setLearningPolicy(0.01f);
+    trainWithSGD(net, irisData, irisData, rng, 1000, /* cbEvery */ 50);
     cout << "\n";
     cout << net << "\n";
 
-    for (auto s : trainSet) {
+    for (auto s : irisData) {
         cout << s.data << " -> ";
         cout << labelEnc.inverse_transform(*net.output(s.data)) << "\n";
     }

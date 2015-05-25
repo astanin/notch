@@ -985,7 +985,6 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
 };
 
-// TODO: SGD training utility
 // TODO: CNN layer
 // TODO: max-pooling layer
 // TODO: decouple activation function from layer
@@ -1019,7 +1018,7 @@ float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
 
 /** Calculate total loss across the entire testSet. */
 float totalLoss(LossFunction loss,
-                MultilayerPerceptron &net,
+                ABackpropLayer &net,
                 const LabeledDataset& testSet) {
     float totalLoss = 0.0;
     for (auto sample : testSet) {
@@ -1027,6 +1026,48 @@ float totalLoss(LossFunction loss,
         totalLoss += loss(*out, sample.label);
     }
     return totalLoss;
+}
+
+using TrainCallback =
+    std::function<void(int epoch, ABackpropLayer &, const LabeledDataset&)>;
+
+void printLoss(int epoch, ABackpropLayer &net, const LabeledDataset& testSet) {
+    std::cout << "epoch " << epoch
+              << " loss: " << totalLoss(L2_loss, net, testSet) << "\n";
+}
+
+/** Traing using stochastic gradient descent.
+ *
+ * Use net.setLearningPolicy() to change learning parameters.
+ *
+ * See:
+ *
+ *  - Efficient BackProp (2012) LeCun et al
+ *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
+ */
+// TODO: refactor trainWithSGD interface to allow callbacks and stop criteria
+void
+trainWithSGD(ABackpropLayer &net,
+             LabeledDataset &trainSet,
+             const LabeledDataset &testSet,
+             std::unique_ptr<RNG> &rng, int epochs,
+             int cbEvery=0, TrainCallback cb=printLoss) {
+    for (int j = 0; j < epochs; ++j) {
+        if (cbEvery > 0 && j % cbEvery == 0) {
+            cb(0, net, testSet);
+        }
+        trainSet.shuffle(rng);
+        for (auto sample : trainSet) {
+            auto out_ptr = net.output(sample.data);
+            // TODO: pass $d(E)/d(o_i)$ where $E$ is any loss function
+            Array err = sample.label - *out_ptr;
+            net.backprop(err);
+            net.update();
+        }
+    }
+    if (cbEvery > 0) {
+        cb(epochs, net, testSet);
+    }
 }
 
 // TODO: softmax layer

@@ -29,22 +29,8 @@ int main(int, char *[]) {
     }
     cout << "\n";
 
-    cout << "initial loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
-
     xorNet.setLearningPolicy(0.01f);
-    for (int j = 0; j < 5000; ++j) {
-        // training cycle
-        trainSet.shuffle(rng);
-        for (auto sample : trainSet) {
-            auto out_ptr = xorNet.output(sample.data);
-            Array err = sample.label - *out_ptr;
-            xorNet.backprop(err);
-            xorNet.update();
-        }
-        if (j % 500 == 0) {
-            cout << "epoch " << j+1 << " loss: " << totalLoss(L2_loss, xorNet, testSet) << "\n";
-        }
-    }
+    trainWithSGD(xorNet, trainSet, testSet, rng, /* epochs */ 5000, /* cbEvery */ 500);
     cout << "\n";
 
     cout << "final NN:\n" << xorNet << "\n";
