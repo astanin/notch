@@ -424,49 +424,6 @@ std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
  * ----------------------------
  **/
 
-std::ostream &operator<<(std::ostream &out, const ActivationFunction &af) {
-    af.print(out);
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const ANeuron &neuron) {
-    auto ws = neuron.getWeights();
-    for (auto it = std::begin(ws); it != std::end(ws); ++it) {
-        if (std::next(it) != std::end(ws)) {
-            out << *it << " ";
-        } else {
-            out << *it;
-        }
-    }
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const FullyConnectedLayer &layer) {
-    out << "  inputs: " << layer.nInputs << "\n";
-    out << "  outputs: " << layer.nOutputs << "\n";
-    out << "  activation: " << layer.activationFunction << "\n";
-    out << "  bias_and_weights:\n";
-    for (size_t r = 0; r < layer.nOutputs; ++r) {
-        out << "   ";
-        out << " " << layer.bias[r];
-        for (size_t c = 0; c < layer.nInputs; ++c) {
-            out << " " << layer.weights[r*layer.nInputs + c];
-        }
-        out << "\n";
-    }
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
-    int layerN = 1;
-    for (FullyConnectedLayer l : net.layers) {
-        out << "LAYER " << layerN << ":\n";
-        out << l;
-        layerN++;
-    }
-    return out;
-}
-
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
@@ -566,6 +523,9 @@ public:
     }
 };
 
+/// Write neural network parameters to a record-jar text file.
+///
+/// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
 class PlainTextNetworkWriter {
 private:
     std::ostream &out;
@@ -573,11 +533,11 @@ private:
 public:
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
-    void save(ANetworkLayer &layer) {
+    void save(const ANetworkLayer &layer) {
         out << "layer: FullyConnectedLayer\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
-        out << "activation: " << layer.getActivationFunction() << "\n";
+        out << "activation: "; layer.getActivationFunction().print(out); out << "\n";
         out << "bias_and_weights:\n";
         for (size_t r = 0; r < layer.outputDim(); ++r) {
             out << "   ";
@@ -589,8 +549,22 @@ public:
         }
     }
 
-    PlainTextNetworkWriter &operator<<(ANetworkLayer &layer) {
+    void save(const ANetwork<MLPIterator> &net) {
+        for (auto it = net.begin(); it != net.end(); ++it) {
+            save(*it);
+            if (it + 1 != net.end()) {
+                out << "%%\n";
+            }
+        }
+    }
+
+    PlainTextNetworkWriter &operator<<(const ANetworkLayer &layer) {
         save(layer);
+        return *this;
+    }
+
+    PlainTextNetworkWriter &operator<<(const ANetwork<MLPIterator> &net) {
+        save(net);
         return *this;
     }
 };

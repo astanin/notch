@@ -1051,9 +1051,6 @@ public:
         bias += biasCorrections;
     }
 
-    friend std::ostream &
-    operator<<(std::ostream &out, const FullyConnectedLayer &layer);
-
     virtual void setActivationFunction(const ActivationFunction &af) {
         activationFunction = &af;
     }
@@ -1074,8 +1071,18 @@ public:
     }
 };
 
+/** `ANetwork' is a stack of `ANetworkLayer's. */
+template<class LayerIterator>
+class ANetwork {
+public:
+    virtual LayerIterator begin() const = 0;
+    virtual LayerIterator end() const = 0;
+};
+
+using MLPIterator = std::vector<FullyConnectedLayer>::const_iterator;
+
 /// Multiple fully-connected layers stacked one upon another.
-class MultilayerPerceptron : public ABackpropLayer {
+class MultilayerPerceptron : public ABackpropLayer, public ANetwork<MLPIterator> {
 private:
     std::vector<FullyConnectedLayer> layers;
     std::vector<std::shared_ptr<BackpropResult>> bpResults;
@@ -1145,7 +1152,8 @@ public:
         }
     }
 
-    friend std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net);
+    virtual MLPIterator begin() const { return layers.cbegin(); }
+    virtual MLPIterator end() const { return layers.cend(); }
 };
 
 // TODO: CNN layer

@@ -1,3 +1,5 @@
+/// @file demo_multilayer_io.cpp -- Saving and loading multilayer perceptron parameters
+
 #include <iostream>
 #include <sstream>
 
@@ -7,16 +9,13 @@
 using namespace std;
 
 int main() {
+    auto rng = newRNG();
     stringstream ss;
-    FullyConnectedLayer layer({1, 2, 3}, {0.5}, linearActivation);
-    PlainTextNetworkWriter(ss) << layer;
-    cout << "saved:\n---\n" << ss.str() << "---\n";
+    MultilayerPerceptron mlp {2, 2, 1};
+    mlp.init(rng);
+    PlainTextNetworkWriter(ss) << mlp;
 
-    ss.seekg(0);
-    FullyConnectedLayer layer_copy;
-    PlainTextNetworkReader(ss) >> layer_copy;
-    cout << "loaded:\n---\n";
-    PlainTextNetworkWriter(cout) << layer_copy;
-    cout << "---\n";
-
+    cout << "saved:\n\n```\n";
+    cout << ss.str();
+    cout << "```\n\n";
 }
