@@ -685,6 +685,9 @@ public:
     virtual const Weights &getWeights() const = 0;
     /// Get the output bias matrix.
     virtual const Weights &getBias() const = 0;
+
+    /// Set layer's activation function.
+    virtual void setActivationFunction(const ActivationFunction &) = 0;
     /// Get layer's activation function.
     virtual const ActivationFunction &getActivationFunction() const = 0;
 };
@@ -755,7 +758,7 @@ protected:
     size_t nOutputs; //< the number of neurons in the layer
     Weights weights; //< weights matrix $w_ji$ for the entire layer, row-major order
     Weights bias;    //< bias values $b_j$ for the entire layer, one per neuron
-    const ActivationFunction &activationFunction;
+    const ActivationFunction *activationFunction;
 
     Array inducedLocalField;            //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;               //< $\phi^\prime (v_j)$
@@ -793,7 +796,7 @@ protected:
         std::transform(
             std::begin(inducedLocalField), std::end(inducedLocalField),
             std::begin(activationGrad),
-            [&](float y) { return activationFunction.derivative(y); });
+            [&](float y) { return activationFunction->derivative(y); });
     }
 
     /** Non-linear response of all neurons in the layer. */
@@ -801,7 +804,7 @@ protected:
         std::transform(std::begin(inducedLocalField),
                        std::end(inducedLocalField),
                        std::begin(outputs),
-                       [&](float y) { return activationFunction(y); });
+                       [&](float y) { return (*activationFunction)(y); });
     }
 
     void outputInplace(const Array &inputs, Array &outputs) {
@@ -899,9 +902,9 @@ protected:
 public:
     /// Create a layer with zero weights.
     FullyConnectedLayer(size_t nInputs, size_t nOutputs,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af)
         : nInputs(nInputs), nOutputs(nOutputs),
-          weights(nInputs * nOutputs), bias(nOutputs), activationFunction(af),
+          weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
@@ -912,10 +915,10 @@ public:
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af)
         : nInputs(weights.size()/bias.size()),
           nOutputs(bias.size()),
-          weights(weights), bias(bias), activationFunction(af),
+          weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
@@ -926,10 +929,10 @@ public:
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af)
         : nInputs(weights.size()/bias.size()),
           nOutputs(bias.size()),
-          weights(weights), bias(bias), activationFunction(af),
+          weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
@@ -956,6 +959,7 @@ public:
 
     /// Initialize synaptic weights.
     virtual void init(const Weights &weights, const Weights &bias) {
+        // TODO: allow changing size of not-yet-connected layers
         if (this->weights.size() != weights.size() ||
             this->bias.size() != bias.size()) {
             throw std::invalid_argument("incompatible weights|bias shape");
@@ -963,8 +967,6 @@ public:
         this->weights = weights;
         this->bias = bias;
     }
-
-    // TODO: modifiable activationFunction
 
     /// Interlayer connections allow to share input-output buffers between two layers.
     void connectTo(FullyConnectedLayer& nextLayer) {
@@ -1006,8 +1008,11 @@ public:
     friend std::ostream &
     operator<<(std::ostream &out, const FullyConnectedLayer &layer);
 
+    virtual void setActivationFunction(const ActivationFunction &af) {
+        activationFunction = &af;
+    }
     virtual const ActivationFunction &getActivationFunction() const {
-        return activationFunction;
+        return *activationFunction;
     }
     virtual size_t inputDim() const {
         return nInputs;
