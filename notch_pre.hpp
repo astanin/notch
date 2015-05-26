@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 */
 
-#include <cmath>
+#include <cmath>       // round
 #include <functional>
 #include <map>
 #include <set>
@@ -46,6 +46,15 @@ THE SOFTWARE.
 // TODO: Dataset shuffle
 // TODO: train and test set splitter
 // TODO: K-fold split
+
+#ifdef ENABLE_GCC49_CYGWIN_MSYS2_WORKAROUND
+// std::round is not available in some variants of GNU C++ 4.9 on Windows
+// http://stackoverflow.com/q/28997206/25450
+#include <math.h>
+namespace std {
+    float round(float x) { return round(x); }
+}
+#endif /* ENABLE_GCC49_CYGWIN_MSYS2_WORKAROUND */
 
 /** Encode categorical features as vectors.
  *

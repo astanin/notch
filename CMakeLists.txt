@@ -13,6 +13,18 @@ IF(MSVC)
     set(WARN_FLAGS "/W3 /wd4244 /wd4290 /wd4996")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARN_FLAGS}")
 ENDIF(MSVC)
+# GCC workaround for MSYS2 and Cygwin
+# see http://stackoverflow.com/q/28997206/25450
+IF(CMAKE_COMPILER_IS_GNUCXX)
+    IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        IF(${MINGW})
+            message(STATUS "Detected MinGW")
+        ELSE(${MINGW})
+            message(STATUS "Enabling workaround for GCC on CYGWIN/MSYS2")
+            add_definitions(-DENABLE_GCC49_CYGWIN_MSYS2_WORKAROUND)
+        ENDIF(${MINGW})
+    ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 IF(USE_CBLAS)
     find_library(CBLAS_LIBRARY NAMES openblas cblas)
