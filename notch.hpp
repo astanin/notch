@@ -877,7 +877,6 @@ public:
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
         init_fn(rng, bias, nInputs, nOutputs);
-        allocateInOutBuffers();
     }
 
     /// Interlayer connections allow to share input-output buffers between two layers.
@@ -885,6 +884,7 @@ public:
         if (nextLayer.nInputs != this->nOutputs) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
+        allocateInOutBuffers(nextLayer.nOutputs);
         nextLayer.lastInputs = this->lastOutputs;
         nextLayer.thisBPR = this->nextBPR;
     }
