@@ -486,12 +486,30 @@ std::istream &operator>>(std::istream &in, NNFormat<NN> &nnFormat) {
     return in;
 }
 
-class PlainTextFormatLayer : public NNFormat<FullyConnectedLayer> {
+class Layer_PlainTextFormat : public NNFormat<ALayerConfig> {
 protected:
-    FullyConnectedLayer &layer;
+    ALayerConfig &layer;
+
+    template<typename T>
+    T readVal(std::istream &in, const std::string expectedTag, T &val) {
+        std::string tag;
+        in >> std::ws >> tag;
+        if (tag != expectedTag) {
+            throw std::runtime_error(tag + " != \"" + expectedTag + "\"");
+        } else {
+            in >> std::ws >> val;
+        }
+    }
+
+    const std::map<std::string, const ActivationFunction&>
+         knownActivations = {{"tanh", defaultTanh},
+                             {"scaledTanh", scaledTanh},
+                             {"linear", linearActivation},
+                             {"ReLU", ReLU},
+                             {"leakyReLU", leakyReLU}};
 
 public:
-    PlainTextFormatLayer (FullyConnectedLayer &layer) : layer(layer) {}
+    Layer_PlainTextFormat (ALayerConfig &layer) : layer(layer) {}
 
     virtual std::ostream &dump(std::ostream &out) const {
         out << "FullyConnectedLayer:\n";
@@ -510,8 +528,35 @@ public:
         return out;
     }
 
-    virtual FullyConnectedLayer &load(std::istream &) {
-        // FIXME
+    virtual ALayerConfig &load(std::istream &in) {
+        std::string tag, afTag;
+        size_t nInputs = 0;
+        size_t nOutputs = 0;
+        in >> tag;
+        if (tag != "FullyConnectedLayer:") {
+            throw std::runtime_error(tag + " != \"FullyConnectedLayer:\"");
+        }
+        readVal(in, "inputs:", nInputs);
+        readVal(in, "outputs:", nOutputs);
+        readVal(in, "activation:", afTag);
+        if (! knownActivations.count(afTag) ) {
+            throw std::runtime_error("unknown activation: " + afTag);
+        }
+        const ActivationFunction &af = knownActivations.find(afTag)->second;
+        Weights w(0.0, nInputs * nOutputs);
+        Weights b(0.0, nOutputs);
+        in >> std::ws >> tag;
+        if (tag != "bias_and_weights:") {
+            throw std::runtime_error(tag + " != \"bias_and_weights:\"");
+        }
+        for (size_t row = 0; row < nOutputs; ++row) {
+            in >> std::ws >> b[row];
+            for (size_t col = 0; col < nInputs; ++col) {
+                in >> std::ws >> w[row*nInputs + col];
+            }
+        }
+        layer.init(w, b);
+        layer.setActivationFunction(af);
         return layer;
     }
 };
