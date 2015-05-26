@@ -141,3 +141,7 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[mlp]" ) {
     CHECK(out2.size() == 1);
     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 }
+
+
+
+#include "test_notch_io.hpp"
