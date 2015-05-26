@@ -491,6 +491,7 @@ private:
         } else {
             in >> std::ws >> value;
         }
+        return value;
     }
 
     void
