@@ -117,4 +117,28 @@ TEST_CASE("Dataset CSV-format reader (categorical labels and quotes)", "[io]") {
     }
 }
 
+TEST_CASE("FullyConnectedLayer input-output to plain-text", "[io]") {
+    // output
+    stringstream ss;
+    FullyConnectedLayer layer({1, 2, 3}, {0.5}, linearActivation);
+    PlainTextNetworkWriter(ss) << layer;
+    // output check
+    CHECK(ss.str() == "layer: FullyConnectedLayer\n"
+                      "inputs: 3\n"
+                      "outputs: 1\n"
+                      "activation: linear\n"
+                      "bias_and_weights:\n"
+                      "    0.5 1 2 3\n");
+    // input
+    ss.seekg(0);
+    FullyConnectedLayer layer_copy;
+    PlainTextNetworkReader(ss) >> layer_copy;
+    // input check
+    CHECK(layer.inputDim() == layer_copy.inputDim());
+    CHECK(layer.outputDim() == layer_copy.outputDim());
+    auto out = *layer.output({100, 10, 1});
+    auto out_copy = *layer_copy.output({100, 10, 1});
+    CHECK(out[0] == Approx(out_copy[0]));
+}
+
 #endif
