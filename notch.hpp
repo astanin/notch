@@ -773,7 +773,8 @@ protected:
     std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
     std::shared_ptr<BackpropResult> thisBPR; //< backpropagation results of this layer
     std::shared_ptr<BackpropResult> nextBPR; //< backpropagation results of the next layer
-    bool buffersAreReady = false; //< true if input/output and backprop buffers are allocated
+    bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
+
     float learningRate;
     float momentum;
     Weights weightCorrections;
@@ -899,10 +900,59 @@ protected:
         buffersAreReady = true;
     }
 
+    /// @return true if input-output buffers are allocated _and_ shared
+    bool isConnected() const {
+        return (buffersAreReady &&
+                !(lastInputs.unique() && lastOutputs.unique() &&
+                  thisBPR.unique() && nextBPR.unique()));
+    }
+
+    /// Resize all layer buffers if it is initialized with a weight matrix
+    /// of different shape. We can do it only if the layer is not connected
+    /// to other layer (is not sharing buffers), i.e. before connectTo().
+    void initResize(const Weights& weights, const Weights &bias) {
+        bool needResize = this->weights.size() != weights.size() ||
+                          this->bias.size() != bias.size();
+        if (needResize) {
+            if (isConnected() || nextBPR) {
+                throw std::invalid_argument("cannot reshape a connected layer");
+            } else {
+                size_t n_in = weights.size() / bias.size();
+                size_t n_out = bias.size();
+                if (n_in * n_out != weights.size()) {
+                    throw std::invalid_argument("incompatible weights/bias shapes");
+                }
+                // resize everything
+                nInputs = n_in;
+                nOutputs = n_out;
+                this->weights.resize(n_in * n_out, 0.0);
+                this->bias.resize(n_out);
+                inducedLocalField.resize(n_out);
+                activationGrad.resize(n_out);
+                localGrad.resize(n_out);
+                // resize shared buffers which may happen to be allocated
+                // in the stand-alone (disconnected) layer
+                if (lastInputs) {
+                    lastInputs->resize(n_in);
+                }
+                if (lastOutputs) {
+                    lastOutputs->resize(n_out);
+                }
+                if (thisBPR) {
+                    thisBPR = std::make_shared<BackpropResult>(n_in, n_out);
+                }
+                // resize buffers for historical values
+                // TODO: replace with LearningPolicy and resize that
+                weightCorrections.resize(n_in * n_out, 0.0);
+                biasCorrections.resize(n_out, 0.0);
+            }
+        }
+    }
+
 public:
     /// Create a layer with zero weights.
     FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
-                        const ActivationFunction &af = linearActivation)
+                        const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -915,7 +965,7 @@ public:
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
-                        const ActivationFunction &af)
+                        const ActivationFunction &af = scaledTanh)
         : nInputs(weights.size()/bias.size()),
           nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
@@ -929,7 +979,7 @@ public:
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
-                        const ActivationFunction &af)
+                        const ActivationFunction &af = scaledTanh)
         : nInputs(weights.size()/bias.size()),
           nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
@@ -949,21 +999,16 @@ public:
 
     /// Initialize synaptic weights.
     virtual void init(Weights &&weights, Weights &&bias) {
-        if (this->weights.size() != weights.size() ||
-            this->bias.size() != bias.size()) {
-            throw std::invalid_argument("incompatible weights|bias shape");
-        }
+        // allow changing size of not-yet-connected layers
+        initResize(weights, bias);
         this->weights = weights;
         this->bias = bias;
     }
 
     /// Initialize synaptic weights.
     virtual void init(const Weights &weights, const Weights &bias) {
-        // TODO: allow changing size of not-yet-connected layers
-        if (this->weights.size() != weights.size() ||
-            this->bias.size() != bias.size()) {
-            throw std::invalid_argument("incompatible weights|bias shape");
-        }
+        // allow changing size of not-yet-connected layers
+        initResize(weights, bias);
         this->weights = weights;
         this->bias = bias;
     }
@@ -997,6 +1042,7 @@ public:
     }
 
     virtual void update() {
+        // TODO: move update logic to LearningPolicy
         weightCorrections = (momentum * weightCorrections)
                           + (learningRate * thisBPR->weightCorrections);
         biasCorrections = (momentum * biasCorrections)
