@@ -1071,18 +1071,8 @@ public:
     }
 };
 
-/** `ANetwork' is a stack of `ANetworkLayer's. */
-template<class LayerIterator>
-class ANetwork {
-public:
-    virtual LayerIterator begin() const = 0;
-    virtual LayerIterator end() const = 0;
-};
-
-using MLPIterator = std::vector<FullyConnectedLayer>::const_iterator;
-
 /// Multiple fully-connected layers stacked one upon another.
-class MultilayerPerceptron : public ABackpropLayer, public ANetwork<MLPIterator> {
+class MultilayerPerceptron : public ABackpropLayer {
 private:
     std::vector<FullyConnectedLayer> layers;
     std::vector<std::shared_ptr<BackpropResult>> bpResults;
@@ -1091,20 +1081,27 @@ public:
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
         : layers() {
-        assert(shape.size() > 0);
+        if (shape.size() <= 0) {
+            throw std::invalid_argument("initializer list is empty");
+        }
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);
         for (; pOut != shape.end(); ++pIn, ++pOut) {
             auto inSize = *pIn;
             auto outSize = *pOut;
             FullyConnectedLayer layer(inSize, outSize, af);
-            layers.push_back(layer);
-            if (layers.size() >= 2) { // connect the last two layers
-                auto n = layers.size();
-                layers[n-2].connectTo(layers[n-1]);
-            }
+            append(std::move(layer));
         }
+    }
+
+    MultilayerPerceptron &append(FullyConnectedLayer &&layer) {
+        layers.push_back(layer);
         bpResults.resize(layers.size());
+        if (layers.size() >= 2) { // connect the last two layers
+           auto n = layers.size();
+           layers[n-2].connectTo(layers[n-1]);
+        }
+        return *this;
     }
 
     void
@@ -1152,8 +1149,9 @@ public:
         }
     }
 
-    virtual MLPIterator begin() const { return layers.cbegin(); }
-    virtual MLPIterator end() const { return layers.cend(); }
+    using MLPIterator = decltype(layers.cbegin());
+    MLPIterator begin() const { return layers.cbegin(); }
+    MLPIterator end() const { return layers.cend(); }
 };
 
 // TODO: CNN layer

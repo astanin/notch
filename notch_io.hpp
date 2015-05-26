@@ -549,7 +549,7 @@ public:
         }
     }
 
-    void save(const ANetwork<MLPIterator> &net) {
+    void save(const MultilayerPerceptron &net) {
         for (auto it = net.begin(); it != net.end(); ++it) {
             save(*it);
             if (it + 1 != net.end()) {
@@ -563,7 +563,7 @@ public:
         return *this;
     }
 
-    PlainTextNetworkWriter &operator<<(const ANetwork<MLPIterator> &net) {
+    PlainTextNetworkWriter &operator<<(const MultilayerPerceptron &net) {
         save(net);
         return *this;
     }
