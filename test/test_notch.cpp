@@ -43,7 +43,7 @@ public:
     CHECK( all_of(begin(name), end(name), is_zero) ); \
 } while(0)
 
-TEST_CASE( "FullyConnectedLayer construction", "[mlp]" ) {
+TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     size_t n_in = 3;
     size_t n_out = 2;
     FullyConnectedLayer_Test fc(n_in, n_out, linearActivation);
@@ -58,7 +58,7 @@ TEST_CASE( "FullyConnectedLayer construction", "[mlp]" ) {
     CHECK_ARRAY_IS_INITIALIZED(biasCorrections, fc.getBiasCorrections(), n_out);
 }
 
-TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[mlp]" ) {
+TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
     size_t n_in = 3;
     size_t n_out = 7;
     size_t n_out_next = 4;
@@ -101,7 +101,7 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[mlp]" ) {
     CHECK(fc.getLastOutputs() == fc2.getLastInputs());
 }
 
-TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[mlp]" ) {
+TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[core]" ) {
     /// three in, two out
     FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
                            {2.5, 5.0}, // bias
@@ -112,7 +112,7 @@ TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[mlp]" ) {
     CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
 }
 
-TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[mlp]" ) {
+TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[core]" ) {
     /// three in, two out
     const Weights w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
     const Weights bias = {2.5, 5.0}; // bias
@@ -123,7 +123,7 @@ TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[mlp]" ) {
     CHECK(out[1] == Approx(0.111 + 5.0));
 }
 
-TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[mlp]" ) {
+TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     FullyConnectedLayer fc(2, 1, linearActivation);
     auto out_before = *fc.output({1,1});
     CHECK(out_before.size() == 1);

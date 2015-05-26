@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(notch)
+enable_testing()
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
     set(WARN_FLAGS "-Wall -Wextra -pedantic")
@@ -45,6 +46,8 @@ set(SOURCE_FILES
     notch_pre.hpp
     notch_metrics.hpp)
 
+add_test(test_notch test_notch "[core]")
+add_test(test_notch_io test_notch "[io]")
 add_executable(test_notch test/test_notch.cpp ${SOURCE_FILES})
 target_include_directories(test_notch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
