@@ -1078,6 +1078,8 @@ private:
     std::vector<std::shared_ptr<BackpropResult>> bpResults;
 
 public:
+    MultilayerPerceptron() : layers(0), bpResults(0) {}
+
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
         : layers() {
@@ -1092,6 +1094,11 @@ public:
             FullyConnectedLayer layer(inSize, outSize, af);
             append(std::move(layer));
         }
+    }
+
+    void clear() {
+        layers.clear();
+        bpResults.clear();
     }
 
     MultilayerPerceptron &append(FullyConnectedLayer &&layer) {

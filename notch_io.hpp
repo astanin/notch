@@ -517,8 +517,32 @@ public:
         return layer;
     }
 
+    MultilayerPerceptron &load(MultilayerPerceptron &mlp) {
+        std::string netTag;
+        size_t nLayers;
+        read_tag_value("net:", netTag);
+        if (netTag != "MultilayerPerceptron") {
+            auto what = "unsupported network type: " + netTag;
+            throw std::runtime_error(what);
+        }
+        read_tag_value("layers:", nLayers);
+        consume_end_of_record();
+        mlp.clear();
+        for (size_t i = 0; i < nLayers; ++i) {
+            FullyConnectedLayer layer;
+            load(layer);
+            mlp.append(std::move(layer));
+        }
+        return mlp;
+    }
+
     PlainTextNetworkReader &operator>>(ANetworkLayer &layer) {
         load(layer);
+        return *this;
+    }
+
+    PlainTextNetworkReader &operator>>(MultilayerPerceptron &mlp) {
+        load(mlp);
         return *this;
     }
 };
@@ -550,6 +574,13 @@ public:
     }
 
     void save(const MultilayerPerceptron &net) {
+        size_t nLayers = std::distance(net.begin(), net.end());
+        if (!nLayers) {
+            return;
+        }
+        out << "net: MultilayerPerceptron\n";
+        out << "layers: " << nLayers << "\n";
+        out << "%%\n";
         for (auto it = net.begin(); it != net.end(); ++it) {
             save(*it);
             if (it + 1 != net.end()) {

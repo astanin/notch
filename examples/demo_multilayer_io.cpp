@@ -18,4 +18,13 @@ int main() {
     cout << "saved:\n\n```\n";
     cout << ss.str();
     cout << "```\n\n";
+
+    ss.seekg(0);
+    MultilayerPerceptron mlp_copy;
+    PlainTextNetworkReader(ss) >> mlp_copy;
+
+    cout << "loaded:\n\n```\n";
+    PlainTextNetworkWriter(cout) << mlp_copy;
+    cout << "```\n\n";
+
 }
