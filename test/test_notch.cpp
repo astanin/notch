@@ -99,3 +99,24 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[mlp]" ) {
     CHECK(fc.getLastOutputs() == fc2.getLastInputs());
 }
 
+TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[mlp]" ) {
+    /// three in, two out
+    FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
+                           {2.5, 5.0}, // bias
+                           defaultTanh);
+    auto out = *fc.output({1,1,1});
+    CHECK(out.size() == 2);
+    CHECK(out[0] == Approx(tanh(111 + 2.5)));
+    CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
+}
+
+TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[mlp]" ) {
+    /// three in, two out
+    const Weights w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
+    const Weights bias = {2.5, 5.0}; // bias
+    FullyConnectedLayer fc(w, bias, linearActivation);
+    auto out = *fc.output({1,1,1});
+    CHECK(out.size() == 2);
+    CHECK(out[0] == Approx(111 + 2.5));
+    CHECK(out[1] == Approx(0.111 + 5.0));
+}

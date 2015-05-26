@@ -861,10 +861,39 @@ protected:
     }
 
 public:
+    /// Create a layer with zero weights.
     FullyConnectedLayer(size_t nInputs, size_t nOutputs,
                         const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(af),
+          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          // shared buffers are allocated dynamically
+          lastInputs(nullptr), lastOutputs(nullptr),
+          thisBPR(nullptr), nextBPR(nullptr),
+          // historical values for corrections can be initialized immediately
+          weightCorrections(0.0, nInputs * nOutputs),
+          biasCorrections(0.0, nOutputs) {}
+
+    /// Create a layer from a weights matrix.
+    FullyConnectedLayer(Weights &&weights, Weights &&bias,
+                        const ActivationFunction &af = scaledTanh)
+        : nInputs(weights.size()/bias.size()),
+          nOutputs(bias.size()),
+          weights(weights), bias(bias), activationFunction(af),
+          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          // shared buffers are allocated dynamically
+          lastInputs(nullptr), lastOutputs(nullptr),
+          thisBPR(nullptr), nextBPR(nullptr),
+          // historical values for corrections can be initialized immediately
+          weightCorrections(0.0, nInputs * nOutputs),
+          biasCorrections(0.0, nOutputs) {}
+
+    /// Create a layer from a copy of a weights matrix.
+    FullyConnectedLayer(const Weights &weights, const Weights &bias,
+                        const ActivationFunction &af = scaledTanh)
+        : nInputs(weights.size()/bias.size()),
+          nOutputs(bias.size()),
+          weights(weights), bias(bias), activationFunction(af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
