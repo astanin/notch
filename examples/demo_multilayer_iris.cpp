@@ -31,7 +31,7 @@ private:
 	MultilayerPerceptron &net;
 
 public:
-	IntClassifier(MultilayerPerceptron &net, OneHotEncoder &enc) 
+	IntClassifier(MultilayerPerceptron &net, OneHotEncoder &enc)
 		: enc(enc), net(net) {}
 
 	virtual int aslabel(const Output &out) {
@@ -56,32 +56,33 @@ int main(int argc, char *argv[]) {
 
     LabeledDataset irisData = CSVReader<>::read(f);
     OneHotEncoder labelEnc(irisData.getLabels());
-	irisData.transformLabels(labelEnc);
+    irisData.transformLabels(labelEnc);
 
-	MultilayerPerceptron net({ 4, 6, 3 }, scaledTanh);
-	unique_ptr<RNG> rng(newRNG());
+    MultilayerPerceptron net({ 4, 6, 3 }, scaledTanh);
+    unique_ptr<RNG> rng(newRNG());
     net.init(rng);
-    cout << net << "\n\n";
-
-	IntClassifier classifier(net, labelEnc);
-	auto cm = classifier.test(irisData); // cm is a confusion matrix
-	for (int c = 0; c < 3; ++c) {
-		cout << "precision(" << c << "): " << cm.precision(c) << "\n";
-	}
-	cout << "accuracy: " << cm.accuracy() << "\n\n";
-
-	net.setLearningPolicy(0.01f);
-    trainWithSGD(net, irisData, rng, 1000,
-                 /* callbackEvery */ 100,
-                 /* callback */ [&](int i, ABackpropLayer& net) {
-                     printLoss(i, net, irisData);
-                 });
+    PlainTextNetworkWriter(cout) << net;
     cout << "\n";
-    cout << net << "\n";
 
-	cm = classifier.test(irisData); // cm is a confusion matrix
-	for (int c = 0; c < 3; ++c) {
-		cout << "precision(" << c << "): " << cm.precision(c) << "\n";
-	}
-	cout << "accuracy: " << cm.accuracy() << "\n\n";
+    IntClassifier classifier(net, labelEnc);
+    auto cm = classifier.test(irisData); // cm is a confusion matrix
+    for (int c = 0; c < 3; ++c) {
+        cout << "precision(" << c << "): " << cm.precision(c) << "\n";
+    }
+    cout << "accuracy: " << cm.accuracy() << "\n\n";
+
+    net.setLearningPolicy(0.01f);
+    trainWithSGD(net, irisData, rng, 1000,
+            /* callbackEvery */ 100,
+            /* callback */ [&](int i, ABackpropLayer& net) {
+                printLoss(i, net, irisData);
+            });
+    cout << "\n";
+    PlainTextNetworkWriter(cout) << net;
+
+    cm = classifier.test(irisData); // cm is a confusion matrix
+    for (int c = 0; c < 3; ++c) {
+        cout << "precision(" << c << "): " << cm.precision(c) << "\n";
+    }
+    cout << "accuracy: " << cm.accuracy() << "\n\n";
 }

@@ -22,7 +22,8 @@ int main(int, char *[]) {
     cout << "training set:\n" << CSVFormat(trainSet) << "\n";
     MultilayerPerceptron xorNet({2, 2, 1}, scaledTanh);
     xorNet.init(rng);
-    cout << "initial NN:\n" << xorNet << "\n";
+    cout << "initial NN:\n\n";
+    PlainTextNetworkWriter(cout) << xorNet;
     cout << "initial out:\n";
     for (auto s : trainSet) {
         cout << s.data << " -> " << *xorNet.output(s.data) << "\n";
@@ -37,7 +38,8 @@ int main(int, char *[]) {
                 });
     cout << "\n";
 
-    cout << "final NN:\n" << xorNet << "\n";
+    cout << "final NN:\n\n";
+    PlainTextNetworkWriter(cout) << xorNet;
     cout << "final out:\n";
     for (auto s : trainSet) {
         cout << s.data << " -> " << *xorNet.output(s.data) << "\n";
