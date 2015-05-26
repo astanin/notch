@@ -667,6 +667,28 @@ public:
     virtual void update() = 0;
 };
 
+/** Read and write layer's parameters. */
+class ALayerConfig {
+public:
+    /// Randomly initialize synaptic weights.
+    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) = 0;
+    /// Initialize synaptic weights using a weights matrix.
+    virtual void init(Weights &&weights, Weights &&bias) = 0;
+    /// Initialize synaptic weights using a copy of a weights matrix.
+    virtual void init(const Weights &weights, const Weights &bias) = 0;
+
+    /// Get the number of input variables.
+    virtual size_t inputDim() const = 0;
+    /// Get the number of output variables.
+    virtual size_t outputDim() const = 0;
+    /// Get the synaptic weights matrix.
+    virtual const Weights &getWeights() const = 0;
+    /// Get the output bias matrix.
+    virtual const Weights &getBias() const = 0;
+    /// Get layer's activation function.
+    virtual const ActivationFunction &getActivationFunction() const = 0;
+};
+
 #ifdef NOTCH_USE_CBLAS
 
 /** Matrix-vector product using CBLAS.
@@ -727,7 +749,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
 
 
 /** A fully connected layer of neurons with backpropagation. */
-class FullyConnectedLayer : public ABackpropLayer {
+class FullyConnectedLayer : public ABackpropLayer, public ALayerConfig {
 protected:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer
@@ -917,13 +939,13 @@ public:
           biasCorrections(0.0, nOutputs) {}
 
     /// Initialize synaptic weights.
-    void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
+    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
         init_fn(rng, bias, nInputs, nOutputs);
     }
 
     /// Initialize synaptic weights.
-    void init(Weights &&weights, Weights &&bias) {
+    virtual void init(Weights &&weights, Weights &&bias) {
         if (this->weights.size() != weights.size() ||
             this->bias.size() != bias.size()) {
             throw std::invalid_argument("incompatible weights|bias shape");
@@ -933,7 +955,7 @@ public:
     }
 
     /// Initialize synaptic weights.
-    void init(const Weights &weights, const Weights &bias) {
+    virtual void init(const Weights &weights, const Weights &bias) {
         if (this->weights.size() != weights.size() ||
             this->bias.size() != bias.size()) {
             throw std::invalid_argument("incompatible weights|bias shape");
@@ -941,6 +963,8 @@ public:
         this->weights = weights;
         this->bias = bias;
     }
+
+    // TODO: modifiable activationFunction
 
     /// Interlayer connections allow to share input-output buffers between two layers.
     void connectTo(FullyConnectedLayer& nextLayer) {
@@ -981,6 +1005,22 @@ public:
 
     friend std::ostream &
     operator<<(std::ostream &out, const FullyConnectedLayer &layer);
+
+    virtual const ActivationFunction &getActivationFunction() const {
+        return activationFunction;
+    }
+    virtual size_t inputDim() const {
+        return nInputs;
+    }
+    virtual size_t outputDim() const {
+        return nOutputs;
+    }
+    virtual const Weights &getWeights() const {
+        return weights;
+    }
+    virtual const Weights &getBias() const {
+        return bias;
+    }
 };
 
 /// Multiple fully-connected layers stacked one upon another.
