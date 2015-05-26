@@ -467,39 +467,12 @@ std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
     return out;
 }
 
-/** Save and load neural network configuration. */
-template<class NN>
-class NNFormat {
-public:
-    virtual std::ostream &dump(std::ostream &) const = 0;
-    virtual NN &load(std::istream &) = 0;
-};
-
-template<class NN>
-std::ostream &operator<<(std::ostream &out, const NNFormat<NN> &nnFormat) {
-    return nnFormat.dump(out);
-}
-
-template<class NN>
-std::istream &operator>>(std::istream &in, NNFormat<NN> &nnFormat) {
-    nnFormat.load(in);
-    return in;
-}
-
-class Layer_PlainTextFormat : public NNFormat<ALayerConfig> {
-protected:
-    ALayerConfig &layer;
-
-    template<typename T>
-    T readVal(std::istream &in, const std::string expectedTag, T &val) {
-        std::string tag;
-        in >> std::ws >> tag;
-        if (tag != expectedTag) {
-            throw std::runtime_error(tag + " != \"" + expectedTag + "\"");
-        } else {
-            in >> std::ws >> val;
-        }
-    }
+/// Read neural network parameters from a record-jar text file.
+///
+/// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
+class PlainTextNetworkReader {
+private:
+    std::istream &in;
 
     const std::map<std::string, const ActivationFunction&>
          knownActivations = {{"tanh", defaultTanh},
@@ -508,15 +481,103 @@ protected:
                              {"ReLU", ReLU},
                              {"leakyReLU", leakyReLU}};
 
-public:
-    Layer_PlainTextFormat (ALayerConfig &layer) : layer(layer) {}
+    template<typename T> T
+    read_tag_value(const std::string expected_tag, T &value) {
+        std::string tag;
+        in >> std::ws >> tag;
+        if (tag != expected_tag) {
+            auto what = "unexpected tag: " + tag + " != " + expected_tag;
+            throw std::runtime_error(what);
+        } else {
+            in >> std::ws >> value;
+        }
+    }
 
-    virtual std::ostream &dump(std::ostream &out) const {
-        out << "FullyConnectedLayer:\n";
-        out << "  inputs: " << layer.inputDim() << "\n";
-        out << "  outputs: " << layer.outputDim() << "\n";
-        out << "  activation: " << layer.getActivationFunction() << "\n";
-        out << "  bias_and_weights:\n";
+    void
+    read_weights(const std::string expected_tag, Weights &w, Weights &bias) {
+        size_t nInputs = w.size() / bias.size();
+        size_t nOutputs = bias.size();
+        std::string tag;
+        in >> std::ws >> tag;
+        if (tag != expected_tag) {
+            auto what = "unexpected tag: " + tag + " != " + expected_tag;
+            throw std::runtime_error(what);
+        }
+        for (size_t row = 0; row < nOutputs; ++row) {
+            in >> std::ws >> bias[row];
+            for (size_t col = 0; col < nInputs; ++col) {
+                in >> std::ws >> w[row*nInputs + col];
+            }
+        }
+    }
+
+    /// read end-of-record sequence if there is any
+    void
+    consume_end_of_record() {
+        in >> std::ws;          // consume whitespace
+        if (in.peek() == '%') {
+           in.get();            // read the first %
+           if (in.peek() == '%') {
+               in.get();        // read also the second %
+           } else {
+               in.putback('%'); // the first %
+           }
+        }
+        in >> std::ws;          // consume whitespace
+    }
+
+public:
+
+    PlainTextNetworkReader(std::istream &in = std::cin) : in(in) {}
+
+    ALayerConfig &load(ALayerConfig &layer) {
+        std::string layerTag, activationTag;
+        size_t nInputs = 0;
+        size_t nOutputs = 0;
+        // read parameters
+        read_tag_value("layer:", layerTag);
+        if (layerTag != "FullyConnectedLayer") {
+            auto what = "unsupported layer type: " + layerTag;
+            throw std::runtime_error(what);
+        }
+        read_tag_value("inputs:", nInputs);
+        read_tag_value("outputs:", nOutputs);
+        read_tag_value("activation:", activationTag);
+        if (! knownActivations.count(activationTag) ) {
+            auto what = "unknown activation: " + activationTag;
+            throw std::runtime_error(what);
+        }
+        const ActivationFunction &activation =
+            knownActivations.find(activationTag)->second;
+        Weights w(0.0, nInputs * nOutputs);
+        Weights b(0.0, nOutputs);
+        read_weights("bias_and_weights:", w, b);
+        consume_end_of_record();
+        // modify the layer
+        layer.init(w, b);
+        layer.setActivationFunction(activation);
+        return layer;
+    }
+
+    PlainTextNetworkReader &operator>>(ALayerConfig &layer) {
+        load(layer);
+        return *this;
+    }
+};
+
+class PlainTextNetworkWriter {
+private:
+    std::ostream &out;
+
+public:
+    PlainTextNetworkWriter(std::ostream &out) : out(out) {}
+
+    void save(ALayerConfig &layer) {
+        out << "layer: FullyConnectedLayer\n";
+        out << "inputs: " << layer.inputDim() << "\n";
+        out << "outputs: " << layer.outputDim() << "\n";
+        out << "activation: " << layer.getActivationFunction() << "\n";
+        out << "bias_and_weights:\n";
         for (size_t r = 0; r < layer.outputDim(); ++r) {
             out << "   ";
             out << " " << layer.getBias()[r];
@@ -525,39 +586,11 @@ public:
             }
             out << "\n";
         }
-        return out;
     }
 
-    virtual ALayerConfig &load(std::istream &in) {
-        std::string tag, afTag;
-        size_t nInputs = 0;
-        size_t nOutputs = 0;
-        in >> tag;
-        if (tag != "FullyConnectedLayer:") {
-            throw std::runtime_error(tag + " != \"FullyConnectedLayer:\"");
-        }
-        readVal(in, "inputs:", nInputs);
-        readVal(in, "outputs:", nOutputs);
-        readVal(in, "activation:", afTag);
-        if (! knownActivations.count(afTag) ) {
-            throw std::runtime_error("unknown activation: " + afTag);
-        }
-        const ActivationFunction &af = knownActivations.find(afTag)->second;
-        Weights w(0.0, nInputs * nOutputs);
-        Weights b(0.0, nOutputs);
-        in >> std::ws >> tag;
-        if (tag != "bias_and_weights:") {
-            throw std::runtime_error(tag + " != \"bias_and_weights:\"");
-        }
-        for (size_t row = 0; row < nOutputs; ++row) {
-            in >> std::ws >> b[row];
-            for (size_t col = 0; col < nInputs; ++col) {
-                in >> std::ws >> w[row*nInputs + col];
-            }
-        }
-        layer.init(w, b);
-        layer.setActivationFunction(af);
-        return layer;
+    PlainTextNetworkWriter &operator<<(ALayerConfig &layer) {
+        save(layer);
+        return *this;
     }
 };
 

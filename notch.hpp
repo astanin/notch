@@ -901,8 +901,8 @@ protected:
 
 public:
     /// Create a layer with zero weights.
-    FullyConnectedLayer(size_t nInputs, size_t nOutputs,
-                        const ActivationFunction &af)
+    FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
+                        const ActivationFunction &af = linearActivation)
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
