@@ -668,7 +668,7 @@ public:
 };
 
 /** Read and write layer's parameters. */
-class ALayerConfig {
+class ANetworkLayer {
 public:
     /// Randomly initialize synaptic weights.
     virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) = 0;
@@ -752,7 +752,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
 
 
 /** A fully connected layer of neurons with backpropagation. */
-class FullyConnectedLayer : public ABackpropLayer, public ALayerConfig {
+class FullyConnectedLayer : public ABackpropLayer, public ANetworkLayer {
 protected:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer

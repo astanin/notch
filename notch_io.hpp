@@ -530,7 +530,7 @@ public:
 
     PlainTextNetworkReader(std::istream &in = std::cin) : in(in) {}
 
-    ALayerConfig &load(ALayerConfig &layer) {
+    ANetworkLayer &load(ANetworkLayer &layer) {
         std::string layerTag, activationTag;
         size_t nInputs = 0;
         size_t nOutputs = 0;
@@ -559,7 +559,7 @@ public:
         return layer;
     }
 
-    PlainTextNetworkReader &operator>>(ALayerConfig &layer) {
+    PlainTextNetworkReader &operator>>(ANetworkLayer &layer) {
         load(layer);
         return *this;
     }
@@ -572,7 +572,7 @@ private:
 public:
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
-    void save(ALayerConfig &layer) {
+    void save(ANetworkLayer &layer) {
         out << "layer: FullyConnectedLayer\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
@@ -588,7 +588,7 @@ public:
         }
     }
 
-    PlainTextNetworkWriter &operator<<(ALayerConfig &layer) {
+    PlainTextNetworkWriter &operator<<(ANetworkLayer &layer) {
         save(layer);
         return *this;
     }
