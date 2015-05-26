@@ -902,10 +902,30 @@ public:
           weightCorrections(0.0, nInputs * nOutputs),
           biasCorrections(0.0, nOutputs) {}
 
-    /// Initialize synaptic weights and allocate buffers.
+    /// Initialize synaptic weights.
     void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
         init_fn(rng, weights, nInputs, nOutputs);
         init_fn(rng, bias, nInputs, nOutputs);
+    }
+
+    /// Initialize synaptic weights.
+    void init(Weights &&weights, Weights &&bias) {
+        if (this->weights.size() != weights.size() ||
+            this->bias.size() != bias.size()) {
+            throw std::invalid_argument("incompatible weights|bias shape");
+        }
+        this->weights = weights;
+        this->bias = bias;
+    }
+
+    /// Initialize synaptic weights.
+    void init(const Weights &weights, const Weights &bias) {
+        if (this->weights.size() != weights.size() ||
+            this->bias.size() != bias.size()) {
+            throw std::invalid_argument("incompatible weights|bias shape");
+        }
+        this->weights = weights;
+        this->bias = bias;
     }
 
     /// Interlayer connections allow to share input-output buffers between two layers.

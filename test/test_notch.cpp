@@ -2,8 +2,10 @@
 #include "catch.hpp"
 
 #include <algorithm>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <string>
 
 #include "notch.hpp"
 
@@ -119,4 +121,23 @@ TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[mlp]" ) {
     CHECK(out.size() == 2);
     CHECK(out[0] == Approx(111 + 2.5));
     CHECK(out[1] == Approx(0.111 + 5.0));
+}
+
+TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[mlp]" ) {
+    FullyConnectedLayer fc(2, 1, linearActivation);
+    auto out_before = *fc.output({1,1});
+    CHECK(out_before.size() == 1);
+    CHECK(out_before[0] == Approx(0));
+    // init using r-value references
+    fc.init({10, 100}, {2});
+    auto out1 = *fc.output({1,1});
+    CHECK(out1.size() == 1);
+    CHECK(out1[0] == Approx(112));
+    // init using const references
+    const Weights ws = {0.1, 0.01};
+    const Weights b = {0};
+    fc.init(ws, b);
+    auto out2 = *fc.output({1, 2});
+    CHECK(out2.size() == 1);
+    CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 }
