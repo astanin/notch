@@ -841,7 +841,7 @@ protected:
     }
 
     /// Allocates lastInputs and lastOutputs buffers if they're not allocated yet.
-    void allocateInOutBuffers() {
+    void allocateInOutBuffers(size_t nextLayer_nOutputs = 0) {
         if (buffersAreReady) {
             return;
         }
@@ -854,8 +854,8 @@ protected:
         if (!thisBPR) {
             thisBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
         }
-        if (!nextBPR) {
-            nextBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
+        if (!nextBPR && nextLayer_nOutputs) {
+            nextBPR = std::make_shared<BackpropResult>(nOutputs, nextLayer_nOutputs);
         }
         buffersAreReady = true;
     }
