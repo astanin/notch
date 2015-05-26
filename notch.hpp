@@ -714,7 +714,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
 
 /** A fully connected layer of neurons with backpropagation. */
 class FullyConnectedLayer : public ABackpropLayer {
-private:
+protected:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer
     Weights weights; //< weights matrix $w_ji$ for the entire layer, row-major order

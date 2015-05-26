@@ -33,6 +33,9 @@ set(SOURCE_FILES
     notch_pre.hpp
     notch_metrics.hpp)
 
+add_executable(test_notch test/test_notch.cpp ${SOURCE_FILES})
+target_include_directories(test_notch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(gen_twomoons examples/gen_twomoons.cpp ${SOURCE_FILES})
 target_include_directories(gen_twomoons PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -46,6 +49,7 @@ add_executable(demo_multilayer_iris examples/demo_multilayer_iris.cpp ${SOURCE_F
 target_include_directories(demo_multilayer_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 IF(CBLAS_FOUND)
+    target_link_libraries(test_notch ${CBLAS_LIBRARIES})
     target_link_libraries(gen_twomoons ${CBLAS_LIBRARIES})
     target_link_libraries(demo_perceptron ${CBLAS_LIBRARIES})
     target_link_libraries(demo_multilayer_xor ${CBLAS_LIBRARIES})
