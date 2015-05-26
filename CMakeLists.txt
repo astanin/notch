@@ -63,6 +63,9 @@ target_include_directories(demo_multilayer_xor PRIVATE ${CMAKE_CURRENT_SOURCE_DI
 add_executable(demo_multilayer_iris examples/demo_multilayer_iris.cpp ${SOURCE_FILES})
 target_include_directories(demo_multilayer_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(demo_multilayer_io examples/demo_multilayer_io.cpp ${SOURCE_FILES})
+target_include_directories(demo_multilayer_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 IF(CBLAS_FOUND)
     target_link_libraries(test_notch ${CBLAS_LIBRARIES})
     target_link_libraries(gen_twomoons ${CBLAS_LIBRARIES})

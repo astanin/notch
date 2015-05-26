@@ -467,4 +467,54 @@ std::ostream &operator<<(std::ostream &out, const MultilayerPerceptron &net) {
     return out;
 }
 
+/** Save and load neural network configuration. */
+template<class NN>
+class NNFormat {
+public:
+    virtual std::ostream &dump(std::ostream &) const = 0;
+    virtual NN &load(std::istream &) = 0;
+};
+
+template<class NN>
+std::ostream &operator<<(std::ostream &out, const NNFormat<NN> &nnFormat) {
+    return nnFormat.dump(out);
+}
+
+template<class NN>
+std::istream &operator>>(std::istream &in, NNFormat<NN> &nnFormat) {
+    nnFormat.load(in);
+    return in;
+}
+
+class PlainTextFormatLayer : public NNFormat<FullyConnectedLayer> {
+protected:
+    FullyConnectedLayer &layer;
+
+public:
+    PlainTextFormatLayer (FullyConnectedLayer &layer) : layer(layer) {}
+
+    virtual std::ostream &dump(std::ostream &out) const {
+        out << "FullyConnectedLayer:\n";
+        out << "  inputs: " << layer.inputDim() << "\n";
+        out << "  outputs: " << layer.outputDim() << "\n";
+        out << "  activation: " << layer.getActivationFunction() << "\n";
+        out << "  bias_and_weights:\n";
+        for (size_t r = 0; r < layer.outputDim(); ++r) {
+            out << "   ";
+            out << " " << layer.getBias()[r];
+            for (size_t c = 0; c < layer.inputDim(); ++c) {
+                out << " " << layer.getWeights()[r*layer.inputDim() + c];
+            }
+            out << "\n";
+        }
+        return out;
+    }
+
+    virtual FullyConnectedLayer &load(std::istream &) {
+        // FIXME
+        return layer;
+    }
+};
+
+
 #endif
