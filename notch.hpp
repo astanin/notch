@@ -397,20 +397,28 @@ public:
 };
 
 
-/// phi(v) = a * tanh(b * v); NNLM3, Chapter 4, page 136
-///
-/// Default values for a and b were proposed by Yann LeCun,
-/// so that phi(1) = 1 and phi(-1) = -1, and the slope at the origin is 1.1424;
-///
-/// NNLM3, Chapter 4, page 145;
-/// Y. le Cun (1989) Generalization and Network Design Strategies. page 7.
+/** Hyperbolic tangent activation function:
+ * $\phi(v) = a  \tanh(b v)$, NNLM3, Chapter 4, page 136.
+ *
+ * Yann LeCun proposed default parameters $a = 1.7159$ and $b = 2/3$,
+ * so that $\phi(1) = 1$ and $\phi(-1) = -1$, and the slope at the origin is
+ * close to one (1.1424);
+ *
+ * References:
+ *
+ * - NNLM3, Chapter 4, page 145;
+ * - Y. LeCun (1989) Generalization and Network Design Strategies. page 7;
+ * - Y. LeCun et al. (2012) Efficient BackProp
+ */
 class TanhActivation : public ActivationFunction {
 private:
     float a;
     float b;
+    std::string name;
 
 public:
-    TanhActivation(float a = 1.7159, float b = 0.6667) : a(a), b(b) {}
+    TanhActivation(float a, float b, std::string name = "tanh")
+        : a(a), b(b), name(name) {}
 
     virtual float operator()(float v) const { return a * tanh(b * v); }
 
@@ -419,7 +427,7 @@ public:
         return a * b * (1.0 - y * y);
     }
 
-    virtual void print(std::ostream &out) const { out << "tanh"; }
+    virtual void print(std::ostream &out) const { out << name; }
 };
 
 
@@ -455,11 +463,17 @@ public:
 };
 
 
-const TanhActivation defaultTanh(1.0, 1.0);
-const TanhActivation scaledTanh; //< tanh with LeCun parameters
-const PiecewiseLinearActivation ReLU;
+/// Default hyperbolic tangent activation.
+const TanhActivation defaultTanh(1.0, 1.0, "tanh");
+/// Hyperbolic tangent activation with LeCun parameters.
+const TanhActivation scaledTanh(1.7159, 0.6667, "scaledTanh");
+/// Rectified Linear Unit: $\phi(v) = \max(0, v)$.
+const PiecewiseLinearActivation ReLU(0.0f, 1.0f, "ReLU");
+/// Rectified Linear Unit with small non-zero gradient in inactive zone:
+/// $\phi(v) = v \text{if} v > 0 \text{or} 0.01 v \text{otherwise}$.
 const PiecewiseLinearActivation leakyReLU(0.01f, 1.0f, "leakyReLU");
-const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "");
+/// Linear activation.
+const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
 
 
 /**
