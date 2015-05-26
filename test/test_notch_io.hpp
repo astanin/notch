@@ -141,4 +141,21 @@ TEST_CASE("FullyConnectedLayer input-output to plain-text", "[io]") {
     CHECK(out[0] == Approx(out_copy[0]));
 }
 
+TEST_CASE("MultilayerPerceptron input-output to plain-text", "[io]") {
+    // create a random MLP and write it to string
+    auto rng = newRNG();
+    stringstream ss;
+    MultilayerPerceptron mlp {2, 2, 1};
+    mlp.init(rng);
+    PlainTextNetworkWriter(ss) << mlp;
+    // read back
+    MultilayerPerceptron mlp2;
+    ss.seekg(0);
+    PlainTextNetworkReader(ss) >> mlp2;
+    stringstream ss2;
+    PlainTextNetworkWriter(ss2) << mlp2;
+    // check equivalence
+    CHECK(ss.str() == ss2.str());
+}
+
 #endif
