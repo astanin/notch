@@ -589,6 +589,11 @@ public:
         }
     }
 
+    PlainTextNetworkWriter &operator<<(const std::string &s) {
+        out << s;
+        return *this;
+    }
+
     PlainTextNetworkWriter &operator<<(const ANetworkLayer &layer) {
         save(layer);
         return *this;
