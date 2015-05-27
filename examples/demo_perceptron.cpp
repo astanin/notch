@@ -34,11 +34,10 @@ public:
 void print_stats(LinearPerceptron &p, const LabeledDataset &testSet) {
     LinearPerceptronClassifier lpc(p);
     ConfusionMatrix<bool, true> cm = lpc.test(testSet);
-    cout << "Synaptic weights:\n";
-    cout << "  " << p << "\n";
-	cout << "Precision:  " << cm.precision() << "\n";
-	cout << "Recall:     " << cm.recall() << "\n";
-	cout << "Accuracy:   " << cm.accuracy() << "\n";
+    cout << "Synaptic weights: " << p.getWeights() << "\n";
+    cout << "Precision:  " << cm.precision() << "\n";
+    cout << "Recall:     " << cm.recall() << "\n";
+    cout << "Accuracy:   " << cm.accuracy() << "\n";
 }
 
 int main(int argc, char *argv[]) {
