@@ -107,7 +107,7 @@ TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[core]" ) {
                            {2.5, 5.0}, // bias
                            defaultTanh);
     auto out = *fc.output({1,1,1});
-    CHECK(out.size() == 2);
+    CHECK(out.size() == 2u);
     CHECK(out[0] == Approx(tanh(111 + 2.5)));
     CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
 }
