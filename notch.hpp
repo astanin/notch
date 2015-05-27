@@ -670,6 +670,9 @@ public:
 /** Read and write layer's parameters. */
 class ANetworkLayer {
 public:
+    /// A name to identify layer type.
+    virtual std::string tag() const = 0;
+
     /// Randomly initialize synaptic weights.
     virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) = 0;
     /// Initialize synaptic weights using a weights matrix.
@@ -990,6 +993,8 @@ public:
           // historical values for corrections can be initialized immediately
           weightCorrections(0.0, nInputs * nOutputs),
           biasCorrections(0.0, nOutputs) {}
+
+    virtual std::string tag() const { return "FullyConnectedLayer"; }
 
     /// Initialize synaptic weights.
     virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {

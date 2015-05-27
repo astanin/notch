@@ -558,7 +558,7 @@ public:
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
     void save(const ANetworkLayer &layer) {
-        out << "layer: FullyConnectedLayer\n";
+        out << "layer: " << layer.tag() << "\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
         out << "activation: "; layer.getActivationFunction().print(out); out << "\n";
