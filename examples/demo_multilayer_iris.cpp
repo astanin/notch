@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     }
     cout << "accuracy: " << cm.accuracy() << "\n\n";
 
-    net.setLearningPolicy(0.01f);
+    net.setLearningPolicy(FixedRate(0.01f));
     trainWithSGD(net, irisData, rng, 1000,
             /* callbackEvery */ 100,
             /* callback */ [&](int i, ABackpropLayer& net) {

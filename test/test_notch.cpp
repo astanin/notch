@@ -20,13 +20,12 @@ public:
     FullyConnectedLayer_Test(size_t in, size_t out, const ActivationFunction &af)
         : FullyConnectedLayer(in, out, af) {}
 
-    Weights &getWeights() { return weights; }
-    Weights &getBias() { return bias; }
+    Array &getWeights() { return weights; }
+    Array &getBias() { return bias; }
     Array &getInducedLocalField() { return inducedLocalField; }
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
-    Weights &getWeightsCorrections() { return weightCorrections; }
-    Weights &getBiasCorrections() { return biasCorrections; }
+    shared_ptr<ALearningPolicy> getPolicy() { return policy->copy(); }
 
     shared_ptr<Array> getLastInputs() { return lastInputs; }
     shared_ptr<Array> getLastOutputs() { return lastOutputs; }
@@ -54,8 +53,9 @@ TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     CHECK_ARRAY_IS_INITIALIZED(inducedLocalField, fc.getInducedLocalField(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(activationGrad, fc.getActivationGrad(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
-    CHECK_ARRAY_IS_INITIALIZED(weightsCorrections, fc.getWeightsCorrections(), n_in*n_out);
-    CHECK_ARRAY_IS_INITIALIZED(biasCorrections, fc.getBiasCorrections(), n_out);
+    auto bpr = fc.getThisBPR();
+    CHECK_ARRAY_IS_INITIALIZED(weightSensitivity, bpr->weightSensitivity, n_in*n_out);
+    CHECK_ARRAY_IS_INITIALIZED(biasSensitivity, bpr->biasSensitivity, n_out);
 }
 
 TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
@@ -79,22 +79,22 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
     // check that dimensions of this layer's BackpropResult
     // match layer's dimensions
     shared_ptr<BackpropResult> bpr = fc.getThisBPR();
-    CHECK_ARRAY_IS_INITIALIZED(bpr_propagatedErrorSignals,
-         bpr->propagatedErrorSignals, n_in);
-    CHECK_ARRAY_IS_INITIALIZED(bpr_weightsCorrections,
-         bpr->weightCorrections, n_in * n_out);
-    CHECK_ARRAY_IS_INITIALIZED(bpr_biasCorrections,
-         bpr->biasCorrections, n_out);
+    CHECK_ARRAY_IS_INITIALIZED(bpr_propagatedErrors,
+         bpr->propagatedErrors, n_in);
+    CHECK_ARRAY_IS_INITIALIZED(bpr_weightsSensitivity,
+         bpr->weightSensitivity, n_in * n_out);
+    CHECK_ARRAY_IS_INITIALIZED(bpr_biasSensitivity,
+         bpr->biasSensitivity, n_out);
 
     // check that dimensions of the next layer's BackpropResult
     // match layer's dimensions
     shared_ptr<BackpropResult> next_bpr = fc.getNextBPR();
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_propagatedErrorSignals,
-         next_bpr->propagatedErrorSignals, n_out);
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_weightsCorrections,
-         next_bpr->weightCorrections, n_out * n_out_next);
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_biasCorrections,
-         next_bpr->biasCorrections, n_out_next);
+    CHECK_ARRAY_IS_INITIALIZED(next_bpr_propagatedErrors,
+         next_bpr->propagatedErrors, n_out);
+    CHECK_ARRAY_IS_INITIALIZED(next_bpr_weightsSensitivity,
+         next_bpr->weightSensitivity, n_out * n_out_next);
+    CHECK_ARRAY_IS_INITIALIZED(next_bpr_biasSensitivity,
+         next_bpr->biasSensitivity, n_out_next);
 
     fc.init(rng, normalXavier);
     CHECK(fc.getNextBPR() == fc2.getThisBPR()); // buffers are still shared
@@ -114,8 +114,8 @@ TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[core]" ) {
 
 TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[core]" ) {
     /// three in, two out
-    const Weights w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
-    const Weights bias = {2.5, 5.0}; // bias
+    const Array w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
+    const Array bias = {2.5, 5.0}; // bias
     FullyConnectedLayer fc(w, bias, linearActivation);
     auto out = *fc.output({1,1,1});
     CHECK(out.size() == 2);
@@ -134,8 +134,8 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     CHECK(out1.size() == 1);
     CHECK(out1[0] == Approx(112));
     // init using const references
-    const Weights ws = {0.1, 0.01};
-    const Weights b = {0};
+    const Array ws = {0.1, 0.01};
+    const Array b = {0};
     fc.init(ws, b);
     auto out2 = *fc.output({1, 2});
     CHECK(out2.size() == 1);
