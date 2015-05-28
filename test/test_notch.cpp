@@ -53,9 +53,11 @@ TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     CHECK_ARRAY_IS_INITIALIZED(inducedLocalField, fc.getInducedLocalField(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(activationGrad, fc.getActivationGrad(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
-    auto bpr = fc.getThisBPR();
-    CHECK_ARRAY_IS_INITIALIZED(weightSensitivity, bpr->weightSensitivity, n_in*n_out);
-    CHECK_ARRAY_IS_INITIALIZED(biasSensitivity, bpr->biasSensitivity, n_out);
+    CHECK_FALSE(fc.getLastInputs());
+    CHECK_FALSE(fc.getLastOutputs());
+    CHECK_FALSE(fc.getThisBPR());
+    CHECK_FALSE(fc.getNextBPR());
+    CHECK_FALSE(fc.getBuffersReadyFlag());
 }
 
 TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
