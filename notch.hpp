@@ -827,7 +827,7 @@ protected:
     std::shared_ptr<BackpropResult> nextBPR; //< backpropagation results of the next layer
     bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
 
-    std::unique_ptr<ALearningPolicy> policy;
+    std::shared_ptr<ALearningPolicy> policy;
 
     void rememberInputs(const Array& inputs) {
         *lastInputs = inputs;  // remember for calcSensitivityFactors()
@@ -1042,21 +1042,6 @@ public:
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
           thisBPR(nullptr), nextBPR(nullptr) {}
-
-    /// Copy-constructor will make copies of shared buffers and disconnect them.
-    /// Forward and backpropagation results are lost on copying.
-    FullyConnectedLayer(const FullyConnectedLayer& o)
-        : nInputs(o.nInputs), nOutputs(o.nOutputs),
-          weights(o.weights), bias(o.bias), activationFunction(o.activationFunction),
-          inducedLocalField(o.inducedLocalField),
-          activationGrad(o.activationGrad), localGrad(o.localGrad),
-          lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr), nextBPR(nullptr),
-          buffersAreReady(false) {
-              if (o.policy) {
-                  policy = o.policy->copy();
-              }
-          }
 
     /// Interlayer connections allow to share input-output buffers between two layers.
     void connectTo(FullyConnectedLayer& nextLayer) {
