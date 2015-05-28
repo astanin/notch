@@ -75,3 +75,8 @@ Bibliography
  * NNLM3: Neural networks and learning machines / Simon Haykin. -- 3rd ed.
    ([libgen](http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854),
     [amazon.uk](http://www.amazon.co.uk/Neural-Networks-Learning-Machines-3rd/dp/8120340000/))
+
+ * LeCun et al (2012) Efficient BackProp. In: Neural Networks: Tricks of the Trade. --
+   2nd ed.
+   ([libgen](http://libgen.org/book/index.php?md5=6b8768e619756f4e867282cfcec63f2e))
+

@@ -34,7 +34,7 @@ int main(int, char *[]) {
     cout << "training set:\n" << CSVFormat(dataset) << "\n";
     print_net("initial", xorNet, dataset);
 
-    xorNet.setLearningPolicy(0.01f, 0.9);
+    xorNet.setLearningPolicy(FixedRate(0.01));
     trainWithSGD(xorNet, dataset, rng, /* epochs */ 500,
                  /* callbackEvery */ 100,
                  /* callback */ [&](int i, ABackpropLayer& net) {
