@@ -8,3 +8,4 @@ Notch Examples
     the iris flower dataset; the demo uses some optional Notch features:
     it reads data from a CSV file and applies one-hot encoding to labels
 
+ * `demo_multilayer_io` shows how to save and load a multilayer perceptron
