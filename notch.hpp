@@ -1017,10 +1017,9 @@ public:
         policy->correctBias(thisBPR->biasSensitivity, bias);
     }
     /* end of ABackpropLayer interface */
-
 };
 
-/// Multiple fully-connected layers stacked one upon another.
+/// Multiple `FullyConnectedLayer's stacked one upon another.
 class MultilayerPerceptron : public ABackpropLayer {
 private:
     std::vector<FullyConnectedLayer> layers;
