@@ -155,6 +155,33 @@ TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
     CHECK(b[2] == -1); // unchanged
 }
 
+/* This test is based on the backpropagation example by Dan Ventura
+ * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
+TEST_CASE( "backprop example", "[core][math]") {
+    // initialize network weights as in the example
+    MultilayerPerceptron mlp;
+    FullyConnectedLayer layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
+    FullyConnectedLayer layer2({-0.12, -0.88}, {0}, logisticActivation);
+    mlp.append(move(layer1));
+    mlp.append(move(layer2));
+    // training example: (0.3, 0.7) -> 0.0
+    Array in {0.3, 0.7};
+    Array expected {0.0};
+    // forward propagation
+    auto actual_out = mlp.output({0.3, 0.7});
+    float expected_out = 0.37178;
+    CHECK((*actual_out)[0] == Approx(expected_out).epsilon(0.0002));
+    // backpropagation
+    Array error = expected - (*actual_out);
+    auto backpropResult = mlp.backprop(error);
+    // check calculated weight sensitivity at the bottom layer:
+    Array &actual_dEdw = backpropResult->weightSensitivity;
+    Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+    for (size_t i = 0; i < 4; ++i) {
+        CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
+    }
+}
+
 TEST_CASE( "FixedRate (delta rule) policy", "[core][train]") {
     float eta = 0.5;
     FixedRate policy(eta);
