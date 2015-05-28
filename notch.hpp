@@ -1056,10 +1056,9 @@ public:
 class MultilayerPerceptron : public ABackpropLayer {
 private:
     std::vector<FullyConnectedLayer> layers;
-    std::vector<std::shared_ptr<BackpropResult>> bpResults;
 
 public:
-    MultilayerPerceptron() : layers(0), bpResults(0) {}
+    MultilayerPerceptron() : layers(0) {}
 
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
                          const ActivationFunction &af = scaledTanh)
@@ -1079,12 +1078,10 @@ public:
 
     void clear() {
         layers.clear();
-        bpResults.clear();
     }
 
     MultilayerPerceptron &append(FullyConnectedLayer &&layer) {
         layers.push_back(layer);
-        bpResults.resize(layers.size());
         if (layers.size() >= 2) { // connect the last two layers
            auto n = layers.size();
            layers[n-2].connectTo(layers[n-1]);
@@ -1116,13 +1113,14 @@ public:
             throw std::logic_error("no layers defined");
         }
         size_t n = layers.size();
-        bpResults[n - 1] = layers[n - 1].backprop(errorSignals);
+        std::shared_ptr<BackpropResult> bpr;
+        bpr = layers[n - 1].backprop(errorSignals);
         for (size_t offset = 1; offset < n; ++offset) {
             size_t i = n - 1 - offset;
-            Array &e(bpResults[i + 1]->propagatedErrors);
-            bpResults[i] = layers[i].backprop(e);
+            Array &e(bpr->propagatedErrors);
+            bpr = layers[i].backprop(e);
         }
-        return bpResults[0];
+        return bpr;
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {
