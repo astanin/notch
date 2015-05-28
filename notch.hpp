@@ -295,6 +295,7 @@ using Weights = std::valarray<float>;
  * -----------------------------
  **/
 
+// TODO: maybe rename to WeightsInit
 using WeightsInitializer =
     std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
@@ -502,6 +503,7 @@ struct BackpropResult {
     Array biasSensitivity; //< $\partial E/\partial b{j}$
 };
 
+// TODO: maybe rename .copy() to .clone() to be consistent with ALayer
 /** A base class for the rule to correct weights and bias given sensitivity factors.
  *
  * Concrete implementations may overwrite weightSensitivity and biasSensitivity
@@ -589,6 +591,8 @@ public:
     }
 };
 
+// TODO: maybe rename inputDim, outputDim to inputSize(), outputSize() (?)
+// TODO: add .clone() method
 /** Get and set layer's parameters. */
 class ALayer {
 public:
@@ -617,6 +621,7 @@ public:
     virtual const ActivationFunction &getActivationFunction() const = 0;
 };
 
+// TODO: maybe rename to ABackpropNet (?) or subclass ALayer (?)
 /** A common interface of all layers capable of both forward and
  * backpropagation.
  *
@@ -1017,6 +1022,34 @@ public:
         policy->correctBias(thisBPR->biasSensitivity, bias);
     }
     /* end of ABackpropLayer interface */
+};
+
+/** A feed-forward neural network is a stack of layers. */
+// TODO: layer type should have init and should have backprop;
+// if I subclass ABackpropLayer from ALayer, then all Nets will
+// have to implement accessors to all weights and other params;
+// if I move .init() method to ABackpropLayer... it makes sense,
+// but how will Net initialize all layers from Weights&&?
+// how will I do IO for Net's stack of layers?
+// if I rename ABackpropLayer to ABackpropNet AND subclass
+// new ABackpropLayer from ABackpropNet + ALayer...
+// then I can init, input/output, and backprop on ABackpropLayers,
+// I can also implement only a smaller ABackpropNet interface on
+// Net and other layer composites, and let training methods
+// depend on only ABackpropNet...
+class Net : public ABackpropLayer {
+private:
+    std::vector<std::unique_ptr<ABackpropLayer>> layers;
+public:
+    Net() : layers(0) {}
+    virtual Net &append(ABackpropLayer &&layer) = 0;
+    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn = normalXavier) = 0;
+    /* begin ABackpropLayer interface */
+    virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
+    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
+    virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
+    virtual void update() = 0;
+    /* end ABackpropLayer interface */
 };
 
 /// Multiple `FullyConnectedLayer's stacked one upon another.
