@@ -382,7 +382,7 @@ private:
     float slope = 1.0;
 
 public:
-    LogisticActivation(float slope) : slope(slope){};
+    LogisticActivation(float slope) : slope(slope) {};
 
     virtual float operator()(float v) const {
         return 1.0 / (1.0 + exp(-slope * v));
@@ -393,7 +393,12 @@ public:
         return slope * y * (1 - y);
     }
 
-    virtual void print(std::ostream &out) const { out << "logistic"; }
+    virtual void print(std::ostream &out) const {
+        out << "logistic";
+        if (slope != 1.0) {
+            out << "(" << slope << ")";
+        }
+    }
 };
 
 
@@ -467,6 +472,8 @@ public:
 const TanhActivation defaultTanh(1.0, 1.0, "tanh");
 /// Hyperbolic tangent activation with LeCun parameters.
 const TanhActivation scaledTanh(1.7159, 0.6667, "scaledTanh");
+/// Logistic function activation (output values between 0 and 1).
+const LogisticActivation logisticActivation(1.0f);
 /// Rectified Linear Unit: $\phi(v) = \max(0, v)$.
 const PiecewiseLinearActivation ReLU(0.0f, 1.0f, "ReLU");
 /// Rectified Linear Unit with small non-zero gradient in inactive zone:
