@@ -674,7 +674,7 @@ public:
     virtual std::unique_ptr<ALearningPolicy> copy() const = 0;
 };
 
-/** A classic delte rule.
+/** A classic delta rule.
  *
  * $w_{ji} (n) = w_{ji} (n-1) + \Delta w_{ji}$, where
  * $\Delta w_{ji} = - \eta \partial E / \partial w_{ji}$.
@@ -698,9 +698,56 @@ public:
     }
 };
 
-// TODO: in FixedRateWithMomentum::resize() do:
-// weightSensitivity.resize(nInputs * nOutputs, 0.0);
-// biasSensitivity.resize(nOutputs, 0.0);
+/** Generalized delta rule for learning with _momentum_ term.
+ *
+ * $$\Delta w_{ji} (n) = \alpha \Delta w_{ji} (n-1)
+ *                     - \eta \partial E / \partial w_{ji},$$
+ *
+ * where $\eta$ is a learning rate, and $\alpha$ is a momentum constant.
+ *
+ * The momentum term tends to accelerate descent in steady downhill dirctions
+ * when the partial derivative $\partial E/\partial w_{ji}$ has the same sign
+ * on consecutive iterations. It has stabilizing effect otherwise.
+ *
+ * References:
+ *
+ *  - NNLM3, Eq (4.41), page 137
+ *  - LeCun (2012) Efficient Backprop, page 21
+ */
+class FixedRateWithMomentum : public ALearningPolicy {
+private:
+    float learningRate;
+    float momentum;
+    Array lastDeltaW;
+    Array lastDeltaB;
+public:
+    FixedRateWithMomentum(float learningRate = 0.01, float momentum = 0.9)
+        : learningRate(learningRate), momentum(momentum) {}
+    virtual void correctWeights(Array& weightSensitivity, Array &weights) {
+        if (lastDeltaW.size() != weights.size()) {
+            lastDeltaW.resize(weights.size(), 0.0);
+        }
+        lastDeltaW = (momentum * lastDeltaW - learningRate * weightSensitivity);
+        weights += lastDeltaW;
+    }
+    virtual void correctBias(Array& biasSensitivity, Array &bias) {
+        if (lastDeltaB.size() != bias.size()) {
+            lastDeltaB.resize(bias.size(), 0.0);
+        }
+        lastDeltaB = (momentum * lastDeltaB - learningRate * biasSensitivity);
+        bias += lastDeltaB;
+    }
+    virtual void resize(size_t nInputs, size_t nOutputs) {
+        lastDeltaW.resize(nInputs * nOutputs, 0.0);
+        lastDeltaB.resize(nOutputs, 0.0);
+    }
+    virtual std::unique_ptr<ALearningPolicy> copy() const {
+        auto clone = std::unique_ptr<ALearningPolicy>(
+                new FixedRateWithMomentum(learningRate, momentum)
+                );
+        return clone;
+    }
+};
 
 /** Get and set layer's parameters. */
 class ANetworkLayer {
