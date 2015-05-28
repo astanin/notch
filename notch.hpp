@@ -904,10 +904,10 @@ protected:
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
                 float y_i = (*lastInputs)[i];
-                weightSensitivity[j*nInputs + i] = -1 * localGrad[j] * y_i;
+                weightSensitivity[j*nInputs + i] = (-1.0 * localGrad[j] * y_i);
             }
+            biasSensitivity[j] = (-1.0 * localGrad[j]);
         }
-        biasSensitivity = localGrad;
     }
 
     /** Calculate back-propagated error signal and corrections to synaptic weights.
