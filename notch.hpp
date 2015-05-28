@@ -1004,7 +1004,9 @@ protected:
                     thisBPR = std::make_shared<BackpropResult>(n_in, n_out);
                 }
                 // resize buffers for historical values
-                policy->resize(n_in, n_out);
+                if (policy) {
+                    policy->resize(n_in, n_out);
+                }
            }
         }
     }
