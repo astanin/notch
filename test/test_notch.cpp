@@ -144,6 +144,17 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 }
 
+TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
+    float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
+    float x[3] = {100, 10, 1};
+    float b[3] = {1, 2, -1}; // with an extra element at the end
+    CHECK_THROWS(gemv(begin(M), end(M), begin(x), end(x), begin(b), end(b)));
+    gemv(begin(M), end(M), begin(x), end(x), begin(b), begin(b)+2);
+    CHECK(b[0] == Approx(100*1 + 10*2 + 1*3 + 1));
+    CHECK(b[1] == Approx(100*4 + 10*5 + 1*6 + 2));
+    CHECK(b[2] == -1); // unchanged
+}
+
 TEST_CASE( "FixedRate (delta rule) policy", "[core][train]") {
     float eta = 0.5;
     FixedRate policy(eta);
