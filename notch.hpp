@@ -679,12 +679,10 @@ private:
 public:
     FixedRate(float learningRate = 0.01) : learningRate(learningRate) {}
     virtual void correctWeights(Array& weightSensitivity, Array &weights) {
-        weightSensitivity *= learningRate;
-        weights -= weightSensitivity;
+        weights -= (learningRate * weightSensitivity);
     }
     virtual void correctBias(Array& biasSensitivity, Array &bias) {
-        biasSensitivity *= learningRate;
-        bias -= biasSensitivity;
+        bias -= (learningRate * biasSensitivity);
     }
     virtual void resize(size_t, size_t) {}
     virtual std::unique_ptr<ALearningPolicy> copy() const {
