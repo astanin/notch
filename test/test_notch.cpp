@@ -144,6 +144,25 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 }
 
-
+TEST_CASE( "FixedRate (delta rule) policy", "[core][train]") {
+    float eta = 0.5;
+    FixedRate policy(eta);
+    // weight updates
+    Array dEdw { 10, 20, 40 };
+    Array weights { 100, 200, 400 };
+    Array oldWeights = weights;
+    policy.correctWeights(dEdw, weights);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        CHECK(weights[i] == oldWeights[i] - eta*dEdw[i]);
+    }
+    // bias updates
+    Array dBdw { -20, -10 };
+    Array bias { 100, 200 };
+    Array oldBias = bias;
+    policy.correctBias(dBdw, bias);
+    for (size_t i = 0; i < bias.size(); ++i) {
+        CHECK(bias[i] == oldBias[i] - eta*dBdw[i]);
+    }
+}
 
 #include "test_notch_io.hpp"
