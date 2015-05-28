@@ -51,12 +51,6 @@ add_test(test_notch_io test_notch "[io]")
 add_executable(test_notch test/test_notch.cpp ${SOURCE_FILES})
 target_include_directories(test_notch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(gen_twomoons examples/gen_twomoons.cpp ${SOURCE_FILES})
-target_include_directories(gen_twomoons PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(demo_perceptron examples/demo_perceptron.cpp ${SOURCE_FILES})
-target_include_directories(demo_perceptron PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
 add_executable(demo_multilayer_xor examples/demo_multilayer_xor.cpp ${SOURCE_FILES})
 target_include_directories(demo_multilayer_xor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -68,10 +62,9 @@ target_include_directories(demo_multilayer_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 
 IF(CBLAS_FOUND)
     target_link_libraries(test_notch ${CBLAS_LIBRARIES})
-    target_link_libraries(gen_twomoons ${CBLAS_LIBRARIES})
-    target_link_libraries(demo_perceptron ${CBLAS_LIBRARIES})
     target_link_libraries(demo_multilayer_xor ${CBLAS_LIBRARIES})
     target_link_libraries(demo_multilayer_iris ${CBLAS_LIBRARIES})
+    target_link_libraries(demo_multilayer_io ${CBLAS_LIBRARIES})
 ELSE(CBLAS_FOUND)
     message(STATUS "Not using CBLAS")
 ENDIF(CBLAS_FOUND)
