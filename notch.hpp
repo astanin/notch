@@ -336,13 +336,13 @@ void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
 }
 
 /**
- * Neuron Activation Functions
- * ---------------------------
+ * Activation Functions
+ * --------------------
  **/
 
-float sign(float a) { return (a == 0) ? 0 : (a < 0 ? -1 : 1); }
-
-
+ /** Activation functions are applied to neuron's output to introduce
+ * non-linearity and map output to specific range. Backpropagation algorithm
+ * requires differentiable activation functions. */
 class ActivationFunction {
 public:
     virtual float operator()(float v) const = 0;
@@ -351,7 +351,14 @@ public:
 };
 
 
-/// phi(v) = 1/(1 + exp(-slope*v)); NNLM3, Chapter 4, page 135
+/** Logistic function maps output to the range (0,1).
+ *
+ * It is defined as
+ *
+ * $$\phi(v) = 1/(1 + \exp(- s v)),$$
+ *
+ * where $s$ is its derivative at zero.
+ * See  NNLM3, Chapter 4, page 135. */
 class LogisticActivation : public ActivationFunction {
 private:
     float slope = 1.0;
@@ -377,12 +384,14 @@ public:
 };
 
 
-/** Hyperbolic tangent activation function:
- * $\phi(v) = a  \tanh(b v)$, NNLM3, Chapter 4, page 136.
+/** Hyperbolic tangent activation function.
  *
- * Yann LeCun proposed default parameters $a = 1.7159$ and $b = 2/3$,
+ * It is defined as $\phi(v) = a  \tanh(b v)$, NNLM3, Chapter 4, page 136.
+ * It maps output to the range (-a, a), or (-1, 1) by default.
+ *
+ * Yann LeCun proposed parameters $a = 1.7159$ and $b = 2/3$,
  * so that $\phi(1) = 1$ and $\phi(-1) = -1$, and the slope at the origin is
- * close to one (1.1424);
+ * close to one (1.1424). scaledTanh uses this parameters.
  *
  * References:
  *
@@ -411,6 +420,12 @@ public:
 };
 
 
+/** Piecewise linear activation function allows to implement
+ * rectified linear units (ReLU) and leaky rectified linear units (leakyReLU).
+ *
+ * Rectifiers are often used in deep neural networks because they don't
+ * suffer from diminishing gradients problem and allow for sparse activation
+ * (neurons with negative induced local field remain dormant). */
 class PiecewiseLinearActivation : public ActivationFunction {
 private:
     float negativeSlope;
