@@ -1203,7 +1203,10 @@ void trainWithSGD(ABackpropNet &net, LabeledDataset &trainSet,
         int callbackPeriod=0, TrainCallback callback=nullptr) {
     for (int j = 0; j < epochs; ++j) {
         if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
-            callback(j);
+            bool shouldStop = callback(j);
+            if (shouldStop) {
+                return;
+            }
         }
         trainSet.shuffle(rng);
         for (auto sample : trainSet) {
