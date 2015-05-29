@@ -723,7 +723,6 @@ protected:
     std::shared_ptr<Array> lastInputs;  //< $x_i$
     std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
     std::shared_ptr<BackpropResult> thisBPR; //< backpropagation results of this layer
-    std::shared_ptr<BackpropResult> nextBPR; //< backpropagation results of the next layer
     bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
 
     std::shared_ptr<ALearningPolicy> policy;
@@ -842,7 +841,7 @@ protected:
     }
 
     /// Allocates lastInputs and lastOutputs buffers if they're not allocated yet.
-    void allocateInOutBuffers(size_t nextLayer_nOutputs = 0) {
+    void allocateInOutBuffers() {
         if (buffersAreReady) {
             return;
         }
@@ -855,17 +854,15 @@ protected:
         if (!thisBPR) {
             thisBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
         }
-        if (!nextBPR && nextLayer_nOutputs) {
-            nextBPR = std::make_shared<BackpropResult>(nOutputs, nextLayer_nOutputs);
-        }
         buffersAreReady = true;
     }
 
     /// @return true if input-output buffers are allocated _and_ shared
     bool isConnected() const {
         return (buffersAreReady &&
-                !(lastInputs.unique() && lastOutputs.unique() &&
-                  thisBPR.unique() && nextBPR.unique()));
+                !(lastInputs.unique() &&
+                  lastOutputs.unique() &&
+                  thisBPR.unique()));
     }
 
     /// Resize all layer buffers if it is initialized with a weight matrix
@@ -875,7 +872,7 @@ protected:
         bool needResize = this->weights.size() != weights.size() ||
                           this->bias.size() != bias.size();
         if (needResize) {
-            if (isConnected() || nextBPR) {
+            if (isConnected()) {
                 throw std::invalid_argument("cannot reshape a connected layer");
             } else {
                 size_t n_in = weights.size() / bias.size();
@@ -920,7 +917,7 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr), nextBPR(nullptr) {}
+          thisBPR(nullptr) {}
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
@@ -931,7 +928,7 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr), nextBPR(nullptr) {}
+          thisBPR(nullptr) {}
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
@@ -942,16 +939,15 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr), nextBPR(nullptr) {}
+          thisBPR(nullptr) {}
 
     /// Interlayer connections allow to share input-output buffers between two layers.
-    void connectTo(FullyConnectedLayer& nextLayer) {
-        if (nextLayer.nInputs != this->nOutputs) {
+    virtual void connectTo(ABackpropLayer& nextLayer) {
+        if (nextLayer.inputDim() != this->outputDim()) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
-        allocateInOutBuffers(nextLayer.nOutputs);
+        allocateInOutBuffers();
         nextLayer.lastInputs = this->lastOutputs;
-        nextLayer.thisBPR = this->nextBPR;
     }
 
     /* begin ALayer interface */

@@ -30,7 +30,6 @@ public:
     shared_ptr<Array> getLastInputs() { return lastInputs; }
     shared_ptr<Array> getLastOutputs() { return lastOutputs; }
     shared_ptr<BackpropResult> getThisBPR() { return thisBPR; };
-    shared_ptr<BackpropResult> getNextBPR() { return nextBPR; };
     bool getBuffersReadyFlag() { return buffersAreReady; };
 
 };
@@ -56,7 +55,6 @@ TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     CHECK_FALSE(fc.getLastInputs());
     CHECK_FALSE(fc.getLastOutputs());
     CHECK_FALSE(fc.getThisBPR());
-    CHECK_FALSE(fc.getNextBPR());
     CHECK_FALSE(fc.getBuffersReadyFlag());
 }
 
@@ -71,8 +69,7 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
 
     fc.connectTo(fc2);
     CHECK(fc.getBuffersReadyFlag()); // now ready
-    CHECK(fc.getNextBPR() == fc2.getThisBPR()); // buffers are shared
-    CHECK(fc.getLastOutputs() == fc2.getLastInputs());
+    CHECK(fc.getLastOutputs() == fc2.getLastInputs()); // buffers are shared
 
     // check dimensions of the dynamically allocated arrays
     CHECK_ARRAY_IS_INITIALIZED(lastInputs, *fc.getLastInputs(), n_in);
@@ -88,19 +85,8 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
     CHECK_ARRAY_IS_INITIALIZED(bpr_biasSensitivity,
          bpr->biasSensitivity, n_out);
 
-    // check that dimensions of the next layer's BackpropResult
-    // match layer's dimensions
-    shared_ptr<BackpropResult> next_bpr = fc.getNextBPR();
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_propagatedErrors,
-         next_bpr->propagatedErrors, n_out);
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_weightsSensitivity,
-         next_bpr->weightSensitivity, n_out * n_out_next);
-    CHECK_ARRAY_IS_INITIALIZED(next_bpr_biasSensitivity,
-         next_bpr->biasSensitivity, n_out_next);
-
     fc.init(rng, normalXavier);
-    CHECK(fc.getNextBPR() == fc2.getThisBPR()); // buffers are still shared
-    CHECK(fc.getLastOutputs() == fc2.getLastInputs());
+    CHECK(fc.getLastOutputs() == fc2.getLastInputs()); // buffers are still shared
 }
 
 TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[core]" ) {
