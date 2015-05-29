@@ -1050,7 +1050,8 @@ public:
         return *this;
     }
 
-    void init(std::unique_ptr<RNG> &rng, WeightInit init) {
+    virtual void
+    init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
         for (size_t i = 0u; i < layers.size(); ++i) {
             layers[i]->init(rng, init);
         }
