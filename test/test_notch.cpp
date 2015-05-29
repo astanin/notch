@@ -148,8 +148,8 @@ TEST_CASE( "backprop example", "[core][math]") {
     MultilayerPerceptron mlp;
     FullyConnectedLayer layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
     FullyConnectedLayer layer2({-0.12, -0.88}, {0}, logisticActivation);
-    mlp.append(move(layer1));
-    mlp.append(move(layer2));
+    mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
+    mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};

@@ -146,7 +146,7 @@ TEST_CASE("MultilayerPerceptron input-output to plain-text", "[io]") {
     auto rng = newRNG();
     stringstream ss;
     MultilayerPerceptron mlp {2, 2, 1};
-    mlp.init(rng);
+    mlp.init(rng, uniformXavier);
     PlainTextNetworkWriter(ss) << mlp;
     // read back
     MultilayerPerceptron mlp2;

@@ -1036,13 +1036,13 @@ public:
 
 /** A feed-forward neural network is a stack of layers. */
 class Net : public ABackpropNet {
-private:
+protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
 public:
     Net() : layers(0) {}
 
-    Net &append(std::shared_ptr<ABackpropLayer> layer) {
-        layers.push_back(layer);
+    virtual Net &append(std::shared_ptr<ABackpropLayer> layer) {
+        layers.push_back(std::move(layer));
         if (layers.size() >= 2) { // connect the last two layers
            auto n = layers.size();
            layers[n-2]->connectTo(*layers[n-1]);
@@ -1055,6 +1055,8 @@ public:
             layers[i]->init(rng, init);
         }
     }
+
+    virtual void clear() { layers.clear(); }
 
     /* begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
@@ -1095,19 +1097,19 @@ public:
         }
     }
     /* end ABackpropNet interface */
+
+    using LayerIterator = decltype(layers.cbegin());
+    LayerIterator begin() const { return layers.cbegin(); }
+    LayerIterator end() const { return layers.cend(); }
 };
 
 /// Multiple `FullyConnectedLayer's stacked one upon another.
-class MultilayerPerceptron : public ABackpropNet {
-private:
-    std::vector<FullyConnectedLayer> layers;
-
+class MultilayerPerceptron : public Net {
 public:
-    MultilayerPerceptron() : layers(0) {}
+    MultilayerPerceptron() {}
 
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
-                         const ActivationFunction &af = scaledTanh)
-        : layers() {
+                         const ActivationFunction &af = scaledTanh) {
         if (shape.size() <= 0) {
             throw std::invalid_argument("initializer list is empty");
         }
@@ -1116,73 +1118,19 @@ public:
         for (; pOut != shape.end(); ++pIn, ++pOut) {
             auto inSize = *pIn;
             auto outSize = *pOut;
-            FullyConnectedLayer layer(inSize, outSize, af);
-            append(std::move(layer));
+            std::shared_ptr<ABackpropLayer>
+                layer(new FullyConnectedLayer(inSize, outSize, af));
+            append(layer);
         }
     }
 
-    void clear() {
-        layers.clear();
+    /*
+    // TODO: change signature and update when ALayer has .clone()/.copy() method
+    MultilayerPerceptron &append(const FullyConnectedLayer &layer) {
+        std::shared_ptr<ABackpropLayer> new_layer(new FullyConnectedLayer(layer));
+        return this->append(new_layer);
     }
-
-    MultilayerPerceptron &append(FullyConnectedLayer &&layer) {
-        layers.push_back(layer);
-        if (layers.size() >= 2) { // connect the last two layers
-           auto n = layers.size();
-           layers[n-2].connectTo(layers[n-1]);
-        }
-        return *this;
-    }
-
-    void
-    init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
-        for (auto i = 0u; i < layers.size(); ++i) {
-            layers[i].init(rng, init);
-        }
-    }
-
-    virtual std::shared_ptr<Array> output(const Array &inputs) {
-        if (layers.empty()) {
-            throw std::logic_error("no layers defined");
-        }
-        std::shared_ptr<Array> out = layers[0].output(inputs);
-        for (auto i = 1u; i < layers.size(); ++i) {
-            out = layers[i].output(*out);
-        }
-        return out;
-    }
-
-    virtual std::shared_ptr<BackpropResult>
-    backprop(const Array &errorSignals) {
-        if (layers.empty()) {
-            throw std::logic_error("no layers defined");
-        }
-        size_t n = layers.size();
-        std::shared_ptr<BackpropResult> bpr;
-        bpr = layers[n - 1].backprop(errorSignals);
-        for (size_t offset = 1; offset < n; ++offset) {
-            size_t i = n - 1 - offset;
-            Array &e(bpr->propagatedErrors);
-            bpr = layers[i].backprop(e);
-        }
-        return bpr;
-    }
-
-    virtual void setLearningPolicy(const ALearningPolicy &lp) {
-        for (size_t i = 0; i < layers.size(); ++i) {
-            layers[i].setLearningPolicy(lp);
-        }
-    }
-
-    virtual void update() {
-        for (size_t i = 0; i < layers.size(); ++i) {
-            layers[i].update();
-        }
-    }
-
-    using MLPIterator = decltype(layers.cbegin());
-    MLPIterator begin() const { return layers.cbegin(); }
-    MLPIterator end() const { return layers.cend(); }
+    */
 };
 
 // TODO: CNN layer

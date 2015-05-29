@@ -529,8 +529,8 @@ public:
         consume_end_of_record();
         mlp.clear();
         for (size_t i = 0; i < nLayers; ++i) {
-            FullyConnectedLayer layer;
-            load(layer);
+            auto layer = std::make_shared<FullyConnectedLayer>();
+            load(*layer);
             mlp.append(std::move(layer));
         }
         return mlp;
@@ -582,7 +582,7 @@ public:
         out << "layers: " << nLayers << "\n";
         out << "%%\n";
         for (auto it = net.begin(); it != net.end(); ++it) {
-            save(*it);
+            save(**it);
             if (it + 1 != net.end()) {
                 out << "%%\n";
             }
