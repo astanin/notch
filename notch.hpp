@@ -4,7 +4,6 @@
 // TODO: doxygen-compatible comments
 // TODO: optional OpenMP implementation
 // TODO: benchmarks
-// TODO: tests
 
 /// notch.hpp -- main header file of the Notch neural networks library
 
@@ -34,7 +33,7 @@ THE SOFTWARE.
 
 */
 
-// TODO: remove these includes:
+// TODO: remove these debug includes, get rid of asserts
 #include <assert.h>
 #include <iostream>   // cout
 
@@ -295,9 +294,7 @@ using Weights = std::valarray<float>;
  * -----------------------------
  **/
 
-// TODO: maybe rename to WeightsInit
-using WeightInit =
-    std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
+using WeightInit = std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
 /** One-sided Xavier initialization.
  *
@@ -479,9 +476,8 @@ const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
  * ----------------------
  **/
 
-// TODO: FixedRate $\eta = \mathrm{const}$
 // TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
-// TODO: update with momentum (ASGD)
+// TODO: ADADELTA
 
 /** Values calculated in the backpropagation step.
  *
@@ -913,7 +909,6 @@ protected:
 
 public:
     /// Create a layer with zero weights.
-    // TODO: initialize policy
     FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
                         const ActivationFunction &af = scaledTanh)
         : nInputs(nInputs), nOutputs(nOutputs),
@@ -1167,7 +1162,6 @@ public:
 // TODO: max-pooling layer
 // TODO: decouple activation function from layer
 // TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...
-// TODO: NN formatters
 // TODO: sliding window search for CNNs
 
 /**
