@@ -503,7 +503,6 @@ struct BackpropResult {
     Array biasSensitivity; //< $\partial E/\partial b{j}$
 };
 
-// TODO: maybe rename .copy() to .clone() to be consistent with ALayer
 /** A base class for the rule to correct weights and bias given sensitivity factors.
  *
  * Concrete implementations may overwrite weightSensitivity and biasSensitivity
@@ -513,7 +512,7 @@ public:
     virtual void correctWeights(Array& weightSensitivy, Array &weights) = 0;
     virtual void correctBias(Array& biasSensitivity, Array &bias) = 0;
     virtual void resize(size_t nInputs, size_t nOutputs) = 0;
-    virtual std::unique_ptr<ALearningPolicy> copy() const = 0;
+    virtual std::unique_ptr<ALearningPolicy> clone() const = 0;
 };
 
 /** A classic delta rule.
@@ -534,9 +533,9 @@ public:
         bias -= (learningRate * biasSensitivity);
     }
     virtual void resize(size_t, size_t) {}
-    virtual std::unique_ptr<ALearningPolicy> copy() const {
-        auto clone = std::unique_ptr<ALearningPolicy>(new FixedRate(learningRate));
-        return clone;
+    virtual std::unique_ptr<ALearningPolicy> clone() const {
+        auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(learningRate));
+        return c;
     }
 };
 
@@ -583,16 +582,16 @@ public:
         lastDeltaW.resize(nInputs * nOutputs, 0.0);
         lastDeltaB.resize(nOutputs, 0.0);
     }
-    virtual std::unique_ptr<ALearningPolicy> copy() const {
-        auto clone = std::unique_ptr<ALearningPolicy>(
-                new FixedRateWithMomentum(learningRate, momentum)
-                );
-        return clone;
+    virtual std::unique_ptr<ALearningPolicy> clone() const {
+        auto c = std::unique_ptr<ALearningPolicy>(
+                  new FixedRateWithMomentum(learningRate, momentum));
+        return c;
     }
 };
 
+class ABackpropLayer;
+
 // TODO: maybe rename inputDim, outputDim to inputSize(), outputSize() (?)
-// TODO: add .clone() method
 /** Get and set layer's parameters. */
 class ALayer {
 public:
@@ -610,6 +609,7 @@ public:
     virtual void connectTo(ALayer& nextLayer) = 0;
     virtual std::shared_ptr<Array> &getInputBuffer() = 0;
     virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
+    virtual std::shared_ptr<ABackpropLayer> clone() = 0;
 
     /// Get the number of input variables.
     virtual size_t inputDim() const = 0;
@@ -987,6 +987,35 @@ public:
         return lastOutputs;
     }
 
+    virtual std::shared_ptr<ABackpropLayer> clone() {
+        auto p = std::make_shared<FullyConnectedLayer>(
+                nInputs, nOutputs, *activationFunction);
+        if (!p) {
+            return p;
+        }
+        p->weights = weights;
+        p->bias = bias;
+        p->inducedLocalField = inducedLocalField;
+        p->activationGrad = activationGrad;
+        p->localGrad = localGrad;
+        if (buffersAreReady) { // clone shared buffers too
+            p->allocateInOutBuffers();
+            if (p->lastInputs && lastInputs) {
+                *(p->lastInputs) = *(lastInputs);
+            }
+            if (p->lastOutputs && lastOutputs) {
+                *(p->lastOutputs) = *(lastOutputs);
+            }
+            if (p->thisBPR && thisBPR) {
+                *(p->thisBPR) = *(thisBPR);
+            }
+        }
+        if (policy) {
+            p->policy = policy->clone();
+        }
+        return p;
+    }
+
     virtual size_t inputDim() const {
         return nInputs;
     }
@@ -1021,7 +1050,7 @@ public:
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {
-        policy = lp.copy();
+        policy = lp.clone();
     }
 
     virtual void update() {
@@ -1126,7 +1155,7 @@ public:
     }
 
     /*
-    // TODO: change signature and update when ALayer has .clone()/.copy() method
+    // TODO: change signature and update when ALayer has .clone() method
     MultilayerPerceptron &append(const FullyConnectedLayer &layer) {
         std::shared_ptr<ABackpropLayer> new_layer(new FullyConnectedLayer(layer));
         return this->append(new_layer);

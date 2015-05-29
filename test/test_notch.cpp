@@ -8,6 +8,7 @@
 #include <string>
 
 #include "notch.hpp"
+#include "notch_io.hpp"
 
 
 using namespace std;
@@ -25,13 +26,12 @@ public:
     Array &getInducedLocalField() { return inducedLocalField; }
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
-    shared_ptr<ALearningPolicy> getPolicy() { return policy->copy(); }
+    shared_ptr<ALearningPolicy> getPolicy() { return policy->clone(); }
 
     shared_ptr<Array> getLastInputs() { return lastInputs; }
     shared_ptr<Array> getLastOutputs() { return lastOutputs; }
     shared_ptr<BackpropResult> getThisBPR() { return thisBPR; };
     bool getBuffersReadyFlag() { return buffersAreReady; };
-
 };
 
 #define CHECK_ARRAY_IS_INITIALIZED(name, arr_expr, expected_size) do { \
@@ -128,6 +128,38 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     auto out2 = *fc.output({1, 2});
     CHECK(out2.size() == 1);
     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
+}
+
+TEST_CASE( "FullyConnectedLayer cloning", "[core]") {
+    const Array w = {1, -1, -1, 1}; // weights
+    const Array bias = {0, 0};  // bias
+    FullyConnectedLayer fc1(w, bias, linearActivation);
+    FullyConnectedLayer fc2(w, bias, linearActivation);
+    fc1.connectTo(fc2);
+    // initially:
+    CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
+    CHECK(fc1.getWeights()[0] == fc2.getWeights()[0]); // parameters are the same
+    CHECK(fc1.getWeights()[1] == fc2.getWeights()[1]); // parameters are the same
+    CHECK(fc1.getWeights()[2] == fc2.getWeights()[2]); // parameters are the same
+    CHECK(fc1.getWeights()[3] == fc2.getWeights()[3]); // parameters are the same
+    CHECK(fc1.getBias()[0] == fc2.getBias()[0]); // parameters are the same
+    CHECK(fc1.getBias()[1] == fc2.getBias()[1]); // parameters are the same
+    // clone is detached:
+    shared_ptr<ABackpropLayer> fc1clone = fc1.clone();
+    shared_ptr<Array> out1 = fc1.getOutputBuffer();
+    shared_ptr<Array> out1clone = fc1clone->getOutputBuffer();
+    CHECK_FALSE(out1 == out1clone); // not shared
+    // clone updates don't affect the original:
+    auto rng = newRNG();
+    fc1clone->init(rng, uniformXavier);
+    CHECK_FALSE(fc1clone->getWeights()[0] == fc1.getWeights()[0]);
+    CHECK_FALSE(fc1clone->getWeights()[1] == fc1.getWeights()[1]);
+    CHECK_FALSE(fc1clone->getWeights()[2] == fc1.getWeights()[2]);
+    CHECK_FALSE(fc1clone->getWeights()[3] == fc1.getWeights()[3]);
+    CHECK_FALSE(fc1clone->getBias()[0] == fc1.getBias()[0]);
+    CHECK_FALSE(fc1clone->getBias()[1] == fc1.getBias()[1]);
+    // clone buffers are disconnected
+    CHECK_FALSE(fc1clone->getOutputBuffer().get() == fc1.getOutputBuffer().get());
 }
 
 TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
