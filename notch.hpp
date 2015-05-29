@@ -605,7 +605,7 @@ public:
     virtual void connectTo(ALayer& nextLayer) = 0;
     virtual std::shared_ptr<Array> &getInputBuffer() = 0;
     virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
-    virtual std::shared_ptr<ABackpropLayer> clone() = 0;
+    virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
 
     /// Get the number of input variables.
     virtual size_t inputDim() const = 0;
@@ -982,11 +982,11 @@ public:
         return lastOutputs;
     }
 
-    virtual std::shared_ptr<ABackpropLayer> clone() {
-        auto p = std::make_shared<FullyConnectedLayer>(
-                nInputs, nOutputs, *activationFunction);
+    virtual std::shared_ptr<ABackpropLayer> clone() const {
+        auto p = std::make_shared<FullyConnectedLayer>(nInputs, nOutputs,
+                                                       *activationFunction);
         if (!p) {
-            return p;
+            throw std::runtime_error("cannot clone layer");
         }
         p->weights = weights;
         p->bias = bias;
@@ -1074,6 +1074,10 @@ public:
         return *this;
     }
 
+    virtual Net &append(const ABackpropLayer &layer) {
+        return append(layer.clone());
+    }
+
     virtual void
     init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
         for (size_t i = 0u; i < layers.size(); ++i) {
@@ -1148,14 +1152,6 @@ public:
             append(layer);
         }
     }
-
-    /*
-    // TODO: change signature and update when ALayer has .clone() method
-    MultilayerPerceptron &append(const FullyConnectedLayer &layer) {
-        std::shared_ptr<ABackpropLayer> new_layer(new FullyConnectedLayer(layer));
-        return this->append(new_layer);
-    }
-    */
 };
 
 // TODO: CNN layer
