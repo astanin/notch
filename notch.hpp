@@ -1037,12 +1037,12 @@ public:
 /** A feed-forward neural network is a stack of layers. */
 class Net : public ABackpropNet {
 private:
-    std::vector<std::unique_ptr<ABackpropLayer>> layers;
+    std::vector<std::shared_ptr<ABackpropLayer>> layers;
 public:
     Net() : layers(0) {}
 
-    Net &append(ABackpropLayer &&layer) {
-        layers.push_back(std::unique_ptr<ABackpropLayer>(&layer));
+    Net &append(std::shared_ptr<ABackpropLayer> layer) {
+        layers.push_back(layer);
         if (layers.size() >= 2) { // connect the last two layers
            auto n = layers.size();
            layers[n-2]->connectTo(*layers[n-1]);
@@ -1057,10 +1057,43 @@ public:
     }
 
     /* begin ABackpropNet interface */
-    virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
-    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
-    virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
-    virtual void update() = 0;
+    virtual std::shared_ptr<Array> output(const Array &inputs) {
+        if (layers.empty()) {
+            throw std::logic_error("no layers");
+        }
+        std::shared_ptr<Array> out = layers[0]->output(inputs);
+        for (auto i = 1u; i < layers.size(); ++i) {
+            out = layers[i]->output(*out);
+        }
+        return out;
+    }
+
+    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
+        if (layers.empty()) {
+            throw std::logic_error("no layers");
+        }
+        size_t n = layers.size();
+        std::shared_ptr<BackpropResult> bpr;
+        bpr = layers[n - 1]->backprop(errors);
+        for (size_t offset = 1; offset < n; ++offset) {
+            size_t i = n - 1 - offset;
+            Array &e(bpr->propagatedErrors);
+            bpr = layers[i]->backprop(e);
+        }
+        return bpr;
+    }
+
+    virtual void setLearningPolicy(const ALearningPolicy &lp) {
+        for (size_t i = 0; i < layers.size(); ++i) {
+            layers[i]->setLearningPolicy(lp);
+        }
+     }
+
+    virtual void update() {
+        for (size_t i = 0; i < layers.size(); ++i) {
+            layers[i]->update();
+        }
+    }
     /* end ABackpropNet interface */
 };
 
