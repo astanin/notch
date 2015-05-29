@@ -593,6 +593,7 @@ public:
 
 // TODO: maybe rename inputDim, outputDim to inputSize(), outputSize() (?)
 // TODO: add .clone() method
+// TODO: add .connectTo() method to arbitrary interlayer connections
 /** Get and set layer's parameters. */
 class ALayer {
 public:
@@ -621,15 +622,14 @@ public:
     virtual const ActivationFunction &getActivationFunction() const = 0;
 };
 
-// TODO: maybe rename to ABackpropNet (?) or subclass ALayer (?)
-/** A common interface of all layers capable of both forward and
- * backpropagation.
+/** A common interface of all layers or groups of layers (networks) capable of
+ * both forward and backpropagation.
  *
  * Output results (Array) can be shared between layers, because
  * the output of the layer $j$ is the input of the layer $j+1$.
  * Backpropagation results (BackpropResult) can be shared between
  * layers too.*/
-class ABackpropLayer {
+class ABackpropNet {
 public:
     /// a forward propagaiton pass
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
@@ -640,6 +640,8 @@ public:
     /// adjust layer weights after the backpropagation pass
     virtual void update() = 0;
 };
+
+class ABackpropLayer : public ALayer, public ABackpropNet {};
 
 #ifdef NOTCH_USE_CBLAS
 
@@ -701,7 +703,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
 
 
 /** A fully connected layer of neurons with backpropagation. */
-class FullyConnectedLayer : public ABackpropLayer, public ALayer {
+class FullyConnectedLayer : public ABackpropLayer {
 protected:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer
@@ -997,7 +999,7 @@ public:
     }
     /* end ALayer interface */
 
-    /** begin ABackpropLayer interface */
+    /** begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         outputInplace(inputs, *lastOutputs);
@@ -1021,39 +1023,27 @@ public:
         policy->correctWeights(thisBPR->weightSensitivity, weights);
         policy->correctBias(thisBPR->biasSensitivity, bias);
     }
-    /* end of ABackpropLayer interface */
+    /* end of ABackpropNet interface */
 };
 
 /** A feed-forward neural network is a stack of layers. */
-// TODO: layer type should have init and should have backprop;
-// if I subclass ABackpropLayer from ALayer, then all Nets will
-// have to implement accessors to all weights and other params;
-// if I move .init() method to ABackpropLayer... it makes sense,
-// but how will Net initialize all layers from Weights&&?
-// how will I do IO for Net's stack of layers?
-// if I rename ABackpropLayer to ABackpropNet AND subclass
-// new ABackpropLayer from ABackpropNet + ALayer...
-// then I can init, input/output, and backprop on ABackpropLayers,
-// I can also implement only a smaller ABackpropNet interface on
-// Net and other layer composites, and let training methods
-// depend on only ABackpropNet...
-class Net : public ABackpropLayer {
+class Net : public ABackpropNet {
 private:
     std::vector<std::unique_ptr<ABackpropLayer>> layers;
 public:
     Net() : layers(0) {}
     virtual Net &append(ABackpropLayer &&layer) = 0;
     virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn = normalXavier) = 0;
-    /* begin ABackpropLayer interface */
+    /* begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
     virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
     virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
     virtual void update() = 0;
-    /* end ABackpropLayer interface */
+    /* end ABackpropNet interface */
 };
 
 /// Multiple `FullyConnectedLayer's stacked one upon another.
-class MultilayerPerceptron : public ABackpropLayer {
+class MultilayerPerceptron : public ABackpropNet {
 private:
     std::vector<FullyConnectedLayer> layers;
 
@@ -1171,9 +1161,10 @@ float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
     return sqrt(loss2);
 }
 
+// TODO: remove loss argument, use the top loss layer or L2 loss by default
 /** Calculate total loss across the entire testSet. */
 float totalLoss(LossFunction loss,
-                ABackpropLayer &net,
+                ABackpropNet &net,
                 const LabeledDataset& testSet) {
     float totalLoss = 0.0;
     for (auto sample : testSet) {
@@ -1183,37 +1174,36 @@ float totalLoss(LossFunction loss,
     return totalLoss;
 }
 
-using TrainCallback = std::function<void(int epoch, ABackpropLayer &)>;
-
-void printLoss(int epoch, ABackpropLayer &net, const LabeledDataset& testSet) {
-    std::cout << "epoch " << epoch
-              << " loss: " << totalLoss(L2_loss, net, testSet) << "\n";
-}
+// return true from TrainCallback to stop training early
+using TrainCallback = std::function<bool(int epoch)>;
 
 /** Traing using stochastic gradient descent.
  *
  * Use net.setLearningPolicy() to change learning parameters of the network
  * _before_ calling `trainWithSGD`.
  *
- * @param net       Neural network to be trained.
- * @param trainSet  Training set.
- * @param rng       Random number generator for shuffling.
- * @param epochs    How many iterations to run.
- * @param cbEvery   A period of callback invocation if not zero.
- * @param cb        A callback to be invoked.
+ * @param net             Neural network to be trained.
+ * @param trainSet        Training set.
+ * @param rng             Random number generator for shuffling.
+ * @param epochs          How many iterations (epochs) to run;
+ *                        the entire training set is processed once per epoch.
+ * @param callbackPeriod  A period of callback invocation if not zero;
+ *                        The callback is also called before the first
+ *                        and after the last iteration.
+ * @param callback        A callback function to be invoked;
+ *                        the callback may return true to stop training early.
  *
  * See:
  *
  *  - Efficient BackProp (2012) LeCun et al
  *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
-// TODO: refactor trainWithSGD interface to allow callbacks and stop criteria
-void trainWithSGD(ABackpropLayer &net, LabeledDataset &trainSet,
+void trainWithSGD(ABackpropNet &net, LabeledDataset &trainSet,
         std::unique_ptr<RNG> &rng, int epochs,
-        int cbEvery=0, TrainCallback cb=nullptr) {
+        int callbackPeriod=0, TrainCallback callback=nullptr) {
     for (int j = 0; j < epochs; ++j) {
-        if (cb && cbEvery > 0 && j % cbEvery == 0) {
-            cb(j, net);
+        if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
+            callback(j);
         }
         trainSet.shuffle(rng);
         for (auto sample : trainSet) {
@@ -1223,8 +1213,8 @@ void trainWithSGD(ABackpropLayer &net, LabeledDataset &trainSet,
             net.update();
         }
     }
-    if (cb && cbEvery > 0) {
-        cb(epochs, net);
+    if (callback && callbackPeriod > 0) {
+        callback(epochs);
     }
 }
 

@@ -35,10 +35,13 @@ int main(int, char *[]) {
     print_net("initial", xorNet, dataset);
 
     xorNet.setLearningPolicy(FixedRateWithMomentum(0.01, 0.9));
-    trainWithSGD(xorNet, dataset, rng, /* epochs */ 500,
-                 /* callbackEvery */ 100,
-                 /* callback */ [&](int i, ABackpropLayer& net) {
-                     printLoss(i, net, dataset);
+    trainWithSGD(xorNet, dataset, rng,
+                 500 /* epochs */,
+                 100 /* callbackPeriod */,
+                 /* callback */ [&](int i) {
+                    cout << "epoch " << i << " total loss = "
+                         << totalLoss(L2_loss, xorNet, dataset) << "\n";
+                    return false; // don't terminate;
                 });
     cout << "\n";
 

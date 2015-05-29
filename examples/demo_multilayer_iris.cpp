@@ -61,28 +61,29 @@ int main(int argc, char *argv[]) {
     MultilayerPerceptron net({ 4, 6, 3 }, scaledTanh);
     unique_ptr<RNG> rng(newRNG());
     net.init(rng);
-    PlainTextNetworkWriter(cout) << net;
-    cout << "\n";
+    PlainTextNetworkWriter(cout) << net << "\n";
 
     IntClassifier classifier(net, labelEnc);
     auto cm = classifier.test(irisData); // cm is a confusion matrix
     for (int c = 0; c < 3; ++c) {
-        cout << "precision(" << c << "): " << cm.precision(c) << "\n";
+        cout << "F1score(" << c << "): " << cm.F1score(c) << "\n";
     }
     cout << "accuracy: " << cm.accuracy() << "\n\n";
 
-    net.setLearningPolicy(FixedRate(0.01f));
+    net.setLearningPolicy(FixedRateWithMomentum(0.01f, 0.9));
     trainWithSGD(net, irisData, rng, 1000,
             /* callbackEvery */ 100,
-            /* callback */ [&](int i, ABackpropLayer& net) {
-                printLoss(i, net, irisData);
+            /* callback */ [&](int i) {
+                cout << "epoch " << i << " total loss = "
+                     << totalLoss(L2_loss, net, irisData) << "\n";
+                return false;
             });
     cout << "\n";
-    PlainTextNetworkWriter(cout) << net;
+    PlainTextNetworkWriter(cout) << net << "\n";
 
     cm = classifier.test(irisData); // cm is a confusion matrix
     for (int c = 0; c < 3; ++c) {
-        cout << "precision(" << c << "): " << cm.precision(c) << "\n";
+        cout << "F1score(" << c << "): " << cm.F1score(c) << "\n";
     }
     cout << "accuracy: " << cm.accuracy() << "\n\n";
 }
