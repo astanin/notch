@@ -296,7 +296,7 @@ using Weights = std::valarray<float>;
  **/
 
 // TODO: maybe rename to WeightsInit
-using WeightsInitializer =
+using WeightInit =
     std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
 /** One-sided Xavier initialization.
@@ -601,7 +601,7 @@ public:
     virtual std::string tag() const = 0;
 
     /// Randomly initialize synaptic weights.
-    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) = 0;
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
     /// Initialize synaptic weights using a weights matrix.
     virtual void init(Array &&weights, Array &&bias) = 0;
     /// Initialize synaptic weights using a copy of a weights matrix.
@@ -958,9 +958,9 @@ public:
     virtual std::string tag() const { return "FullyConnectedLayer"; }
 
     /// Initialize synaptic weights.
-    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn) {
-        init_fn(rng, weights, nInputs, nOutputs);
-        init_fn(rng, bias, nInputs, nOutputs);
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) {
+        init(rng, weights, nInputs, nOutputs);
+        init(rng, bias, nInputs, nOutputs);
     }
 
     /// Initialize synaptic weights.
@@ -1033,7 +1033,7 @@ private:
 public:
     Net() : layers(0) {}
     virtual Net &append(ABackpropLayer &&layer) = 0;
-    virtual void init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn = normalXavier) = 0;
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
     /* begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
     virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
@@ -1080,9 +1080,9 @@ public:
     }
 
     void
-    init(std::unique_ptr<RNG> &rng, WeightsInitializer init_fn = normalXavier) {
+    init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
         for (auto i = 0u; i < layers.size(); ++i) {
-            layers[i].init(rng, init_fn);
+            layers[i].init(rng, init);
         }
     }
 
