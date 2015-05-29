@@ -593,7 +593,6 @@ public:
 
 // TODO: maybe rename inputDim, outputDim to inputSize(), outputSize() (?)
 // TODO: add .clone() method
-// TODO: add .connectTo() method to arbitrary interlayer connections
 /** Get and set layer's parameters. */
 class ALayer {
 public:
@@ -606,6 +605,11 @@ public:
     virtual void init(Array &&weights, Array &&bias) = 0;
     /// Initialize synaptic weights using a copy of a weights matrix.
     virtual void init(const Array &weights, const Array &bias) = 0;
+
+    /// Share output buffers with the nextLayer.
+    virtual void connectTo(ALayer& nextLayer) = 0;
+    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
+    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
 
     /// Get the number of input variables.
     virtual size_t inputDim() const = 0;
@@ -941,15 +945,6 @@ public:
           lastInputs(nullptr), lastOutputs(nullptr),
           thisBPR(nullptr) {}
 
-    /// Interlayer connections allow to share input-output buffers between two layers.
-    virtual void connectTo(ABackpropLayer& nextLayer) {
-        if (nextLayer.inputDim() != this->outputDim()) {
-            throw std::invalid_argument("incompatible shape of the nextLayer");
-        }
-        allocateInOutBuffers();
-        nextLayer.lastInputs = this->lastOutputs;
-    }
-
     /* begin ALayer interface */
     virtual std::string tag() const { return "FullyConnectedLayer"; }
 
@@ -973,6 +968,23 @@ public:
         initResize(weights, bias);
         this->weights = weights;
         this->bias = bias;
+    }
+
+    /// Interlayer connections allow to share input-output buffers between two layers.
+    virtual void connectTo(ALayer& nextLayer) {
+        if (nextLayer.inputDim() != this->outputDim()) {
+            throw std::invalid_argument("incompatible shape of the nextLayer");
+        }
+        allocateInOutBuffers();
+        nextLayer.getInputBuffer() = this->lastOutputs;
+    }
+
+    virtual std::shared_ptr<Array> &getInputBuffer() {
+        return lastInputs;
+    }
+
+    virtual std::shared_ptr<Array> &getOutputBuffer() {
+        return lastOutputs;
     }
 
     virtual size_t inputDim() const {
@@ -1028,8 +1040,22 @@ private:
     std::vector<std::unique_ptr<ABackpropLayer>> layers;
 public:
     Net() : layers(0) {}
-    virtual Net &append(ABackpropLayer &&layer) = 0;
-    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
+
+    Net &append(ABackpropLayer &&layer) {
+        layers.push_back(std::unique_ptr<ABackpropLayer>(&layer));
+        if (layers.size() >= 2) { // connect the last two layers
+           auto n = layers.size();
+           layers[n-2]->connectTo(*layers[n-1]);
+        }
+        return *this;
+    }
+
+    void init(std::unique_ptr<RNG> &rng, WeightInit init) {
+        for (size_t i = 0u; i < layers.size(); ++i) {
+            layers[i]->init(rng, init);
+        }
+    }
+
     /* begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
     virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
