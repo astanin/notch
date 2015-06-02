@@ -13,9 +13,10 @@
 
 using namespace std;
 
-// Abbreviations: FC = FullyConnectedLayer
-//                AL = ActivationLayer
-
+// Abbreviations:
+// FC  = FullyConnectedLayer
+// AL  = ActivationLayer
+// MLP = MultilayerPerceptron
 
 /// FullyConnectedLayer_Test breaks encapsulation of FullyConnectedLayer to
 /// explore its inner state.
@@ -44,7 +45,7 @@ public:
     CHECK( all_of(begin(name), end(name), is_zero) ); \
 } while(0)
 
-TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
+TEST_CASE("FC construction from shape", "[core][fc]") {
     size_t n_in = 3;
     size_t n_out = 2;
     FullyConnectedLayer_Test fc(n_in, n_out, linearActivation);
@@ -61,7 +62,29 @@ TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     CHECK_FALSE(fc.getBuffersReadyFlag());
 }
 
-TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
+TEST_CASE("FC construction from weights matrix (no-copy)", "[core][fc]") {
+    /// three in, two out
+    FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
+                           {2.5, 5.0}, // bias
+                           defaultTanh);
+    auto out = *fc.output({1,1,1});
+    CHECK(out.size() == 2u);
+    CHECK(out[0] == Approx(tanh(111 + 2.5)));
+    CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
+}
+
+TEST_CASE("FC construction from weights matrix (copy)", "[core][fc]") {
+    /// three in, two out
+    const Array w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
+    const Array bias = {2.5, 5.0}; // bias
+    FullyConnectedLayer fc(w, bias, linearActivation);
+    auto out = *fc.output({1,1,1});
+    CHECK(out.size() == 2);
+    CHECK(out[0] == Approx(111 + 2.5));
+    CHECK(out[1] == Approx(0.111 + 5.0));
+}
+
+TEST_CASE("FC shared buffers", "[core][fc]") {
     size_t n_in = 3;
     size_t n_out = 7;
     size_t n_out_next = 4;
@@ -92,29 +115,7 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
     CHECK(fc.getLastOutputs() == fc2.getLastInputs()); // buffers are still shared
 }
 
-TEST_CASE( "FullyConnectedLayer from weights matrix (&&)", "[core]" ) {
-    /// three in, two out
-    FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
-                           {2.5, 5.0}, // bias
-                           defaultTanh);
-    auto out = *fc.output({1,1,1});
-    CHECK(out.size() == 2u);
-    CHECK(out[0] == Approx(tanh(111 + 2.5)));
-    CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
-}
-
-TEST_CASE( "FullyConnectedLayer from weights matrix (const&)", "[core]" ) {
-    /// three in, two out
-    const Array w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
-    const Array bias = {2.5, 5.0}; // bias
-    FullyConnectedLayer fc(w, bias, linearActivation);
-    auto out = *fc.output({1,1,1});
-    CHECK(out.size() == 2);
-    CHECK(out[0] == Approx(111 + 2.5));
-    CHECK(out[1] == Approx(0.111 + 5.0));
-}
-
-TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
+TEST_CASE("FC init(weights, bias)", "[core][fc]") {
     FullyConnectedLayer fc(2, 1, linearActivation);
     auto out_before = *fc.output({1,1});
     CHECK(out_before.size() == 1);
@@ -133,7 +134,7 @@ TEST_CASE( "FullyConnectedLayer init(weights, bias)", "[core]" ) {
     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 }
 
-TEST_CASE( "FullyConnectedLayer cloning", "[core]") {
+TEST_CASE("FC cloning", "[core][fc]") {
     const Array w = {1, -1, -1, 1}; // weights
     const Array bias = {0, 0};  // bias
     FullyConnectedLayer fc1(w, bias, linearActivation);
@@ -231,7 +232,7 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     }
 }
 
-TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
+TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};
     float b[3] = {1, 2, -1}; // with an extra element at the end
@@ -244,7 +245,7 @@ TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
 
 /* This test is based on the backpropagation example by Dan Ventura
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
-TEST_CASE( "backprop example", "[core][math]") {
+TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     // initialize network weights as in the example
     MultilayerPerceptron mlp;
     FullyConnectedLayer layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
@@ -269,7 +270,7 @@ TEST_CASE( "backprop example", "[core][math]") {
     }
 }
 
-TEST_CASE( "FixedRate (delta rule) policy", "[core][train]") {
+TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
     float eta = 0.5;
     FixedRate policy(eta);
     // weight updates

@@ -117,7 +117,7 @@ TEST_CASE("Dataset CSV-format reader (categorical labels and quotes)", "[io]") {
     }
 }
 
-TEST_CASE("FullyConnectedLayer input-output to plain-text", "[io]") {
+TEST_CASE("FC input-output to plain-text", "[io][fc]") {
     // output
     stringstream ss;
     FullyConnectedLayer layer({1, 2, 3}, {0.5}, linearActivation);
@@ -141,7 +141,7 @@ TEST_CASE("FullyConnectedLayer input-output to plain-text", "[io]") {
     CHECK(out[0] == Approx(out_copy[0]));
 }
 
-TEST_CASE("MultilayerPerceptron input-output to plain-text", "[io]") {
+TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     // create a random MLP and write it to string
     auto rng = newRNG();
     stringstream ss;
