@@ -1187,6 +1187,66 @@ public:
 };
 
 
+/** Apply the softmax function.
+ *
+ * Softmax function is a generalization of the logistic function and
+ * produces outputs in the range (0,1) which sum to 1.
+ * Given inputs $y_i$, the softmax function $h_j$ is defined as
+ *
+ * $$ h_j = \frac {\exp{y_j}} {\sum_i \exp{y_i}} $$
+ *
+ * It is often used as the last layer in the multiclass classification
+ * problems using a cross-entropy loss function.
+ *
+ * References:
+ *
+ *  - http://stats.stackexchange.com/q/79454
+ *  - http://en.wikipedia.org/wiki/Softmax_function
+ **/
+class SoftmaxLayer : public ActivationLayer {
+protected:
+    // TODO: implement more stable (softmax + cross-entropy loss) layer
+    Array dhdy; //< Jacobian $\partial h_i/\partial y_j$
+
+    virtual void outputInplace(const Array &inputs, Array &outputs) {
+        if (outputs.size() != nSize) {
+            outputs.resize(nSize);
+        }
+        if (dhdy.size() != (nSize*nSize)) {
+            dhdy.resize(nSize*nSize);
+        }
+        // save a copy of inputs
+        *inputBuffer = inputs;
+        // calculate output
+        float total = 0.0;
+        for (size_t i = 0; i < nSize; ++i) {
+            outputs[i] = std::exp(inputs[i]);
+            total += outputs[i];
+        }
+        for (size_t i = 0; i < nSize; ++i) {
+            outputs[i] /= total;
+        }
+        // calculate Jacobian matrix
+        for (size_t i = 0; i < nSize; ++i) {
+            for (size_t j = j; j < nSize; ++j) {
+                int delta_ij = (i == j);
+                dhdy[i*nSize + j] = delta_ij*outputs[i] - outputs[i]*outputs[j];
+            }
+        }
+    }
+
+    virtual void backpropInplace(const Array &errors, Array &propagatedErrors) {
+        propagatedErrors = 0.0;
+        gemv(std::begin(dhdy), std::end(dhdy),
+             std::begin(errors), std::end(errors),
+             std::begin(propagatedErrors), std::end(propagatedErrors));
+    }
+
+public:
+    SoftmaxLayer(size_t n) : ActivationLayer(n, linearActivation), dhdy(n*n) {}
+    virtual std::string tag() const { return "SoftmaxLayer"; }
+};
+
 /** A feed-forward neural network is a stack of layers. */
 class Net : public ABackpropNet {
 protected:
@@ -1312,6 +1372,26 @@ float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
     return sqrt(loss2);
 }
 
+/** Multi-class cross-entropy loss.
+ *
+ * For a multi-class classification problem with $C$ different classes
+ * and one-hot encoding used to represent results (see OneHotEncoder),
+ * target ($\mathbf{d}$) and output ($\mathbf{y}$) values in the range (0,1),
+ * the loss function is defined as
+ *
+ * $$ E(y, d) = - \sum_{i}^C d_i \ln y_i $$
+ *
+ */
+float CrossEntropyLoss(const Output &actual, const Output &expected) {
+    float negLoss = std::inner_product(
+            std::begin(actual), std::end(actual),
+            std::begin(expected),
+            0.0,
+            [](float sum, float s_i) { return sum + s_i; },
+            [](float d_i, float y_i) { return d_i * std::log(y_i); });
+    return -negLoss;
+}
+
 // TODO: remove loss argument, use the top loss layer or L2 loss by default
 /** Calculate total loss across the entire testSet. */
 float totalLoss(LossFunction loss,
@@ -1372,8 +1452,6 @@ void trainWithSGD(ABackpropNet &net, LabeledDataset &trainSet,
     }
 }
 
-// TODO: softmax layer
-// TODO: cross-entropy loss
 // TODO: Hinge loss
 
 #endif /* NOTCH_H */
