@@ -1063,6 +1063,124 @@ public:
     /* end of ABackpropNet interface */
 };
 
+
+/** Apply ActivationFunction to all inputs.
+ *
+ * This layer doesn't have any parameters (weights). */
+class ActivationLayer : public ABackpropLayer {
+protected:
+    size_t nSize; // the number of input and outputs is the same
+    const Array noParameters = Array(0); // it is supposed to be empty
+    const ActivationFunction *activationFunction; //< $\phi$
+    std::shared_ptr<Array> inputBuffer;     //< $v$
+    std::shared_ptr<Array> activationGrad;  //< $\phi^\prime(v)$
+    std::shared_ptr<Array> outputBuffer;    //< $\phi(v)$
+    std::shared_ptr<BackpropResult> backpropResult;
+    bool buffersAreReady = false;
+
+    void outputInplace(const Array &inputs, Array &outputs) {
+        if (outputs.size() != nSize) {
+            outputs.resize(nSize);
+        }
+        *inputBuffer = inputs;
+        std::transform(
+            std::begin(inputs), std::end(inputs),
+            std::begin(*activationGrad),
+            [&](float y) { return activationFunction->derivative(y); });
+        std::transform(
+            std::begin(inputs), std::end(inputs),
+            std::begin(outputs),
+            [&](float y) { return (*activationFunction)(y); });
+    }
+
+    void allocateInOutBuffers() {
+        if (!inputBuffer) {
+            inputBuffer = std::make_shared<Array>(0.0, nSize);
+        }
+        if (!outputBuffer) {
+            outputBuffer = std::make_shared<Array>(0.0, nSize);
+        }
+        if (!activationGrad) {
+            activationGrad = std::make_shared<Array>(0.0, nSize);
+        }
+        if (!backpropResult) {
+            backpropResult = std::make_shared<BackpropResult>(nSize, 0, 0);
+        }
+        buffersAreReady = inputBuffer && outputBuffer &&
+                          activationGrad && backpropResult;
+    }
+
+public:
+    ActivationLayer(size_t n, const ActivationFunction &af)
+        : nSize(n), activationFunction(&af) {}
+
+    /* begin ALayer interface */
+    virtual std::string tag() const { return "ActivationLayer"; }
+    // this layer doesn't have parameters, nothing to initialize
+    virtual void init(std::unique_ptr<RNG> &, WeightInit) {}
+    virtual void init(Array &&, Array &&) {}
+    virtual void init(const Array &, const Array &) {}
+    virtual void connectTo(ALayer& nextLayer) {
+        if (nextLayer.inputDim() != this->outputDim()) {
+            throw std::invalid_argument("incompatible shape of the nextLayer");
+        }
+        allocateInOutBuffers();
+        nextLayer.getInputBuffer() = this->getOutputBuffer();
+    }
+    virtual std::shared_ptr<Array> &getInputBuffer() { return inputBuffer; }
+    virtual std::shared_ptr<Array> &getOutputBuffer() { return outputBuffer; }
+    virtual std::shared_ptr<ABackpropLayer> clone() const {
+        auto p = std::make_shared<ActivationLayer>(nSize, *activationFunction);
+        if (!p) {
+            throw std::runtime_error("cannot clone layer");
+        }
+        if (buffersAreReady) { // clone shared buffers too
+            p->allocateInOutBuffers();
+            if (p->inputBuffer && inputBuffer) {
+                *(p->inputBuffer) = *(inputBuffer);
+            }
+            if (p->outputBuffer && outputBuffer) {
+                *(p->outputBuffer) = *(outputBuffer);
+            }
+            if (p->backpropResult && backpropResult) {
+                *(p->backpropResult) = *(backpropResult);
+            }
+        }
+        return p;
+    }
+    virtual size_t inputDim() const { return nSize; }
+    virtual size_t outputDim() const { return nSize; }
+    virtual const Array &getWeights() const { return noParameters; }
+    virtual const Array &getBias() const { return noParameters; }
+    virtual void setActivationFunction(const ActivationFunction &af) {
+        activationFunction = &af;
+    }
+    virtual const ActivationFunction &getActivationFunction() const {
+        return *activationFunction;
+    }
+    /* end of ALayer interface */
+
+    /* begin ABackpropNet interface */
+    virtual std::shared_ptr<Array> output(const Array &inputs) {
+        allocateInOutBuffers(); // just in case the user didn't init()
+        assert (buffersAreReady);
+        assert (nSize == inputs.size());
+        outputInplace(inputs, *outputBuffer);
+        return outputBuffer;
+    }
+    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
+        allocateInOutBuffers(); // just in case the user didn't init()
+        assert (buffersAreReady);
+        assert (nSize == errors.size());
+        backpropResult->propagatedErrors = (*activationGrad) * errors;
+        return backpropResult;
+    }
+    virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
+    virtual void update() {} // do nothing
+    /* end of ABackpropNet interface */
+};
+
+
 /** A feed-forward neural network is a stack of layers. */
 class Net : public ABackpropNet {
 protected:
@@ -1161,7 +1279,6 @@ public:
 
 // TODO: CNN layer
 // TODO: max-pooling layer
-// TODO: decouple activation function from layer
 // TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...
 // TODO: sliding window search for CNNs
 
