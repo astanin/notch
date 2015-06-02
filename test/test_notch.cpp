@@ -232,6 +232,25 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     }
 }
 
+TEST_CASE("AL cloning", "[core][activation]") {
+    FullyConnectedLayer fc1(1, 2, linearActivation);
+    ActivationLayer a2(2, logisticActivation);
+    FullyConnectedLayer fc3(2, 1, defaultTanh);
+    fc1.connectTo(a2);
+    a2.connectTo(fc3);
+    // initially buffers are shared:
+    CHECK(fc1.getOutputBuffer() == a2.getInputBuffer());
+    CHECK(a2.getOutputBuffer() == fc3.getInputBuffer());
+    // but clone is detached:
+    shared_ptr<ABackpropLayer> a2clone = a2.clone();
+    shared_ptr<Array> in2 = a2.getInputBuffer();
+    shared_ptr<Array> in2clone = a2clone->getInputBuffer();
+    shared_ptr<Array> out2 = a2.getOutputBuffer();
+    shared_ptr<Array> out2clone = a2clone->getOutputBuffer();
+    CHECK_FALSE(in2 == in2clone); // not shared
+    CHECK_FALSE(out2 == out2clone); // not shared
+}
+
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};
