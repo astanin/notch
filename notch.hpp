@@ -1078,7 +1078,27 @@ protected:
     std::shared_ptr<BackpropResult> backpropResult;
     bool buffersAreReady = false;
 
-    void outputInplace(const Array &inputs, Array &outputs) {
+    std::shared_ptr<ActivationLayer> makeClone() const {
+        auto p = std::make_shared<ActivationLayer>(nSize, *activationFunction);
+        if (!p) {
+            throw std::runtime_error("cannot clone layer");
+        }
+        if (buffersAreReady) { // clone shared buffers too
+            p->allocateInOutBuffers();
+            if (p->inputBuffer && inputBuffer) {
+                *(p->inputBuffer) = *(inputBuffer);
+            }
+            if (p->outputBuffer && outputBuffer) {
+                *(p->outputBuffer) = *(outputBuffer);
+            }
+            if (p->backpropResult && backpropResult) {
+                *(p->backpropResult) = *(backpropResult);
+            }
+        }
+        return p;
+    }
+
+    virtual void outputInplace(const Array &inputs, Array &outputs) {
         if (outputs.size() != nSize) {
             outputs.resize(nSize);
         }
@@ -1091,6 +1111,10 @@ protected:
             std::begin(inputs), std::end(inputs),
             std::begin(outputs),
             [&](float y) { return (*activationFunction)(y); });
+    }
+
+    virtual void backpropInplace(const Array &errors, Array &propagatedErrors) {
+        propagatedErrors = (*activationGrad) * errors;
     }
 
     void allocateInOutBuffers() {
@@ -1129,25 +1153,7 @@ public:
     }
     virtual std::shared_ptr<Array> &getInputBuffer() { return inputBuffer; }
     virtual std::shared_ptr<Array> &getOutputBuffer() { return outputBuffer; }
-    virtual std::shared_ptr<ABackpropLayer> clone() const {
-        auto p = std::make_shared<ActivationLayer>(nSize, *activationFunction);
-        if (!p) {
-            throw std::runtime_error("cannot clone layer");
-        }
-        if (buffersAreReady) { // clone shared buffers too
-            p->allocateInOutBuffers();
-            if (p->inputBuffer && inputBuffer) {
-                *(p->inputBuffer) = *(inputBuffer);
-            }
-            if (p->outputBuffer && outputBuffer) {
-                *(p->outputBuffer) = *(outputBuffer);
-            }
-            if (p->backpropResult && backpropResult) {
-                *(p->backpropResult) = *(backpropResult);
-            }
-        }
-        return p;
-    }
+    virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
     virtual const Array &getWeights() const { return noParameters; }
@@ -1172,7 +1178,7 @@ public:
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
         assert (nSize == errors.size());
-        backpropResult->propagatedErrors = (*activationGrad) * errors;
+        backpropInplace(errors, backpropResult->propagatedErrors);
         return backpropResult;
     }
     virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
