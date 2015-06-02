@@ -13,6 +13,9 @@
 
 using namespace std;
 
+// Abbreviations: FC = FullyConnectedLayer
+//                AL = ActivationLayer
+
 
 /// FullyConnectedLayer_Test breaks encapsulation of FullyConnectedLayer to
 /// explore its inner state.
@@ -160,6 +163,72 @@ TEST_CASE( "FullyConnectedLayer cloning", "[core]") {
     CHECK_FALSE(fc1clone->getBias()[1] == fc1.getBias()[1]);
     // clone buffers are disconnected
     CHECK_FALSE(fc1clone->getOutputBuffer().get() == fc1.getOutputBuffer().get());
+}
+
+TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
+    const Array identity = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+    const Array nobias = {0, 0, 0};
+    FullyConnectedLayer fcl(identity, nobias, scaledTanh);
+    ActivationLayer al(3, scaledTanh);
+    // forward propagation
+    const Array input = {-1, 1, 100};
+    auto fclOut = fcl.output(input);
+    auto alOut = al.output(input);
+    CHECK(fclOut->size() == alOut->size());
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK((*fclOut)[i] == Approx((*alOut)[i]));
+    }
+    // backpropagation
+    const Array target = {1, 1, 1};
+    auto fclBP = fcl.backprop(target);
+    auto alBP = al.backprop(target);
+    CHECK(fclBP->propagatedErrors.size() == alBP->propagatedErrors.size());
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK(fclBP->propagatedErrors[i] == Approx(alBP->propagatedErrors[i]));
+    }
+}
+
+TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
+    const Array w = {0.01, 0.1, -0.1, -0.01};
+    const Array b = {0.25, -0.25};
+    // compare this:
+    FullyConnectedLayer fcTanh(w, b, scaledTanh);
+    // vs a net of
+    auto fcLinear = make_shared<FullyConnectedLayer>(w, b, linearActivation);
+    auto alTanh = make_shared<ActivationLayer>(2, scaledTanh);
+    Net net;
+    net.append(fcLinear);
+    net.append(alTanh);
+    // forward propagation
+    const Array input = {2, 4};
+    auto fclOut = fcTanh.output(input);
+    auto netOut = net.output(input);
+    CHECK(fclOut->size() == netOut->size());
+    for (size_t i = 0; i < 2; ++i) {
+        CHECK((*fclOut)[i] == Approx((*netOut)[i]));
+    }
+    // backpropagation
+    const Array error = { 17, 42 };
+    auto fclBP = fcTanh.backprop(error);
+    auto netBP = net.backprop(error);
+    auto fclBPErrs = fclBP->propagatedErrors;
+    auto netBPErrs = netBP->propagatedErrors;
+    CHECK(fclBPErrs.size() == netBPErrs.size());
+    for (size_t i = 0; i < 2; ++i) {
+        CHECK(fclBPErrs[i] == Approx(netBPErrs[i]));
+    }
+    auto fcl_dEdW = fclBP->weightSensitivity;
+    auto net_dEdW = netBP->weightSensitivity;
+    CHECK(fcl_dEdW.size() == net_dEdW.size());
+    for (size_t i = 0; i < fcl_dEdW.size(); ++i) {
+        CHECK(fcl_dEdW[i] == net_dEdW[i]);
+    }
+    auto fcl_dEdB = fclBP->biasSensitivity;
+    auto net_dEdB = netBP->biasSensitivity;
+    CHECK(fcl_dEdB.size() == net_dEdB.size());
+    for (size_t i = 0; i < fcl_dEdB.size(); ++i) {
+        CHECK(fcl_dEdB[i] == net_dEdB[i]);
+    }
 }
 
 TEST_CASE( "gemv: matrix-vector product b = M*x + b", "[core][math]") {
