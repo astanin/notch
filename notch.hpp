@@ -1057,8 +1057,8 @@ public:
         if (!policy) {
             throw std::logic_error("learning policy is not defined");
         }
-        policy->correctWeights(thisBPR->weightSensitivity, weights);
-        policy->correctBias(thisBPR->biasSensitivity, bias);
+        policy->correctWeights(backpropResult->weightSensitivity, weights);
+        policy->correctBias(backpropResult->biasSensitivity, bias);
     }
     /* end of ABackpropNet interface */
 };
