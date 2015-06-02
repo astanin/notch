@@ -722,7 +722,8 @@ protected:
     // connectTo() method implements sharing.
     std::shared_ptr<Array> lastInputs;  //< $x_i$
     std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
-    std::shared_ptr<BackpropResult> thisBPR; //< backpropagation results of this layer
+    std::shared_ptr<BackpropResult> backpropResult; //< backpropagation result
+
     bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
 
     std::shared_ptr<ALearningPolicy> policy;
@@ -851,8 +852,8 @@ protected:
         if (!lastOutputs) {
             lastOutputs = std::make_shared<Array>(0.0, nOutputs);
         }
-        if (!thisBPR) {
-            thisBPR = std::make_shared<BackpropResult>(nInputs, nOutputs);
+        if (!backpropResult) {
+            backpropResult = std::make_shared<BackpropResult>(nInputs, nOutputs);
         }
         buffersAreReady = true;
     }
@@ -862,7 +863,7 @@ protected:
         return (buffersAreReady &&
                 !(lastInputs.unique() &&
                   lastOutputs.unique() &&
-                  thisBPR.unique()));
+                  backpropResult.unique()));
     }
 
     /// Resize all layer buffers if it is initialized with a weight matrix
@@ -896,8 +897,8 @@ protected:
                 if (lastOutputs) {
                     lastOutputs->resize(n_out);
                 }
-                if (thisBPR) {
-                    thisBPR = std::make_shared<BackpropResult>(n_in, n_out);
+                if (backpropResult) {
+                    backpropResult = std::make_shared<BackpropResult>(n_in, n_out);
                 }
                 // resize buffers for historical values
                 if (policy) {
@@ -916,7 +917,7 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr) {}
+          backpropResult(nullptr) {}
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
@@ -927,7 +928,7 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr) {}
+          backpropResult(nullptr) {}
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
@@ -938,7 +939,7 @@ public:
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
           lastInputs(nullptr), lastOutputs(nullptr),
-          thisBPR(nullptr) {}
+          backpropResult(nullptr) {}
 
     /* begin ALayer interface */
     virtual std::string tag() const { return "FullyConnectedLayer"; }
@@ -1001,8 +1002,8 @@ public:
             if (p->lastOutputs && lastOutputs) {
                 *(p->lastOutputs) = *(lastOutputs);
             }
-            if (p->thisBPR && thisBPR) {
-                *(p->thisBPR) = *(thisBPR);
+            if (p->backpropResult && backpropResult) {
+                *(p->backpropResult) = *(backpropResult);
             }
         }
         if (policy) {
@@ -1040,8 +1041,8 @@ public:
 
     virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        backpropInplace(errors, *thisBPR);
-        return thisBPR;
+        backpropInplace(errors, *backpropResult);
+        return backpropResult;
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {

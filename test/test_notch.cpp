@@ -30,7 +30,7 @@ public:
 
     shared_ptr<Array> getLastInputs() { return lastInputs; }
     shared_ptr<Array> getLastOutputs() { return lastOutputs; }
-    shared_ptr<BackpropResult> getThisBPR() { return thisBPR; };
+    shared_ptr<BackpropResult> getBackpropResult() { return backpropResult; };
     bool getBuffersReadyFlag() { return buffersAreReady; };
 };
 
@@ -54,7 +54,7 @@ TEST_CASE( "FullyConnectedLayer construction", "[core]" ) {
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
     CHECK_FALSE(fc.getLastInputs());
     CHECK_FALSE(fc.getLastOutputs());
-    CHECK_FALSE(fc.getThisBPR());
+    CHECK_FALSE(fc.getBackpropResult());
     CHECK_FALSE(fc.getBuffersReadyFlag());
 }
 
@@ -77,7 +77,7 @@ TEST_CASE( "FullyConnectedLayer shared buffers initialization", "[core]" ) {
 
     // check that dimensions of this layer's BackpropResult
     // match layer's dimensions
-    shared_ptr<BackpropResult> bpr = fc.getThisBPR();
+    shared_ptr<BackpropResult> bpr = fc.getBackpropResult();
     CHECK_ARRAY_IS_INITIALIZED(bpr_propagatedErrors,
          bpr->propagatedErrors, n_in);
     CHECK_ARRAY_IS_INITIALIZED(bpr_weightsSensitivity,
