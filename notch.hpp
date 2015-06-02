@@ -494,6 +494,10 @@ struct BackpropResult {
         : propagatedErrors(0.0, nInputs),
           weightSensitivity(0.0, nInputs*nOutputs),
           biasSensitivity(0.0, nOutputs) {}
+    BackpropResult(size_t nInputs, size_t nWeights, size_t nBias)
+        : propagatedErrors(0.0, nInputs),
+          weightSensitivity(0.0, nWeights),
+          biasSensitivity(0.0, nBias) {}
     Array propagatedErrors; //< $e_i$
     Array weightSensitivity; //< $\partial E/\partial w_{ji}$
     Array biasSensitivity; //< $\partial E/\partial b{j}$
