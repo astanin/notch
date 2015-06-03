@@ -479,30 +479,6 @@ const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
 // TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
 // TODO: ADADELTA
 
-/** Values calculated in the backpropagation step.
- *
- * propagatedErrors $e_i$ is blame assigned to each of the inputs $i$;
- *
- * weightSensitivy $\partial E/\partial w{ji}$ defines direction of the weight
- * corrections in the delta rule; biasSensitivity $\partial E/\partial b{j}$
- * does the same for bias corrections.
- *
- * The actual delta rule is define
- */
-struct BackpropResult {
-    BackpropResult(size_t nInputs, size_t nOutputs)
-        : propagatedErrors(0.0, nInputs),
-          weightSensitivity(0.0, nInputs*nOutputs),
-          biasSensitivity(0.0, nOutputs) {}
-    BackpropResult(size_t nInputs, size_t nWeights, size_t nBias)
-        : propagatedErrors(0.0, nInputs),
-          weightSensitivity(0.0, nWeights),
-          biasSensitivity(0.0, nBias) {}
-    Array propagatedErrors; //< $e_i$
-    Array weightSensitivity; //< $\partial E/\partial w_{ji}$
-    Array biasSensitivity; //< $\partial E/\partial b{j}$
-};
-
 /** A base class for the rule to correct weights and bias given sensitivity factors.
  *
  * Concrete implementations may overwrite weightSensitivity and biasSensitivity
@@ -629,19 +605,22 @@ public:
 /** A common interface of all layers or groups of layers (networks) capable of
  * both forward and backpropagation.
  *
- * Output results (Array) can be shared between layers, because
- * the output of the layer $j$ is the input of the layer $j+1$.
- * Backpropagation results (BackpropResult) can be shared between
- * layers too.*/
+ * Output results can be shared between layers, because the output of the layer
+ * $j$ is the input of the layer $j+1$.  Backpropagation results can be shared
+ * between layers too. */
 class ABackpropNet {
 public:
-    /// a forward propagaiton pass
+    /** Forward propagaiton pass.
+     *
+     * @return inputs for the next layer. */
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
-    /// a backpropagation pass
-    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) = 0;
+    /** Backpropagation pass.
+     *
+     * @return error signals $e_i$ propagated to the previous layer */
+    virtual std::shared_ptr<Array> backprop(const Array &errors) = 0;
     /// specify how the weights have to be adjusted
     virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
-    /// adjust layer weights after the backpropagation pass
+    /// adjust layer parameters after the backpropagation pass
     virtual void update() = 0;
 };
 
@@ -715,9 +694,11 @@ protected:
     Array bias;    //< bias values $b_j$ for the entire layer, one per neuron
     const ActivationFunction *activationFunction;
 
-    Array inducedLocalField;            //< $v_j = \sum_i w_ji x_i + b_j$
-    Array activationGrad;               //< $dy/dv_j = \phi^\prime (v_j)$
-    Array localGrad;                    //< $\delta_j = dE/dv_j = \phi^\prime(v_j) e_j$
+    Array inducedLocalField;  //< $v_j = \sum_i w_ji x_i + b_j$
+    Array activationGrad;     //< $\partial y/\partial v_j = \phi^\prime (v_j)$
+    Array localGrad;          //< $\delta_j = \partial E/\partial v_j = \phi^\prime(v_j) e_j$
+    Array weightSensitivity;  //< $\partial E/\partial w_{ji}$
+    Array biasSensitivity;    //< $\partial E/\partial b_{j}$
 
     // Forward and backpropagation results can be shared between layers.
     // The buffers are allocated once either in init() or at the begining of the
@@ -726,7 +707,7 @@ protected:
     // connectTo() method implements sharing.
     std::shared_ptr<Array> inputBuffer;  //< $x_i$
     std::shared_ptr<Array> outputBuffer; //< $y_j = \phi(v_j)$
-    std::shared_ptr<BackpropResult> backpropResult; //< backpropagation result
+    std::shared_ptr<Array> propagatedErrors; //< backpropagation result
 
     bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
 
@@ -751,8 +732,8 @@ protected:
             if (p->outputBuffer && outputBuffer) {
                 *(p->outputBuffer) = *(outputBuffer);
             }
-            if (p->backpropResult && backpropResult) {
-                *(p->backpropResult) = *(backpropResult);
+            if (p->propagatedErrors && propagatedErrors) {
+                *(p->propagatedErrors) = *(propagatedErrors);
             }
         }
         if (policy) {
@@ -762,6 +743,7 @@ protected:
     }
 
     void rememberInputs(const Array& inputs) {
+        // TODO: avoid copying if inputBuffer points to the same object
         *inputBuffer = inputs;  // remember for calcSensitivityFactors()
     }
 
@@ -782,21 +764,23 @@ protected:
     }
 
     /** Non-linear response of the layer $y_j = \phi(v_j)$. */
-    void calcOutput(Array &outputs) {
+    void calcOutput() {
+        Array &outputs = (*outputBuffer);
         std::transform(std::begin(inducedLocalField),
                        std::end(inducedLocalField),
                        std::begin(outputs),
                        [&](float y) { return (*activationFunction)(y); });
     }
 
-    void outputInplace(const Array &inputs, Array &outputs) {
+    void outputInplace(const Array &inputs) {
+        Array &outputs = (*outputBuffer);
         if (outputs.size() != nOutputs) {
             outputs.resize(nOutputs);
         }
         rememberInputs(inputs);
         calcInducedLocalField(inputs);
         calcActivationGrad();
-        calcOutput(outputs);
+        calcOutput();
     }
 
     /** The local gradient $\delta_j = \partial E/\partial v_j$ is the product
@@ -830,7 +814,7 @@ protected:
      * Hence, at this point we may calculate the sensitivity factor
      *
      * $$dE/dw_ji = - \delta_j y_i$$ */
-    void calcSensitivityFactors(Array &weightSensitivity, Array &biasSensitivity) {
+    void calcSensitivityFactors() {
         assert(weightSensitivity.size() == weights.size());
         assert(biasSensitivity.size() == bias.size());
         assert(localGrad.size() == nOutputs);
@@ -853,25 +837,26 @@ protected:
     * neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
     * $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
     * downstream neuron $k$. */
-    void calcPropagatedErrors(Array &propagatedErrors) {
-        if (propagatedErrors.size() != nInputs) {
-            propagatedErrors.resize(nInputs);
+    void calcPropagatedErrors() {
+        Array &bpErrors = (*propagatedErrors);
+        if (bpErrors.size() != nInputs) {
+            bpErrors.resize(nInputs);
         }
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float e_j = 0.0;
             for (size_t k = 0; k < nOutputs; ++k) { // for all neurons
                 e_j += localGrad[k] * weights[k*nInputs + j];
             }
-            propagatedErrors[j] = e_j;
+            bpErrors[j] = e_j;
         }
     }
 
     /// Backpropagation algorithm
     void
-    backpropInplace(const Array &errors, BackpropResult &bp) {
+    backpropInplace(const Array &errors) {
         calcLocalGrad(errors);
-        calcSensitivityFactors(bp.weightSensitivity, bp.biasSensitivity);
-        calcPropagatedErrors(bp.propagatedErrors);
+        calcSensitivityFactors();
+        calcPropagatedErrors();
     }
 
     /// Allocates inputBuffer and outputBuffer buffers if they're not allocated yet.
@@ -885,8 +870,8 @@ protected:
         if (!outputBuffer) {
             outputBuffer = std::make_shared<Array>(0.0, nOutputs);
         }
-        if (!backpropResult) {
-            backpropResult = std::make_shared<BackpropResult>(nInputs, nOutputs);
+        if (!propagatedErrors) {
+            propagatedErrors = std::make_shared<Array>(0.0, nInputs);
         }
         buffersAreReady = true;
     }
@@ -896,7 +881,7 @@ protected:
         return (buffersAreReady &&
                 !(inputBuffer.unique() &&
                   outputBuffer.unique() &&
-                  backpropResult.unique()));
+                  propagatedErrors.unique()));
     }
 
     /// Resize all layer buffers if it is initialized with a weight matrix
@@ -922,6 +907,8 @@ protected:
                 inducedLocalField.resize(n_out);
                 activationGrad.resize(n_out);
                 localGrad.resize(n_out);
+                weightSensitivity.resize(n_in * n_out, 0.0);
+                biasSensitivity.resize(n_out, 0.0);
                 // resize shared buffers which may happen to be allocated
                 // in the stand-alone (disconnected) layer
                 if (inputBuffer) {
@@ -930,8 +917,8 @@ protected:
                 if (outputBuffer) {
                     outputBuffer->resize(n_out);
                 }
-                if (backpropResult) {
-                    backpropResult = std::make_shared<BackpropResult>(n_in, n_out);
+                if (propagatedErrors) {
+                    propagatedErrors->resize(n_in);
                 }
                 // resize buffers for historical values
                 if (policy) {
@@ -948,31 +935,32 @@ public:
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
           // shared buffers are allocated dynamically
           inputBuffer(nullptr), outputBuffer(nullptr),
-          backpropResult(nullptr) {}
+          propagatedErrors(nullptr) {}
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
                         const ActivationFunction &af = scaledTanh)
-        : nInputs(weights.size()/bias.size()),
-          nOutputs(bias.size()),
+        : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
           // shared buffers are allocated dynamically
           inputBuffer(nullptr), outputBuffer(nullptr),
-          backpropResult(nullptr) {}
+          propagatedErrors(nullptr) {}
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
                         const ActivationFunction &af = scaledTanh)
-        : nInputs(weights.size()/bias.size()),
-          nOutputs(bias.size()),
+        : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
           // shared buffers are allocated dynamically
           inputBuffer(nullptr), outputBuffer(nullptr),
-          backpropResult(nullptr) {}
+          propagatedErrors(nullptr) {}
 
     /* begin ALayer interface */
     virtual std::string tag() const { return "FullyConnectedLayer"; }
@@ -1043,14 +1031,15 @@ public:
     /** begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        outputInplace(inputs, *outputBuffer);
+        outputInplace(inputs);
         return outputBuffer;
     }
 
-    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
+    // TODO: optimize and don't copy inputs or errors if layers are connected
+    virtual std::shared_ptr<Array> backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        backpropInplace(errors, *backpropResult);
-        return backpropResult;
+        backpropInplace(errors);
+        return propagatedErrors;
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {
@@ -1061,8 +1050,8 @@ public:
         if (!policy) {
             throw std::logic_error("learning policy is not defined");
         }
-        policy->correctWeights(backpropResult->weightSensitivity, weights);
-        policy->correctBias(backpropResult->biasSensitivity, bias);
+        policy->correctWeights(weightSensitivity, weights);
+        policy->correctBias(biasSensitivity, bias);
     }
     /* end of ABackpropNet interface */
 };
@@ -1077,9 +1066,9 @@ protected:
     const Array noParameters = Array(0); // it is supposed to be empty
     const ActivationFunction *activationFunction; //< $\phi$
     std::shared_ptr<Array> inputBuffer;     //< $v$
-    std::shared_ptr<Array> activationGrad;  //< $\phi^\prime(v)$
     std::shared_ptr<Array> outputBuffer;    //< $\phi(v)$
-    std::shared_ptr<BackpropResult> backpropResult;
+    Array activationGrad;  //< $\phi^\prime(v)$
+    std::shared_ptr<Array> propagatedErrors;
     bool buffersAreReady = false;
 
     std::shared_ptr<ActivationLayer> makeClone() const {
@@ -1095,30 +1084,32 @@ protected:
             if (p->outputBuffer && outputBuffer) {
                 *(p->outputBuffer) = *(outputBuffer);
             }
-            if (p->backpropResult && backpropResult) {
-                *(p->backpropResult) = *(backpropResult);
+            if (p->propagatedErrors && propagatedErrors) {
+                *(p->propagatedErrors) = *(propagatedErrors);
             }
         }
         return p;
     }
 
-    virtual void outputInplace(const Array &inputs, Array &outputs) {
+    virtual void outputInplace(const Array &inputs) {
+        Array &outputs = (*outputBuffer);
         if (outputs.size() != nSize) {
             outputs.resize(nSize);
         }
         *inputBuffer = inputs;
+        const ActivationFunction &activation = (*activationFunction);
         std::transform(
             std::begin(inputs), std::end(inputs),
-            std::begin(*activationGrad),
-            [&](float y) { return activationFunction->derivative(y); });
+            std::begin(activationGrad),
+            [&](float y) { return activation.derivative(y); });
         std::transform(
             std::begin(inputs), std::end(inputs),
             std::begin(outputs),
-            [&](float y) { return (*activationFunction)(y); });
+            [&](float y) { return activation(y); });
     }
 
-    virtual void backpropInplace(const Array &errors, Array &propagatedErrors) {
-        propagatedErrors = (*activationGrad) * errors;
+    virtual void backpropInplace(const Array &errors) {
+        *propagatedErrors = activationGrad * errors;
     }
 
     void allocateInOutBuffers() {
@@ -1128,19 +1119,15 @@ protected:
         if (!outputBuffer) {
             outputBuffer = std::make_shared<Array>(0.0, nSize);
         }
-        if (!activationGrad) {
-            activationGrad = std::make_shared<Array>(0.0, nSize);
+       if (!propagatedErrors) {
+            propagatedErrors = std::make_shared<Array>(0.0, nSize);
         }
-        if (!backpropResult) {
-            backpropResult = std::make_shared<BackpropResult>(nSize, 0, 0);
-        }
-        buffersAreReady = inputBuffer && outputBuffer &&
-                          activationGrad && backpropResult;
+        buffersAreReady = inputBuffer && outputBuffer && propagatedErrors;
     }
 
 public:
     ActivationLayer(size_t n, const ActivationFunction &af)
-        : nSize(n), activationFunction(&af) {}
+        : nSize(n), activationFunction(&af), activationGrad(n) {}
 
     /* begin ALayer interface */
     virtual std::string tag() const { return "ActivationLayer"; }
@@ -1175,15 +1162,15 @@ public:
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
         assert (nSize == inputs.size());
-        outputInplace(inputs, *outputBuffer);
+        outputInplace(inputs);
         return outputBuffer;
     }
-    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
+    virtual std::shared_ptr<Array> backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
         assert (nSize == errors.size());
-        backpropInplace(errors, backpropResult->propagatedErrors);
-        return backpropResult;
+        backpropInplace(errors);
+        return propagatedErrors;
     }
     virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
     virtual void update() {} // do nothing
@@ -1292,16 +1279,16 @@ public:
         return out;
     }
 
-    virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
+    virtual std::shared_ptr<Array> backprop(const Array &errors) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
         size_t n = layers.size();
-        std::shared_ptr<BackpropResult> bpr;
+        std::shared_ptr<Array> bpr;
         bpr = layers[n - 1]->backprop(errors);
         for (size_t offset = 1; offset < n; ++offset) {
             size_t i = n - 1 - offset;
-            Array &e(bpr->propagatedErrors);
+            Array &e(*bpr);
             bpr = layers[i]->backprop(e);
         }
         return bpr;
@@ -1447,7 +1434,8 @@ void trainWithSGD(ABackpropNet &net, LabeledDataset &trainSet,
         for (auto sample : trainSet) {
             auto out_ptr = net.output(sample.data);
             // TODO: pass $d(E)/d(o_i)$ where $E$ is any loss function
-            Array err = sample.label - *out_ptr; net.backprop(err);
+            Array err = sample.label - *out_ptr;
+            net.backprop(err);
             net.update();
         }
     }
