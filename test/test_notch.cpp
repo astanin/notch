@@ -22,8 +22,12 @@ using namespace std;
 /// explore its inner state.
 class FullyConnectedLayer_Test : public FullyConnectedLayer {
 public:
-    FullyConnectedLayer_Test(size_t in, size_t out, const ActivationFunction &af)
+    FullyConnectedLayer_Test(size_t in, size_t out,
+                             const ActivationFunction &af)
         : FullyConnectedLayer(in, out, af) {}
+    FullyConnectedLayer_Test(const Weights &weights, const Weights &bias,
+                             const ActivationFunction &af)
+        : FullyConnectedLayer(weights, bias, af) {}
 
     Array &getWeights() { return weights; }
     Array &getBias() { return bias; }
@@ -31,7 +35,9 @@ public:
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
     shared_ptr<ALearningPolicy> getPolicy() { return policy->clone(); }
-    shared_ptr<Array> getPropagatedErrors() { return propagatedErrors; };
+    shared_ptr<Array> getPropagatedErrors() { return propagatedErrors; }
+    Array &getWeightSensitivity() { return weightSensitivity; }
+    Array &getBiasSensitivity() { return biasSensitivity; }
     bool getBuffersReadyFlag() { return buffersAreReady; };
 };
 
@@ -183,20 +189,20 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     const Array w = {0.01, 0.1, -0.1, -0.01};
     const Array b = {0.25, -0.25};
     // compare this:
-    FullyConnectedLayer fcTanh(w, b, scaledTanh);
+    FullyConnectedLayer_Test fcTanh(w, b, scaledTanh);
+    FullyConnectedLayer_Test fcLinear(w, b, linearActivation);
+    ActivationLayer alTanh(2, scaledTanh);
     // vs a net of
-    auto fcLinear = make_shared<FullyConnectedLayer>(w, b, linearActivation);
-    auto alTanh = make_shared<ActivationLayer>(2, scaledTanh);
     Net net;
-    net.append(fcLinear);
-    net.append(alTanh);
+    net.append(std::shared_ptr<FullyConnectedLayer>(&fcLinear));
+    net.append(std::shared_ptr<ActivationLayer>(&alTanh));
     // forward propagation
     const Array input = {2, 4};
-    auto fclOut = fcTanh.output(input);
-    auto netOut = net.output(input);
-    CHECK(fclOut->size() == netOut->size());
+    auto fclOut = *fcTanh.output(input);
+    auto netOut = *net.output(input);
+    CHECK(fclOut.size() == netOut.size());
     for (size_t i = 0; i < 2; ++i) {
-        CHECK((*fclOut)[i] == Approx((*netOut)[i]));
+        CHECK(fclOut[i] == Approx(netOut[i]));
     }
     // backpropagation
     const Array error = { 17, 42 };
@@ -206,20 +212,18 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fcl_bpErrors[i] == Approx(net_bpErrors[i]));
     }
-    /* TODO: break encapsulation and re-enable weightSensitivity checks
-    auto fcl_dEdW = fclBP->weightSensitivity;
-    auto net_dEdW = netBP->weightSensitivity;
+    auto fcl_dEdW = fcTanh.getWeightSensitivity();
+    auto net_dEdW = fcLinear.getWeightSensitivity();
     CHECK(fcl_dEdW.size() == net_dEdW.size());
     for (size_t i = 0; i < fcl_dEdW.size(); ++i) {
         CHECK(fcl_dEdW[i] == net_dEdW[i]);
     }
-    auto fcl_dEdB = fclBP->biasSensitivity;
-    auto net_dEdB = netBP->biasSensitivity;
+    auto fcl_dEdB = fcTanh.getBiasSensitivity();
+    auto net_dEdB = fcLinear.getBiasSensitivity();
     CHECK(fcl_dEdB.size() == net_dEdB.size());
     for (size_t i = 0; i < fcl_dEdB.size(); ++i) {
         CHECK(fcl_dEdB[i] == net_dEdB[i]);
     }
-    */
 }
 
 TEST_CASE("AL cloning", "[core][activation]") {
@@ -256,9 +260,9 @@ TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
 TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     // initialize network weights as in the example
+    FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
+    FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
     MultilayerPerceptron mlp;
-    FullyConnectedLayer layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
-    FullyConnectedLayer layer2({-0.12, -0.88}, {0}, logisticActivation);
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
     // training example: (0.3, 0.7) -> 0.0
@@ -271,15 +275,12 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     // backpropagation
     Array error = expected - (*actual_out);
     Array &bpError = *mlp.backprop(error);
-    cout << bpError << "\n";
     // check calculated weight sensitivity at the bottom layer:
-    /* TODO: re-enable these checks
-    Array &actual_dEdw = backpropResult->weightSensitivity;
+    Array &actual_dEdw = layer1.getWeightSensitivity();
     Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
     for (size_t i = 0; i < 4; ++i) {
         CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
     }
-    */
 }
 
 TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
