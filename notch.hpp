@@ -732,6 +732,35 @@ protected:
 
     std::shared_ptr<ALearningPolicy> policy;
 
+    std::shared_ptr<ABackpropLayer> makeClone() const {
+        auto p = std::make_shared<FullyConnectedLayer>(nInputs, nOutputs,
+                                                       *activationFunction);
+        if (!p) {
+            throw std::runtime_error("cannot clone layer");
+        }
+        p->weights = weights;
+        p->bias = bias;
+        p->inducedLocalField = inducedLocalField;
+        p->activationGrad = activationGrad;
+        p->localGrad = localGrad;
+        if (buffersAreReady) { // clone shared buffers too
+            p->allocateInOutBuffers();
+            if (p->lastInputs && lastInputs) {
+                *(p->lastInputs) = *(lastInputs);
+            }
+            if (p->lastOutputs && lastOutputs) {
+                *(p->lastOutputs) = *(lastOutputs);
+            }
+            if (p->backpropResult && backpropResult) {
+                *(p->backpropResult) = *(backpropResult);
+            }
+        }
+        if (policy) {
+            p->policy = policy->clone();
+        }
+        return p;
+    }
+
     void rememberInputs(const Array& inputs) {
         *lastInputs = inputs;  // remember for calcSensitivityFactors()
     }
@@ -988,32 +1017,7 @@ public:
     }
 
     virtual std::shared_ptr<ABackpropLayer> clone() const {
-        auto p = std::make_shared<FullyConnectedLayer>(nInputs, nOutputs,
-                                                       *activationFunction);
-        if (!p) {
-            throw std::runtime_error("cannot clone layer");
-        }
-        p->weights = weights;
-        p->bias = bias;
-        p->inducedLocalField = inducedLocalField;
-        p->activationGrad = activationGrad;
-        p->localGrad = localGrad;
-        if (buffersAreReady) { // clone shared buffers too
-            p->allocateInOutBuffers();
-            if (p->lastInputs && lastInputs) {
-                *(p->lastInputs) = *(lastInputs);
-            }
-            if (p->lastOutputs && lastOutputs) {
-                *(p->lastOutputs) = *(lastOutputs);
-            }
-            if (p->backpropResult && backpropResult) {
-                *(p->backpropResult) = *(backpropResult);
-            }
-        }
-        if (policy) {
-            p->policy = policy->clone();
-        }
-        return p;
+        return makeClone();
     }
 
     virtual size_t inputDim() const {
