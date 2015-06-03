@@ -31,9 +31,6 @@ public:
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
     shared_ptr<ALearningPolicy> getPolicy() { return policy->clone(); }
-
-    shared_ptr<Array> getLastInputs() { return lastInputs; }
-    shared_ptr<Array> getLastOutputs() { return lastOutputs; }
     shared_ptr<BackpropResult> getBackpropResult() { return backpropResult; };
     bool getBuffersReadyFlag() { return buffersAreReady; };
 };
@@ -56,8 +53,8 @@ TEST_CASE("FC construction from shape", "[core][fc]") {
     CHECK_ARRAY_IS_INITIALIZED(inducedLocalField, fc.getInducedLocalField(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(activationGrad, fc.getActivationGrad(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
-    CHECK_FALSE(fc.getLastInputs());
-    CHECK_FALSE(fc.getLastOutputs());
+    CHECK_FALSE(fc.getInputBuffer());
+    CHECK_FALSE(fc.getOutputBuffer());
     CHECK_FALSE(fc.getBackpropResult());
     CHECK_FALSE(fc.getBuffersReadyFlag());
 }
@@ -95,11 +92,11 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
 
     fc.connectTo(fc2);
     CHECK(fc.getBuffersReadyFlag()); // now ready
-    CHECK(fc.getLastOutputs() == fc2.getLastInputs()); // buffers are shared
+    CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
 
     // check dimensions of the dynamically allocated arrays
-    CHECK_ARRAY_IS_INITIALIZED(lastInputs, *fc.getLastInputs(), n_in);
-    CHECK_ARRAY_IS_INITIALIZED(lastOutputs, *fc.getLastOutputs(), n_out);
+    CHECK_ARRAY_IS_INITIALIZED(inputBuffer, *fc.getInputBuffer(), n_in);
+    CHECK_ARRAY_IS_INITIALIZED(outputBuffer, *fc.getOutputBuffer(), n_out);
 
     // check that dimensions of this layer's BackpropResult
     // match layer's dimensions
@@ -112,7 +109,7 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
          bpr->biasSensitivity, n_out);
 
     fc.init(rng, normalXavier);
-    CHECK(fc.getLastOutputs() == fc2.getLastInputs()); // buffers are still shared
+    CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are still shared
 }
 
 TEST_CASE("FC init(weights, bias)", "[core][fc]") {

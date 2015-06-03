@@ -724,8 +724,8 @@ protected:
     // forward or backprop pass respectively (see output() and backprop()).
     // Actual allocation is implemented in allocateInOutBuffers() method,
     // connectTo() method implements sharing.
-    std::shared_ptr<Array> lastInputs;  //< $x_i$
-    std::shared_ptr<Array> lastOutputs; //< $y_j = \phi(v_j)$
+    std::shared_ptr<Array> inputBuffer;  //< $x_i$
+    std::shared_ptr<Array> outputBuffer; //< $y_j = \phi(v_j)$
     std::shared_ptr<BackpropResult> backpropResult; //< backpropagation result
 
     bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
@@ -745,11 +745,11 @@ protected:
         p->localGrad = localGrad;
         if (buffersAreReady) { // clone shared buffers too
             p->allocateInOutBuffers();
-            if (p->lastInputs && lastInputs) {
-                *(p->lastInputs) = *(lastInputs);
+            if (p->inputBuffer && inputBuffer) {
+                *(p->inputBuffer) = *(inputBuffer);
             }
-            if (p->lastOutputs && lastOutputs) {
-                *(p->lastOutputs) = *(lastOutputs);
+            if (p->outputBuffer && outputBuffer) {
+                *(p->outputBuffer) = *(outputBuffer);
             }
             if (p->backpropResult && backpropResult) {
                 *(p->backpropResult) = *(backpropResult);
@@ -762,7 +762,7 @@ protected:
     }
 
     void rememberInputs(const Array& inputs) {
-        *lastInputs = inputs;  // remember for calcSensitivityFactors()
+        *inputBuffer = inputs;  // remember for calcSensitivityFactors()
     }
 
     /** Linear response of the layer $v_j = w_{ji} x_i$. */
@@ -834,10 +834,10 @@ protected:
         assert(weightSensitivity.size() == weights.size());
         assert(biasSensitivity.size() == bias.size());
         assert(localGrad.size() == nOutputs);
-        assert(lastInputs->size() == nInputs);
+        assert(inputBuffer->size() == nInputs);
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
-                float y_i = (*lastInputs)[i];
+                float y_i = (*inputBuffer)[i];
                 weightSensitivity[j*nInputs + i] = (-1.0 * localGrad[j] * y_i);
             }
             biasSensitivity[j] = (-1.0 * localGrad[j]);
@@ -874,16 +874,16 @@ protected:
         calcPropagatedErrors(bp.propagatedErrors);
     }
 
-    /// Allocates lastInputs and lastOutputs buffers if they're not allocated yet.
+    /// Allocates inputBuffer and outputBuffer buffers if they're not allocated yet.
     void allocateInOutBuffers() {
         if (buffersAreReady) {
             return;
         }
-        if (!lastInputs) {
-            lastInputs = std::make_shared<Array>(0.0, nInputs);
+        if (!inputBuffer) {
+            inputBuffer = std::make_shared<Array>(0.0, nInputs);
         }
-        if (!lastOutputs) {
-            lastOutputs = std::make_shared<Array>(0.0, nOutputs);
+        if (!outputBuffer) {
+            outputBuffer = std::make_shared<Array>(0.0, nOutputs);
         }
         if (!backpropResult) {
             backpropResult = std::make_shared<BackpropResult>(nInputs, nOutputs);
@@ -894,8 +894,8 @@ protected:
     /// @return true if input-output buffers are allocated _and_ shared
     bool isConnected() const {
         return (buffersAreReady &&
-                !(lastInputs.unique() &&
-                  lastOutputs.unique() &&
+                !(inputBuffer.unique() &&
+                  outputBuffer.unique() &&
                   backpropResult.unique()));
     }
 
@@ -924,11 +924,11 @@ protected:
                 localGrad.resize(n_out);
                 // resize shared buffers which may happen to be allocated
                 // in the stand-alone (disconnected) layer
-                if (lastInputs) {
-                    lastInputs->resize(n_in);
+                if (inputBuffer) {
+                    inputBuffer->resize(n_in);
                 }
-                if (lastOutputs) {
-                    lastOutputs->resize(n_out);
+                if (outputBuffer) {
+                    outputBuffer->resize(n_out);
                 }
                 if (backpropResult) {
                     backpropResult = std::make_shared<BackpropResult>(n_in, n_out);
@@ -949,7 +949,7 @@ public:
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
-          lastInputs(nullptr), lastOutputs(nullptr),
+          inputBuffer(nullptr), outputBuffer(nullptr),
           backpropResult(nullptr) {}
 
     /// Create a layer from a weights matrix.
@@ -960,7 +960,7 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
-          lastInputs(nullptr), lastOutputs(nullptr),
+          inputBuffer(nullptr), outputBuffer(nullptr),
           backpropResult(nullptr) {}
 
     /// Create a layer from a copy of a weights matrix.
@@ -971,7 +971,7 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           // shared buffers are allocated dynamically
-          lastInputs(nullptr), lastOutputs(nullptr),
+          inputBuffer(nullptr), outputBuffer(nullptr),
           backpropResult(nullptr) {}
 
     /* begin ALayer interface */
@@ -1005,15 +1005,15 @@ public:
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
         allocateInOutBuffers();
-        nextLayer.getInputBuffer() = this->lastOutputs;
+        nextLayer.getInputBuffer() = this->outputBuffer;
     }
 
     virtual std::shared_ptr<Array> &getInputBuffer() {
-        return lastInputs;
+        return inputBuffer;
     }
 
     virtual std::shared_ptr<Array> &getOutputBuffer() {
-        return lastOutputs;
+        return outputBuffer;
     }
 
     virtual std::shared_ptr<ABackpropLayer> clone() const {
@@ -1043,8 +1043,8 @@ public:
     /** begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        outputInplace(inputs, *lastOutputs);
-        return lastOutputs;
+        outputInplace(inputs, *outputBuffer);
+        return outputBuffer;
     }
 
     virtual std::shared_ptr<BackpropResult> backprop(const Array &errors) {
