@@ -310,4 +310,37 @@ TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
     }
 }
 
+TEST_CASE("FixedRateWithMomentum: generalized delta rule policy", "[core][train]") {
+    float eta = 0.1;
+    float momentum = 0.9;
+    FixedRateWithMomentum policy(eta, momentum);
+    Array weights { 100, 200, 400 };
+    Array bias { 100, 200 };
+    Array oldWeights = weights;
+    Array oldBias = bias;
+    // weight updates
+    Array dEdw { 10, 20, 40 };
+    Array dBdw { -20, -10 };
+    // first update, no momentum yet
+    policy.correctWeights(dEdw, weights);
+    policy.correctBias(dBdw, bias);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        CHECK(weights[i] == oldWeights[i] - eta*dEdw[i]);
+    }
+    for (size_t i = 0; i < bias.size(); ++i) {
+        CHECK(bias[i] == oldBias[i] - eta*dBdw[i]);
+    }
+    // second update, momentum is starting to take effect
+    oldWeights = weights;
+    oldBias = bias;
+    policy.correctWeights(dEdw, weights);
+    policy.correctBias(dBdw, bias);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        CHECK(weights[i] == oldWeights[i] - (momentum+1)*eta*dEdw[i]);
+    }
+    for (size_t i = 0; i < bias.size(); ++i) {
+        CHECK(bias[i] == oldBias[i] - (momentum+1)*eta*dBdw[i]);
+    }
+}
+
 #include "test_notch_io.hpp"
