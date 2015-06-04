@@ -601,6 +601,43 @@ public:
     virtual void update() = 0;
 };
 
+
+struct SharedBuffers {
+    std::shared_ptr<Array> inputBuffer;
+    std::shared_ptr<Array> outputBuffer;
+    bool ready() const {
+        return inputBuffer && outputBuffer;
+    }
+    /// allocate input-output buffers
+    void allocate(size_t nInputs, size_t nOutputs) {
+        if (ready()) {
+            return;
+        }
+        if (!inputBuffer) {
+            inputBuffer = std::make_shared<Array>(0.0, nInputs);
+        }
+        if (!outputBuffer) {
+            outputBuffer = std::make_shared<Array>(0.0, nOutputs);
+        }
+    }
+    /// reallocate input-output buffers of new dimensions
+    void resize(size_t nInputs, size_t nOutputs) {
+        inputBuffer = std::make_shared<Array>(0.0, nInputs);
+        outputBuffer = std::make_shared<Array>(0.0, nOutputs);
+    }
+    /// clone buffers (make them non-shared)
+    SharedBuffers clone() const {
+        SharedBuffers newBuffers;
+        if (inputBuffer) {
+            newBuffers.inputBuffer = std::make_shared<Array>(*inputBuffer);
+        }
+        if (outputBuffer) {
+            newBuffers.outputBuffer = std::make_shared<Array>(*outputBuffer);
+        }
+        return newBuffers;
+    }
+};
+
 #ifdef NOTCH_USE_CBLAS
 
 /** Matrix-vector product using CBLAS.
@@ -680,36 +717,19 @@ protected:
     // forward or backprop pass respectively (see output() and backprop()).
     // Actual allocation is implemented in allocateInOutBuffers() method,
     // connectTo() method implements sharing.
-    std::shared_ptr<Array> inputBuffer;  //< $x_i$
-    std::shared_ptr<Array> outputBuffer; //< $y_j = \phi(v_j)$
+    SharedBuffers shared; //< $x_i$ and $y_j = \phi(v_j)$
     std::shared_ptr<Array> propagatedErrors; //< backpropagation result
-
-    bool buffersAreReady = false; //< true if in/out and backprop buffers are allocated
 
     std::shared_ptr<ALearningPolicy> policy;
 
     std::shared_ptr<ABackpropLayer> makeClone() const {
-        auto p = std::make_shared<FullyConnectedLayer>(nInputs, nOutputs,
-                                                       *activationFunction);
+        auto p = std::make_shared<FullyConnectedLayer>(*this);
         if (!p) {
             throw std::runtime_error("cannot clone layer");
         }
-        p->weights = weights;
-        p->bias = bias;
-        p->inducedLocalField = inducedLocalField;
-        p->activationGrad = activationGrad;
-        p->localGrad = localGrad;
-        if (buffersAreReady) { // clone shared buffers too
-            p->allocateInOutBuffers();
-            if (p->inputBuffer && inputBuffer) {
-                *(p->inputBuffer) = *(inputBuffer);
-            }
-            if (p->outputBuffer && outputBuffer) {
-                *(p->outputBuffer) = *(outputBuffer);
-            }
-            if (p->propagatedErrors && propagatedErrors) {
-                *(p->propagatedErrors) = *(propagatedErrors);
-            }
+        p->shared = shared.clone();
+        if (propagatedErrors) {
+            *(p->propagatedErrors) = *(propagatedErrors);
         }
         if (policy) {
             p->policy = policy->clone();
@@ -719,7 +739,7 @@ protected:
 
     void rememberInputs(const Array& inputs) {
         // TODO: avoid copying if inputBuffer points to the same object
-        *inputBuffer = inputs;  // remember for calcSensitivityFactors()
+        *(shared.inputBuffer) = inputs;  // remember for calcSensitivityFactors()
     }
 
     /** Linear response of the layer $v_j = w_{ji} x_i$. */
@@ -740,7 +760,7 @@ protected:
 
     /** Non-linear response of the layer $y_j = \phi(v_j)$. */
     void calcOutput() {
-        Array &outputs = (*outputBuffer);
+        Array &outputs = *shared.outputBuffer;
         std::transform(std::begin(inducedLocalField),
                        std::end(inducedLocalField),
                        std::begin(outputs),
@@ -748,7 +768,7 @@ protected:
     }
 
     void outputInplace(const Array &inputs) {
-        Array &outputs = (*outputBuffer);
+        Array &outputs = *shared.outputBuffer;
         if (outputs.size() != nOutputs) {
             outputs.resize(nOutputs);
         }
@@ -793,10 +813,11 @@ protected:
         assert(weightSensitivity.size() == weights.size());
         assert(biasSensitivity.size() == bias.size());
         assert(localGrad.size() == nOutputs);
-        assert(inputBuffer->size() == nInputs);
+        Array &input = *shared.inputBuffer;
+        assert(input.size() == nInputs);
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
-                float y_i = (*inputBuffer)[i];
+                float y_i = input[i];
                 weightSensitivity[j*nInputs + i] = (-1.0 * localGrad[j] * y_i);
             }
             biasSensitivity[j] = (-1.0 * localGrad[j]);
@@ -836,26 +857,17 @@ protected:
 
     /// Allocates inputBuffer and outputBuffer buffers if they're not allocated yet.
     void allocateInOutBuffers() {
-        if (buffersAreReady) {
-            return;
-        }
-        if (!inputBuffer) {
-            inputBuffer = std::make_shared<Array>(0.0, nInputs);
-        }
-        if (!outputBuffer) {
-            outputBuffer = std::make_shared<Array>(0.0, nOutputs);
-        }
+        shared.allocate(nInputs, nOutputs);
         if (!propagatedErrors) {
             propagatedErrors = std::make_shared<Array>(0.0, nInputs);
         }
-        buffersAreReady = true;
     }
 
     /// @return true if input-output buffers are allocated _and_ shared
     bool isConnected() const {
-        return (buffersAreReady &&
-                !(inputBuffer.unique() &&
-                  outputBuffer.unique() &&
+        return (shared.ready() &&
+                !(shared.inputBuffer.unique() &&
+                  shared.outputBuffer.unique() &&
                   propagatedErrors.unique()));
     }
 
@@ -886,12 +898,7 @@ protected:
                 biasSensitivity.resize(n_out, 0.0);
                 // resize shared buffers which may happen to be allocated
                 // in the stand-alone (disconnected) layer
-                if (inputBuffer) {
-                    inputBuffer->resize(n_in);
-                }
-                if (outputBuffer) {
-                    outputBuffer->resize(n_out);
-                }
+                shared.resize(n_in, n_out);
                 if (propagatedErrors) {
                     propagatedErrors->resize(n_in);
                 }
@@ -911,8 +918,6 @@ public:
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          // shared buffers are allocated dynamically
-          inputBuffer(nullptr), outputBuffer(nullptr),
           propagatedErrors(nullptr) {}
 
     /// Create a layer from a weights matrix.
@@ -922,8 +927,6 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          // shared buffers are allocated dynamically
-          inputBuffer(nullptr), outputBuffer(nullptr),
           propagatedErrors(nullptr) {}
 
     /// Create a layer from a copy of a weights matrix.
@@ -933,8 +936,6 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          // shared buffers are allocated dynamically
-          inputBuffer(nullptr), outputBuffer(nullptr),
           propagatedErrors(nullptr) {}
 
     /* begin ABackpropLayer interface */
@@ -946,37 +947,21 @@ public:
         init(rng, bias, nInputs, nOutputs);
     }
 
-    /// Initialize synaptic weights.
-    virtual void init(Weights &&weights, Weights &&bias) {
-        // allow changing size of not-yet-connected layers
-        initResize(weights, bias);
-        this->weights = weights;
-        this->bias = bias;
-    }
-
-    /// Initialize synaptic weights.
-    virtual void init(const Weights &weights, const Weights &bias) {
-        // allow changing size of not-yet-connected layers
-        initResize(weights, bias);
-        this->weights = weights;
-        this->bias = bias;
-    }
-
     /// Interlayer connections allow to share input-output buffers between two layers.
     virtual void connectTo(ABackpropLayer& nextLayer) {
         if (nextLayer.inputDim() != this->outputDim()) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
         allocateInOutBuffers();
-        nextLayer.getInputBuffer() = this->outputBuffer;
+        nextLayer.getInputBuffer() = this->getOutputBuffer();
     }
 
     virtual std::shared_ptr<Array> &getInputBuffer() {
-        return inputBuffer;
+        return shared.inputBuffer;
     }
 
     virtual std::shared_ptr<Array> &getOutputBuffer() {
-        return outputBuffer;
+        return shared.outputBuffer;
     }
 
     virtual std::shared_ptr<ABackpropLayer> clone() const {
@@ -993,7 +978,7 @@ public:
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         outputInplace(inputs);
-        return outputBuffer;
+        return shared.outputBuffer;
     }
 
     // TODO: optimize and don't copy inputs or errors if layers are connected
