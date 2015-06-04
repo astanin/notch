@@ -477,6 +477,7 @@ public:
 
 using FCLParams = LayerParameters<FullyConnectedLayer>;
 
+// TODO: implement LayerBuilder infrastructure instead of modifying layer inplace
 
 /// Read neural network parameters from a record-jar text file.
 ///
