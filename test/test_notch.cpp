@@ -35,7 +35,6 @@ public:
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
     shared_ptr<ALearningPolicy> getPolicy() { return policy->clone(); }
-    shared_ptr<Array> getPropagatedErrors() { return propagatedErrors; }
     Array &getWeightSensitivity() { return weightSensitivity; }
     Array &getBiasSensitivity() { return biasSensitivity; }
     bool getBuffersReadyFlag() { return shared.ready(); };
@@ -61,7 +60,6 @@ TEST_CASE("FC construction from shape", "[core][fc]") {
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
     CHECK_FALSE(fc.getInputBuffer());
     CHECK_FALSE(fc.getOutputBuffer());
-    CHECK_FALSE(fc.getPropagatedErrors());
     CHECK_FALSE(fc.getBuffersReadyFlag());
 }
 
@@ -103,9 +101,6 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
     // check dimensions of the dynamically allocated arrays
     CHECK_ARRAY_IS_INITIALIZED(inputBuffer, *fc.getInputBuffer(), n_in);
     CHECK_ARRAY_IS_INITIALIZED(outputBuffer, *fc.getOutputBuffer(), n_out);
-
-    // check that dimensions of this layer's backprop results match inputs
-    CHECK_ARRAY_IS_INITIALIZED(propagatedErrors, *fc.getPropagatedErrors(), n_in);
 
     fc.init(rng, normalXavier);
     CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are still shared

@@ -4,12 +4,6 @@
 #include <sstream>
 #include <iterator>
 
-#include "catch.hpp"
-#include "notch_io.hpp"
-
-
-using namespace std;
-
 
 TEST_CASE("Array plain-text I/O", "[io]") {
     Array a = {0.5, 1.0, 2.0, 4.0};
@@ -161,4 +155,4 @@ TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     CHECK(ss.str() == ss2.str());
 }
 
-#endif
+#endif /* TEST_NOTCH_IO_HPP */

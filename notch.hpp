@@ -711,6 +711,7 @@ protected:
     Array localGrad;          //< $\delta_j = \partial E/\partial v_j = \phi^\prime(v_j) e_j$
     Array weightSensitivity;  //< $\partial E/\partial w_{ji}$
     Array biasSensitivity;    //< $\partial E/\partial b_{j}$
+    Array propagatedErrors; //< backpropagation result
 
     // Forward and backpropagation results can be shared between layers.
     // The buffers are allocated once either in init() or at the begining of the
@@ -718,7 +719,6 @@ protected:
     // Actual allocation is implemented in allocateInOutBuffers() method,
     // connectTo() method implements sharing.
     SharedBuffers shared; //< $x_i$ and $y_j = \phi(v_j)$
-    std::shared_ptr<Array> propagatedErrors; //< backpropagation result
 
     std::shared_ptr<ALearningPolicy> policy;
 
@@ -728,9 +728,6 @@ protected:
             throw std::runtime_error("cannot clone layer");
         }
         p->shared = shared.clone();
-        if (propagatedErrors) {
-            *(p->propagatedErrors) = *(propagatedErrors);
-        }
         if (policy) {
             p->policy = policy->clone();
         }
@@ -834,16 +831,15 @@ protected:
     * $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
     * downstream neuron $k$. */
     void calcPropagatedErrors() {
-        Array &bpErrors = (*propagatedErrors);
-        if (bpErrors.size() != nInputs) {
-            bpErrors.resize(nInputs);
+        if (propagatedErrors.size() != nInputs) {
+            propagatedErrors.resize(nInputs);
         }
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float e_j = 0.0;
             for (size_t k = 0; k < nOutputs; ++k) { // for all neurons
                 e_j += localGrad[k] * weights[k*nInputs + j];
             }
-            bpErrors[j] = e_j;
+            propagatedErrors[j] = e_j;
         }
     }
 
@@ -858,17 +854,13 @@ protected:
     /// Allocates inputBuffer and outputBuffer buffers if they're not allocated yet.
     void allocateInOutBuffers() {
         shared.allocate(nInputs, nOutputs);
-        if (!propagatedErrors) {
-            propagatedErrors = std::make_shared<Array>(0.0, nInputs);
-        }
     }
 
     /// @return true if input-output buffers are allocated _and_ shared
     bool isConnected() const {
         return (shared.ready() &&
                 !(shared.inputBuffer.unique() &&
-                  shared.outputBuffer.unique() &&
-                  propagatedErrors.unique()));
+                  shared.outputBuffer.unique()));
     }
 
     /// Resize all layer buffers if it is initialized with a weight matrix
@@ -896,12 +888,10 @@ protected:
                 localGrad.resize(n_out);
                 weightSensitivity.resize(n_in * n_out, 0.0);
                 biasSensitivity.resize(n_out, 0.0);
+                propagatedErrors.resize(n_in, 0.0);
                 // resize shared buffers which may happen to be allocated
                 // in the stand-alone (disconnected) layer
                 shared.resize(n_in, n_out);
-                if (propagatedErrors) {
-                    propagatedErrors->resize(n_in);
-                }
                 // resize buffers for historical values
                 if (policy) {
                     policy->resize(n_in, n_out);
@@ -918,7 +908,7 @@ public:
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          propagatedErrors(nullptr) {}
+          propagatedErrors(nInputs) {}
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
@@ -927,7 +917,7 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          propagatedErrors(nullptr) {}
+          propagatedErrors(nInputs) {}
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
@@ -936,7 +926,7 @@ public:
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
           weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
-          propagatedErrors(nullptr) {}
+          propagatedErrors(nInputs) {}
 
     /* begin ABackpropLayer interface */
     virtual std::string tag() const { return "FullyConnectedLayer"; }
@@ -985,7 +975,7 @@ public:
     virtual const Array &backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
         backpropInplace(errors);
-        return *propagatedErrors;
+        return propagatedErrors;
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {
