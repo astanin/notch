@@ -137,13 +137,18 @@ TEST_CASE("FC cloning", "[core][fc]") {
     FullyConnectedLayer fc2(w, bias, linearActivation);
     fc1.connectTo(fc2);
     // initially:
+    auto weights1 = FCLParams::getWeights(fc1);
+    auto weights2 = FCLParams::getWeights(fc2);
+    auto bias1 = FCLParams::getBias(fc1);
+    auto bias2 = FCLParams::getBias(fc2);
     CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
-    CHECK(fc1.getWeights()[0] == fc2.getWeights()[0]); // parameters are the same
-    CHECK(fc1.getWeights()[1] == fc2.getWeights()[1]); // parameters are the same
-    CHECK(fc1.getWeights()[2] == fc2.getWeights()[2]); // parameters are the same
-    CHECK(fc1.getWeights()[3] == fc2.getWeights()[3]); // parameters are the same
-    CHECK(fc1.getBias()[0] == fc2.getBias()[0]); // parameters are the same
-    CHECK(fc1.getBias()[1] == fc2.getBias()[1]); // parameters are the same
+    CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
+    CHECK(weights1[0] == weights2[0]); // parameters are the same
+    CHECK(weights1[1] == weights2[1]); // parameters are the same
+    CHECK(weights1[2] == weights2[2]); // parameters are the same
+    CHECK(weights1[3] == weights2[3]); // parameters are the same
+    CHECK(bias1[0] == bias2[0]); // parameters are the same
+    CHECK(bias1[1] == bias2[1]); // parameters are the same
     // clone is detached:
     shared_ptr<ABackpropLayer> fc1clone = fc1.clone();
     shared_ptr<Array> out1 = fc1.getOutputBuffer();
@@ -152,12 +157,14 @@ TEST_CASE("FC cloning", "[core][fc]") {
     // clone updates don't affect the original:
     auto rng = newRNG();
     fc1clone->init(rng, uniformXavier);
-    CHECK_FALSE(fc1clone->getWeights()[0] == fc1.getWeights()[0]);
-    CHECK_FALSE(fc1clone->getWeights()[1] == fc1.getWeights()[1]);
-    CHECK_FALSE(fc1clone->getWeights()[2] == fc1.getWeights()[2]);
-    CHECK_FALSE(fc1clone->getWeights()[3] == fc1.getWeights()[3]);
-    CHECK_FALSE(fc1clone->getBias()[0] == fc1.getBias()[0]);
-    CHECK_FALSE(fc1clone->getBias()[1] == fc1.getBias()[1]);
+    auto cloneWeights = FCLParams::getWeights((FullyConnectedLayer&)*fc1clone);
+    auto cloneBias = FCLParams::getBias((FullyConnectedLayer&)*fc1clone);
+    CHECK_FALSE(cloneWeights[0] == weights1[0]);
+    CHECK_FALSE(cloneWeights[1] == weights1[1]);
+    CHECK_FALSE(cloneWeights[2] == weights1[2]);
+    CHECK_FALSE(cloneWeights[3] == weights1[3]);
+    CHECK_FALSE(cloneBias[0] == bias1[0]);
+    CHECK_FALSE(cloneBias[1] == bias1[1]);
     // clone buffers are disconnected
     CHECK_FALSE(fc1clone->getOutputBuffer().get() == fc1.getOutputBuffer().get());
 }

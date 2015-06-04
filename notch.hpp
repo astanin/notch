@@ -565,66 +565,84 @@ public:
     }
 };
 
-class ABackpropLayer;
 
-// TODO: maybe rename inputDim, outputDim to inputSize(), outputSize() (?)
-/** Get and set layer's parameters. */
-class ALayer {
+class ABackpropLayer {
 public:
     /// A name to identify layer type.
     virtual std::string tag() const = 0;
-
-    /// Randomly initialize synaptic weights.
-    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
-    /// Initialize synaptic weights using a weights matrix.
-    virtual void init(Array &&weights, Array &&bias) = 0;
-    /// Initialize synaptic weights using a copy of a weights matrix.
-    virtual void init(const Array &weights, const Array &bias) = 0;
-
-    /// Share output buffers with the nextLayer.
-    virtual void connectTo(ALayer& nextLayer) = 0;
-    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
-    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
-    virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
 
     /// Get the number of input variables.
     virtual size_t inputDim() const = 0;
     /// Get the number of output variables.
     virtual size_t outputDim() const = 0;
-    /// Get the synaptic weights matrix.
-    virtual const Array &getWeights() const = 0;
-    /// Get the output bias matrix.
-    virtual const Array &getBias() const = 0;
 
-    /// Set layer's activation function.
-    virtual void setActivationFunction(const ActivationFunction &) = 0;
-    /// Get layer's activation function.
-    virtual const ActivationFunction &getActivationFunction() const = 0;
-};
+    /// Randomly initialize layer parameters.
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
 
-/** A common interface of all layers or groups of layers (networks) capable of
- * both forward and backpropagation.
- *
- * Output results can be shared between layers, because the output of the layer
- * $j$ is the input of the layer $j+1$.  Backpropagation results can be shared
- * between layers too. */
-class ABackpropNet {
-public:
+    /// Share output buffers with the nextLayer.
+    virtual void connectTo(ABackpropLayer& nextLayer) = 0;
+    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
+    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
+
+    /// Create a copy of the layer with its own buffers
+    virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
+
     /** Forward propagaiton pass.
      *
      * @return inputs for the next layer. */
     virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
-    /** Backpropagation pass.
+    /** Back propagation pass.
      *
      * @return error signals $e_i$ propagated to the previous layer */
     virtual std::shared_ptr<Array> backprop(const Array &errors) = 0;
-    /// specify how the weights have to be adjusted
+    /** Specify how the weights have to be adjusted. */
     virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
-    /// adjust layer parameters after the backpropagation pass
+    /** Adjust layer parameters after the backpropagation pass. */
     virtual void update() = 0;
 };
 
-class ABackpropLayer : public ALayer, public ABackpropNet {};
+/** LayerParameters classes break encapsulation of protected layer parameters
+ * to allow serialization and reconfiguration of various layer types.
+ *
+ * LAYER class should have protected 'Array weights', 'Array bias',
+ * and 'const ActivationFunction *activationFunction' members.
+ *
+ * Expected use:
+ *
+ *     auto w = LayerParameter<FullyConnectedLayer>::getWeights(someLayer);
+ *     LayerParameter<FullyConnectedLayer>::setWeights(someLayer, newWeights);
+ *
+ * */
+template<class LAYER>
+class LayerParameters : public LAYER {
+public:
+    static const Array& getWeights(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return lp.weights;
+    }
+    static const Array& getBias(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return lp.bias;
+    }
+    static const ActivationFunction &getActivation(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return *lp.activationFunction;
+    }
+    static void init(LAYER &l, const Array &weights, const Array &bias) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.weights = weights;
+        lp.bias = bias;
+    }
+    static void init(LAYER &l, Array &&weights, Array &&bias) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.weights = weights;
+        lp.bias = bias;
+    }
+    static void setActivation(LAYER &l, const ActivationFunction &af) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.activationFunction = &af;
+    }
+};
 
 #ifdef NOTCH_USE_CBLAS
 
@@ -962,7 +980,7 @@ public:
           inputBuffer(nullptr), outputBuffer(nullptr),
           propagatedErrors(nullptr) {}
 
-    /* begin ALayer interface */
+    /* begin ABackpropLayer interface */
     virtual std::string tag() const { return "FullyConnectedLayer"; }
 
     /// Initialize synaptic weights.
@@ -988,7 +1006,7 @@ public:
     }
 
     /// Interlayer connections allow to share input-output buffers between two layers.
-    virtual void connectTo(ALayer& nextLayer) {
+    virtual void connectTo(ABackpropLayer& nextLayer) {
         if (nextLayer.inputDim() != this->outputDim()) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
@@ -1014,21 +1032,7 @@ public:
     virtual size_t outputDim() const {
         return nOutputs;
     }
-    virtual const Weights &getWeights() const {
-        return weights;
-    }
-    virtual const Weights &getBias() const {
-        return bias;
-    }
-    virtual void setActivationFunction(const ActivationFunction &af) {
-        activationFunction = &af;
-    }
-    virtual const ActivationFunction &getActivationFunction() const {
-        return *activationFunction;
-    }
-    /* end ALayer interface */
 
-    /** begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         outputInplace(inputs);
@@ -1053,8 +1057,11 @@ public:
         policy->correctWeights(weightSensitivity, weights);
         policy->correctBias(biasSensitivity, bias);
     }
-    /* end of ABackpropNet interface */
+    /* end ABackpropLayer interface */
 };
+
+
+using FCLParams = LayerParameters<FullyConnectedLayer>;
 
 
 /** Apply ActivationFunction to all inputs.
@@ -1129,13 +1136,13 @@ public:
     ActivationLayer(size_t n, const ActivationFunction &af)
         : nSize(n), activationFunction(&af), activationGrad(n) {}
 
-    /* begin ALayer interface */
+    /* begin ABackpropLayer interface */
     virtual std::string tag() const { return "ActivationLayer"; }
     // this layer doesn't have parameters, nothing to initialize
     virtual void init(std::unique_ptr<RNG> &, WeightInit) {}
     virtual void init(Array &&, Array &&) {}
     virtual void init(const Array &, const Array &) {}
-    virtual void connectTo(ALayer& nextLayer) {
+    virtual void connectTo(ABackpropLayer& nextLayer) {
         if (nextLayer.inputDim() != this->outputDim()) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
         }
@@ -1147,17 +1154,6 @@ public:
     virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
-    virtual const Array &getWeights() const { return noParameters; }
-    virtual const Array &getBias() const { return noParameters; }
-    virtual void setActivationFunction(const ActivationFunction &af) {
-        activationFunction = &af;
-    }
-    virtual const ActivationFunction &getActivationFunction() const {
-        return *activationFunction;
-    }
-    /* end of ALayer interface */
-
-    /* begin ABackpropNet interface */
     virtual std::shared_ptr<Array> output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
@@ -1174,7 +1170,7 @@ public:
     }
     virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
     virtual void update() {} // do nothing
-    /* end of ABackpropNet interface */
+    /* end of ABackpropLayer interface */
 };
 
 
@@ -1239,9 +1235,10 @@ public:
 };
 
 /** A feed-forward neural network is a stack of layers. */
-class Net : public ABackpropNet {
+class Net {
 protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
+
 public:
     Net() : layers(0) {}
 
@@ -1267,8 +1264,7 @@ public:
 
     virtual void clear() { layers.clear(); }
 
-    /* begin ABackpropNet interface */
-    virtual std::shared_ptr<Array> output(const Array &inputs) {
+    std::shared_ptr<Array> output(const Array &inputs) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
@@ -1279,7 +1275,7 @@ public:
         return out;
     }
 
-    virtual std::shared_ptr<Array> backprop(const Array &errors) {
+    std::shared_ptr<Array> backprop(const Array &errors) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
@@ -1294,18 +1290,17 @@ public:
         return bpr;
     }
 
-    virtual void setLearningPolicy(const ALearningPolicy &lp) {
+    void setLearningPolicy(const ALearningPolicy &lp) {
         for (size_t i = 0; i < layers.size(); ++i) {
             layers[i]->setLearningPolicy(lp);
         }
      }
 
-    virtual void update() {
+    void update() {
         for (size_t i = 0; i < layers.size(); ++i) {
             layers[i]->update();
         }
     }
-    /* end ABackpropNet interface */
 
     using LayerIterator = decltype(layers.cbegin());
     LayerIterator begin() const { return layers.cbegin(); }
@@ -1386,7 +1381,7 @@ float CrossEntropyLoss(const Output &actual, const Output &expected) {
 // TODO: remove loss argument, use the top loss layer or L2 loss by default
 /** Calculate total loss across the entire testSet. */
 float totalLoss(LossFunction loss,
-                ABackpropNet &net,
+                Net &net,
                 const LabeledDataset& testSet) {
     float totalLoss = 0.0;
     for (auto sample : testSet) {
@@ -1420,7 +1415,7 @@ using TrainCallback = std::function<bool(int epoch)>;
  *  - Efficient BackProp (2012) LeCun et al
  *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
-void trainWithSGD(ABackpropNet &net, LabeledDataset &trainSet,
+void trainWithSGD(Net &net, LabeledDataset &trainSet,
         std::unique_ptr<RNG> &rng, int epochs,
         int callbackPeriod=0, TrainCallback callback=nullptr) {
     for (int j = 0; j < epochs; ++j) {

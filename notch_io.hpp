@@ -488,7 +488,7 @@ public:
 
     PlainTextNetworkReader(std::istream &in = std::cin) : in(in) {}
 
-    ALayer &load(ALayer &layer) {
+    ABackpropLayer &load(FullyConnectedLayer &layer) {
         std::string layerTag, activationTag;
         size_t nInputs = 0;
         size_t nOutputs = 0;
@@ -512,8 +512,8 @@ public:
         read_weights("bias_and_weights:", w, b);
         consume_end_of_record();
         // modify the layer
-        layer.init(w, b);
-        layer.setActivationFunction(activation);
+        FCLParams::init(layer, w, b);
+        FCLParams::setActivation(layer, activation);
         return layer;
     }
 
@@ -536,7 +536,7 @@ public:
         return mlp;
     }
 
-    PlainTextNetworkReader &operator>>(ALayer &layer) {
+    PlainTextNetworkReader &operator>>(FullyConnectedLayer &layer) {
         load(layer);
         return *this;
     }
@@ -557,17 +557,20 @@ private:
 public:
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
-    void save(const ALayer &layer) {
+    void save(const FullyConnectedLayer &layer) {
         out << "layer: " << layer.tag() << "\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
-        out << "activation: "; layer.getActivationFunction().print(out); out << "\n";
+        const ActivationFunction &af = FCLParams::getActivation(layer);
+        out << "activation: "; af.print(out); out << "\n";
         out << "bias_and_weights:\n";
+        auto bias = FCLParams::getBias(layer);
+        auto weights = FCLParams::getWeights(layer);
         for (size_t r = 0; r < layer.outputDim(); ++r) {
             out << "   ";
-            out << " " << layer.getBias()[r];
+            out << " " << bias[r];
             for (size_t c = 0; c < layer.inputDim(); ++c) {
-                out << " " << layer.getWeights()[r*layer.inputDim() + c];
+                out << " " << weights[r*layer.inputDim() + c];
             }
             out << "\n";
         }
@@ -582,7 +585,13 @@ public:
         out << "layers: " << nLayers << "\n";
         out << "%%\n";
         for (auto it = net.begin(); it != net.end(); ++it) {
-            save(**it);
+            std::string tag = (**it).tag();
+            if (tag == "FullyConnectedLayer") {
+                auto ref = dynamic_cast<const FullyConnectedLayer&>(**it);
+                save(ref);
+            } else {
+                throw std::invalid_argument("unsupported layer type tag: " + tag);
+            }
             if (it + 1 != net.end()) {
                 out << "%%\n";
             }
@@ -594,7 +603,7 @@ public:
         return *this;
     }
 
-    PlainTextNetworkWriter &operator<<(const ALayer &layer) {
+    PlainTextNetworkWriter &operator<<(const FullyConnectedLayer &layer) {
         save(layer);
         return *this;
     }
