@@ -139,8 +139,8 @@ TEST_CASE("FC input-output to plain-text", "[io][fc]") {
     // input check
     CHECK(layer.inputDim() == layer_copy.inputDim());
     CHECK(layer.outputDim() == layer_copy.outputDim());
-    auto out = *layer.output({100, 10, 1});
-    auto out_copy = *layer_copy.output({100, 10, 1});
+    auto &out = layer.output({100, 10, 1});
+    auto &out_copy = layer_copy.output({100, 10, 1});
     CHECK(out[0] == Approx(out_copy[0]));
 }
 

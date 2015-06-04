@@ -590,11 +590,11 @@ public:
     /** Forward propagaiton pass.
      *
      * @return inputs for the next layer. */
-    virtual std::shared_ptr<Array> output(const Array &inputs) = 0;
+    virtual const Array &output(const Array &inputs) = 0;
     /** Back propagation pass.
      *
      * @return error signals $e_i$ propagated to the previous layer */
-    virtual std::shared_ptr<Array> backprop(const Array &errors) = 0;
+    virtual const Array &backprop(const Array &errors) = 0;
     /** Specify how the weights have to be adjusted. */
     virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
     /** Adjust layer parameters after the backpropagation pass. */
@@ -975,17 +975,17 @@ public:
         return nOutputs;
     }
 
-    virtual std::shared_ptr<Array> output(const Array &inputs) {
+    virtual const Array &output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         outputInplace(inputs);
-        return shared.outputBuffer;
+        return *shared.outputBuffer;
     }
 
     // TODO: optimize and don't copy inputs or errors if layers are connected
-    virtual std::shared_ptr<Array> backprop(const Array &errors) {
+    virtual const Array &backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
         backpropInplace(errors);
-        return propagatedErrors;
+        return *propagatedErrors;
     }
 
     virtual void setLearningPolicy(const ALearningPolicy &lp) {
@@ -1093,19 +1093,19 @@ public:
     virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
-    virtual std::shared_ptr<Array> output(const Array &inputs) {
+    virtual const Array &output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
         assert (nSize == inputs.size());
         outputInplace(inputs);
-        return outputBuffer;
+        return *outputBuffer;
     }
-    virtual std::shared_ptr<Array> backprop(const Array &errors) {
+    virtual const Array &backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
         assert (buffersAreReady);
         assert (nSize == errors.size());
         backpropInplace(errors);
-        return propagatedErrors;
+        return *propagatedErrors;
     }
     virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
     virtual void update() {} // do nothing
@@ -1203,30 +1203,28 @@ public:
 
     virtual void clear() { layers.clear(); }
 
-    std::shared_ptr<Array> output(const Array &inputs) {
+    const Array &output(const Array &inputs) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
-        std::shared_ptr<Array> out = layers[0]->output(inputs);
+        const Array *out = &(layers[0]->output(inputs));
         for (auto i = 1u; i < layers.size(); ++i) {
-            out = layers[i]->output(*out);
+            out = &(layers[i]->output(*out));
         }
-        return out;
+        return *out;
     }
 
-    std::shared_ptr<Array> backprop(const Array &errors) {
+    const Array &backprop(const Array &errors) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
         size_t n = layers.size();
-        std::shared_ptr<Array> bpr;
-        bpr = layers[n - 1]->backprop(errors);
+        const Array *bpr = &(layers[n - 1]->backprop(errors));
         for (size_t offset = 1; offset < n; ++offset) {
             size_t i = n - 1 - offset;
-            Array &e(*bpr);
-            bpr = layers[i]->backprop(e);
+            bpr = &(layers[i]->backprop(*bpr));
         }
-        return bpr;
+        return *bpr;
     }
 
     void setLearningPolicy(const ALearningPolicy &lp) {
@@ -1324,8 +1322,8 @@ float totalLoss(LossFunction loss,
                 const LabeledDataset& testSet) {
     float totalLoss = 0.0;
     for (auto sample : testSet) {
-        auto out = net.output(sample.data);
-        totalLoss += loss(*out, sample.label);
+        auto &out = net.output(sample.data);
+        totalLoss += loss(out, sample.label);
     }
     return totalLoss;
 }
@@ -1366,9 +1364,9 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
         }
         trainSet.shuffle(rng);
         for (auto sample : trainSet) {
-            auto out_ptr = net.output(sample.data);
+            auto &out = net.output(sample.data);
             // TODO: pass $d(E)/d(o_i)$ where $E$ is any loss function
-            Array err = sample.label - *out_ptr;
+            Array err = sample.label - out;
             net.backprop(err);
             net.update();
         }

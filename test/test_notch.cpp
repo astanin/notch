@@ -70,7 +70,7 @@ TEST_CASE("FC construction from weights matrix (no-copy)", "[core][fc]") {
     FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
                            {2.5, 5.0}, // bias
                            defaultTanh);
-    auto out = *fc.output({1,1,1});
+    auto &out = fc.output({1,1,1});
     CHECK(out.size() == 2u);
     CHECK(out[0] == Approx(tanh(111 + 2.5)));
     CHECK(out[1] == Approx(tanh(0.111 + 5.0)));
@@ -81,7 +81,7 @@ TEST_CASE("FC construction from weights matrix (copy)", "[core][fc]") {
     const Array w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
     const Array bias = {2.5, 5.0}; // bias
     FullyConnectedLayer fc(w, bias, linearActivation);
-    auto out = *fc.output({1,1,1});
+    auto &out = fc.output({1,1,1});
     CHECK(out.size() == 2);
     CHECK(out[0] == Approx(111 + 2.5));
     CHECK(out[1] == Approx(0.111 + 5.0));
@@ -114,19 +114,19 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
 // TODO: update test if there's an alternative to remove .init() method
 // TEST_CASE("FC init(weights, bias)", "[core][fc]") {
 //     FullyConnectedLayer fc(2, 1, linearActivation);
-//     auto out_before = *fc.output({1,1});
+//     auto &out_before = fc.output({1,1});
 //     CHECK(out_before.size() == 1);
 //     CHECK(out_before[0] == Approx(0));
 //     // init using r-value references
 //     fc.init({10, 100}, {2});
-//     auto out1 = *fc.output({1,1});
+//     auto &out1 = fc.output({1,1});
 //     CHECK(out1.size() == 1);
 //     CHECK(out1[0] == Approx(112));
 //     // init using const references
 //     const Array ws = {0.1, 0.01};
 //     const Array b = {0};
 //     fc.init(ws, b);
-//     auto out2 = *fc.output({1, 2});
+//     auto &out2 = fc.output({1, 2});
 //     CHECK(out2.size() == 1);
 //     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
 // }
@@ -177,16 +177,16 @@ TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
     ActivationLayer al(3, scaledTanh);
     // forward propagation
     const Array input = {-1, 1, 100};
-    auto fclOut = fcl.output(input);
-    auto alOut = al.output(input);
-    CHECK(fclOut->size() == alOut->size());
+    auto &fclOut = fcl.output(input);
+    auto &alOut = al.output(input);
+    CHECK(fclOut.size() == alOut.size());
     for (size_t i = 0; i < 3; ++i) {
-        CHECK((*fclOut)[i] == Approx((*alOut)[i]));
+        CHECK(fclOut[i] == Approx(alOut[i]));
     }
     // backpropagation
     const Array target = {1, 1, 1};
-    Array &fcl_bpErrors = *fcl.backprop(target);
-    Array &al_bpErrors = *al.backprop(target);
+    auto &fcl_bpErrors = fcl.backprop(target);
+    auto &al_bpErrors = al.backprop(target);
     CHECK(fcl_bpErrors.size() == al_bpErrors.size());
     for (size_t i = 0; i < 3; ++i) {
         CHECK(fcl_bpErrors[i] == Approx(al_bpErrors[i]));
@@ -206,16 +206,16 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     net.append(std::shared_ptr<ActivationLayer>(&alTanh));
     // forward propagation
     const Array input = {2, 4};
-    auto fclOut = *fcTanh.output(input);
-    auto netOut = *net.output(input);
+    auto &fclOut = fcTanh.output(input);
+    auto &netOut = net.output(input);
     CHECK(fclOut.size() == netOut.size());
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fclOut[i] == Approx(netOut[i]));
     }
     // backpropagation
     const Array error = { 17, 42 };
-    Array &fcl_bpErrors = *fcTanh.backprop(error);
-    Array &net_bpErrors = *net.backprop(error);
+    auto &fcl_bpErrors = fcTanh.backprop(error);
+    auto &net_bpErrors = net.backprop(error);
     CHECK(fcl_bpErrors.size() == net_bpErrors.size());
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fcl_bpErrors[i] == Approx(net_bpErrors[i]));
@@ -277,12 +277,12 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     Array in {0.3, 0.7};
     Array expected {0.0};
     // forward propagation
-    auto actual_out = mlp.output({0.3, 0.7});
+    auto &actual_out = mlp.output({0.3, 0.7});
     float expected_out = 0.37178;
-    CHECK((*actual_out)[0] == Approx(expected_out).epsilon(0.0002));
+    CHECK(actual_out[0] == Approx(expected_out).epsilon(0.0002));
     // backpropagation
-    Array error = expected - (*actual_out);
-    Array &bpError = *mlp.backprop(error);
+    auto error = expected - actual_out;
+    auto &bpError = mlp.backprop(error);
     // check calculated weight sensitivity at the bottom layer:
     Array &actual_dEdw = layer1.getWeightSensitivity();
     Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
