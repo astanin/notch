@@ -133,6 +133,9 @@ TEST_CASE("FC input-output to plain-text", "[io][fc]") {
     ss.seekg(0);
     FullyConnectedLayer layer_copy;
     PlainTextNetworkReader(ss) >> layer_copy;
+    stringstream ss2;
+    PlainTextNetworkWriter(ss2) << layer_copy;
+    CHECK(ss.str() == ss2.str());
     // input check
     CHECK(layer.inputDim() == layer_copy.inputDim());
     CHECK(layer.outputDim() == layer_copy.outputDim());

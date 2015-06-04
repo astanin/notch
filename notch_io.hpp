@@ -424,6 +424,60 @@ std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
  * ----------------------------
  **/
 
+/** LayerParameters classes break encapsulation of protected layer parameters
+ * to allow serialization and reconfiguration of various layer types.
+ *
+ * LAYER class should have protected
+ * 'Array weights', 'Array bias', 'size_t nInputs', 'size_t nOutputs',
+ * and 'const ActivationFunction *activationFunction' members.
+ *
+ * Expected use:
+ *
+ *     auto w = LayerParameter<FullyConnectedLayer>::getWeights(someLayer);
+ *     LayerParameter<FullyConnectedLayer>::setWeights(someLayer, newWeights);
+ *
+ * */
+template<class LAYER>
+class LayerParameters : public LAYER {
+public:
+    static const Array& getWeights(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return lp.weights;
+    }
+    static const Array& getBias(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return lp.bias;
+    }
+    static const ActivationFunction &getActivation(const LAYER &l) {
+        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
+        return *lp.activationFunction;
+    }
+    static void init(LAYER &l, size_t nInputs, size_t nOutputs,
+                     const Array &weights, const Array &bias) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.nInputs = nInputs;
+        lp.nOutputs = nOutputs;
+        lp.weights = weights;
+        lp.bias = bias;
+    }
+    static void init(LAYER &l, size_t nInputs, size_t nOutputs,
+                     Array &&weights, Array &&bias) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.nInputs = nInputs;
+        lp.nOutputs = nOutputs;
+        lp.weights = weights;
+        lp.bias = bias;
+    }
+    static void setActivation(LAYER &l, const ActivationFunction &af) {
+        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
+        lp.activationFunction = &af;
+    }
+};
+
+
+using FCLParams = LayerParameters<FullyConnectedLayer>;
+
+
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
@@ -512,7 +566,7 @@ public:
         read_weights("bias_and_weights:", w, b);
         consume_end_of_record();
         // modify the layer
-        FCLParams::init(layer, w, b);
+        FCLParams::init(layer, nInputs, nOutputs, w, b);
         FCLParams::setActivation(layer, activation);
         return layer;
     }

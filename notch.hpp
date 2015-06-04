@@ -601,49 +601,6 @@ public:
     virtual void update() = 0;
 };
 
-/** LayerParameters classes break encapsulation of protected layer parameters
- * to allow serialization and reconfiguration of various layer types.
- *
- * LAYER class should have protected 'Array weights', 'Array bias',
- * and 'const ActivationFunction *activationFunction' members.
- *
- * Expected use:
- *
- *     auto w = LayerParameter<FullyConnectedLayer>::getWeights(someLayer);
- *     LayerParameter<FullyConnectedLayer>::setWeights(someLayer, newWeights);
- *
- * */
-template<class LAYER>
-class LayerParameters : public LAYER {
-public:
-    static const Array& getWeights(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return lp.weights;
-    }
-    static const Array& getBias(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return lp.bias;
-    }
-    static const ActivationFunction &getActivation(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return *lp.activationFunction;
-    }
-    static void init(LAYER &l, const Array &weights, const Array &bias) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.weights = weights;
-        lp.bias = bias;
-    }
-    static void init(LAYER &l, Array &&weights, Array &&bias) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.weights = weights;
-        lp.bias = bias;
-    }
-    static void setActivation(LAYER &l, const ActivationFunction &af) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.activationFunction = &af;
-    }
-};
-
 #ifdef NOTCH_USE_CBLAS
 
 /** Matrix-vector product using CBLAS.
@@ -1059,9 +1016,6 @@ public:
     }
     /* end ABackpropLayer interface */
 };
-
-
-using FCLParams = LayerParameters<FullyConnectedLayer>;
 
 
 /** Apply ActivationFunction to all inputs.
