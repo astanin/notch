@@ -49,6 +49,7 @@ THE SOFTWARE.
 #include <ostream>    // ostream
 #include <random>
 #include <string>
+#include <sstream>    // ostringstream
 #include <tuple>      // tuple, make_tuple
 #include <typeinfo>   // typeid
 #include <type_traits> // enable_if, is_pointer
@@ -682,14 +683,21 @@ public:
  * Both layer classes are expected to have these members:
  *
  *  - 'protected SharedBuffers shared'
+ *  - inputDim() and outputDim() methods
+ *  - getInputBuffer() and getOutputBuffer() methods
  */
 template<class PREV_LAYER, class NEXT_LAYER>
 void connect(PREV_LAYER &prevLayer, NEXT_LAYER &nextLayer) {
-    if (nextLayer.inputDim() != prevLayer.outputDim()) {
-        throw std::invalid_argument("can't connect: layer shapes do not match");
-    }
     size_t prevIn = prevLayer.inputDim();
     size_t prevOut = prevLayer.outputDim();
+    size_t nextIn = nextLayer.inputDim();
+    if (prevOut != nextIn) {
+        std::ostringstream ss;
+        ss << "can't connect a layer with shape "
+           << prevIn << "->" << prevOut
+           << " to " << nextIn << "->...";
+        throw std::invalid_argument(ss.str());
+    }
     GetShared<PREV_LAYER>::ref(prevLayer).allocate(prevIn, prevOut);
     nextLayer.getInputBuffer() = prevLayer.getOutputBuffer();
 }
