@@ -658,6 +658,10 @@ public:
 
     /// Create a copy of the layer with its own detached buffers.
     virtual std::shared_ptr<ALossLayer> clone() const = 0;
+
+    virtual size_t inputDim() const = 0;
+    virtual size_t outputDim() const = 0;
+    virtual std::shared_ptr<Array> getInputBuffer() const = 0;
 };
 
 
@@ -1117,6 +1121,13 @@ public:
         c->shared = shared.clone();
         return c;
     }
+
+    virtual size_t inputDim() const { return nSize; }
+    virtual size_t outputDim() const { return nSize; }
+
+    virtual std::shared_ptr<Array> getInputBuffer() const {
+        return shared.inputBuffer;
+    }
 };
 
 
@@ -1214,10 +1225,14 @@ public:
     }
 
     virtual Net &append(std::shared_ptr<ALossLayer> loss) {
+        if (layers.empty()) {
+            throw std::logic_error("cannot append loss layer to an empty Net");
+        }
         if (!this->lossLayer) {
             // TODO: check loss layer shape and connect the last layer
             // TODO: prevent appending
             this->lossLayer = loss;
+            connect(*layers.back(), *lossLayer);
         } else {
             throw std::logic_error("cannot append another loss layer");
         }
