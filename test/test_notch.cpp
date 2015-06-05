@@ -87,7 +87,7 @@ TEST_CASE("FC construction from weights matrix (copy)", "[core][fc]") {
     CHECK(out[1] == Approx(0.111 + 5.0));
 }
 
-TEST_CASE("FC shared buffers", "[core][fc]") {
+TEST_CASE("FC-to-FC shared buffers", "[core][fc]") {
     size_t n_in = 3;
     size_t n_out = 7;
     size_t n_out_next = 4;
@@ -107,26 +107,6 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
     fc.init(rng, normalXavier);
     CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are still shared
 }
-
-// TODO: update test if there's an alternative to remove .init() method
-// TEST_CASE("FC init(weights, bias)", "[core][fc]") {
-//     FullyConnectedLayer fc(2, 1, linearActivation);
-//     auto &out_before = fc.output({1,1});
-//     CHECK(out_before.size() == 1);
-//     CHECK(out_before[0] == Approx(0));
-//     // init using r-value references
-//     fc.init({10, 100}, {2});
-//     auto &out1 = fc.output({1,1});
-//     CHECK(out1.size() == 1);
-//     CHECK(out1[0] == Approx(112));
-//     // init using const references
-//     const Array ws = {0.1, 0.01};
-//     const Array b = {0};
-//     fc.init(ws, b);
-//     auto &out2 = fc.output({1, 2});
-//     CHECK(out2.size() == 1);
-//     CHECK(out2[0] == Approx(0.1*1 + 0.01*2));
-// }
 
 TEST_CASE("FC cloning", "[core][fc]") {
     const Array w = {1, -1, -1, 1}; // weights
@@ -262,6 +242,17 @@ TEST_CASE("L2Loss output", "[core][loss][math]") {
     REQUIRE(lossGrad.size() == error.size());
     CHECK(lossGrad[0] == -error[0]);
     CHECK(lossGrad[1] == -error[1]);
+}
+
+TEST_CASE("FC-to-L2Loss shared buffers", "[core][fc][loss]") {
+    size_t n_in = 3;
+    size_t n_out = 7;
+    FullyConnectedLayer fc(n_in, n_out, linearActivation);
+    L2Loss loss(n_out);
+    connect(fc, loss); // buffers are shared
+    CHECK(fc.getOutputBuffer() == loss.getInputBuffer());
+    auto lossClone = loss.clone(); // buffers are not shared
+    CHECK_FALSE(fc.getOutputBuffer() == lossClone->getInputBuffer());
 }
 
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {

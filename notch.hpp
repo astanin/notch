@@ -699,7 +699,7 @@ void connect(PREV_LAYER &prevLayer, NEXT_LAYER &nextLayer) {
         throw std::invalid_argument(ss.str());
     }
     GetShared<PREV_LAYER>::ref(prevLayer).allocate(prevIn, prevOut);
-    nextLayer.getInputBuffer() = prevLayer.getOutputBuffer();
+    GetShared<NEXT_LAYER>::ref(nextLayer).inputBuffer = prevLayer.getOutputBuffer();
 }
 
 #ifdef NOTCH_USE_CBLAS
