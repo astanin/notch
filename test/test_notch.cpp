@@ -251,6 +251,19 @@ TEST_CASE("AL cloning", "[core][activation]") {
     CHECK_FALSE(out2 == out2clone); // not shared
 }
 
+TEST_CASE("L2Loss output", "[core][loss][math]") {
+    L2Loss layer(2);
+    Array target {1, 1};
+    Array error {3, 4};
+    Array y = target + error;
+    float loss = layer.output(y, target);
+    CHECK(loss == Approx(sqrt(error[0]*error[0]+error[1]*error[1])));
+    Array lossGrad = layer.backprop();
+    REQUIRE(lossGrad.size() == error.size());
+    CHECK(lossGrad[0] == -error[0]);
+    CHECK(lossGrad[1] == -error[1]);
+}
+
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};
@@ -290,7 +303,7 @@ TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
     }
 }
 
-TEST_CASE("backprop example with LossLayer", "[core][math][fc][mlp]") {
+TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
     // initialize network weights as in the example
     FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
     FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
