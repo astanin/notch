@@ -999,45 +999,28 @@ public:
 class ActivationLayer : public ABackpropLayer {
 protected:
     size_t nSize; // the number of input and outputs is the same
-    const Array noParameters = Array(0); // it is supposed to be empty
     const ActivationFunction *activationFunction; //< $\phi$
-    std::shared_ptr<Array> inputBuffer;     //< $v$
-    std::shared_ptr<Array> outputBuffer;    //< $\phi(v)$
-    Array activationGrad;  //< $\phi^\prime(v)$
-    std::shared_ptr<Array> propagatedErrors;
-    bool buffersAreReady = false;
+    Array activationGrad; //< $\phi^\prime(v)$
+    SharedBuffers shared; //< $v$ and $\phi(v)$
+    Array propagatedErrors;
 
     std::shared_ptr<ActivationLayer> makeClone() const {
-        auto p = std::make_shared<ActivationLayer>(nSize, *activationFunction);
+        auto p = std::make_shared<ActivationLayer>(*this);
         if (!p) {
-            throw std::runtime_error("cannot clone layer");
+            throw std::runtime_error("cannot clone ActivationLayer");
         }
-        if (buffersAreReady) { // clone shared buffers too
-            p->allocateInOutBuffers();
-            if (p->inputBuffer && inputBuffer) {
-                *(p->inputBuffer) = *(inputBuffer);
-            }
-            if (p->outputBuffer && outputBuffer) {
-                *(p->outputBuffer) = *(outputBuffer);
-            }
-            if (p->propagatedErrors && propagatedErrors) {
-                *(p->propagatedErrors) = *(propagatedErrors);
-            }
-        }
+        p->shared = shared.clone();
         return p;
     }
 
     virtual void outputInplace(const Array &inputs) {
-        Array &outputs = (*outputBuffer);
+        Array &outputs = *shared.outputBuffer;
         if (outputs.size() != nSize) {
             outputs.resize(nSize);
         }
-        *inputBuffer = inputs;
-        const ActivationFunction &activation = (*activationFunction);
-        std::transform(
-            std::begin(inputs), std::end(inputs),
-            std::begin(activationGrad),
-            [&](float y) { return activation.derivative(y); });
+        // TODO: copy inputs only if it is not the same object
+        *shared.inputBuffer = inputs;
+        auto &activation = (*activationFunction);
         std::transform(
             std::begin(inputs), std::end(inputs),
             std::begin(outputs),
@@ -1045,32 +1028,29 @@ protected:
     }
 
     virtual void backpropInplace(const Array &errors) {
-        *propagatedErrors = activationGrad * errors;
+        auto &inputs = *shared.inputBuffer;
+        auto &activation = (*activationFunction);
+        std::transform(
+            std::begin(inputs), std::end(inputs),
+            std::begin(activationGrad),
+            [&](float y) { return activation.derivative(y); });
+        propagatedErrors = activationGrad * errors;
     }
 
     void allocateInOutBuffers() {
-        if (!inputBuffer) {
-            inputBuffer = std::make_shared<Array>(0.0, nSize);
-        }
-        if (!outputBuffer) {
-            outputBuffer = std::make_shared<Array>(0.0, nSize);
-        }
-       if (!propagatedErrors) {
-            propagatedErrors = std::make_shared<Array>(0.0, nSize);
-        }
-        buffersAreReady = inputBuffer && outputBuffer && propagatedErrors;
+        shared.allocate(nSize, nSize);
     }
 
 public:
     ActivationLayer(size_t n, const ActivationFunction &af)
-        : nSize(n), activationFunction(&af), activationGrad(n) {}
+        : nSize(n), activationFunction(&af),
+          activationGrad(n), propagatedErrors(n) {}
 
     /* begin ABackpropLayer interface */
     virtual std::string tag() const { return "ActivationLayer"; }
+
     // this layer doesn't have parameters, nothing to initialize
     virtual void init(std::unique_ptr<RNG> &, WeightInit) {}
-    virtual void init(Array &&, Array &&) {}
-    virtual void init(const Array &, const Array &) {}
     virtual void connectTo(ABackpropLayer& nextLayer) {
         if (nextLayer.inputDim() != this->outputDim()) {
             throw std::invalid_argument("incompatible shape of the nextLayer");
@@ -1078,24 +1058,24 @@ public:
         allocateInOutBuffers();
         nextLayer.getInputBuffer() = this->getOutputBuffer();
     }
-    virtual std::shared_ptr<Array> &getInputBuffer() { return inputBuffer; }
-    virtual std::shared_ptr<Array> &getOutputBuffer() { return outputBuffer; }
+    virtual std::shared_ptr<Array> &getInputBuffer() { return shared.inputBuffer; }
+    virtual std::shared_ptr<Array> &getOutputBuffer() { return shared.outputBuffer; }
     virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
     virtual const Array &output(const Array &inputs) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        assert (buffersAreReady);
+        assert (shared.ready());
         assert (nSize == inputs.size());
         outputInplace(inputs);
-        return *outputBuffer;
+        return *shared.outputBuffer;
     }
     virtual const Array &backprop(const Array &errors) {
         allocateInOutBuffers(); // just in case the user didn't init()
-        assert (buffersAreReady);
+        assert (shared.ready());
         assert (nSize == errors.size());
         backpropInplace(errors);
-        return *propagatedErrors;
+        return propagatedErrors;
     }
     virtual void setLearningPolicy(const ALearningPolicy &) {} // do nothing
     virtual void update() {} // do nothing
@@ -1119,6 +1099,7 @@ public:
  *  - http://stats.stackexchange.com/q/79454
  *  - http://en.wikipedia.org/wiki/Softmax_function
  **/
+/*
 class SoftmaxLayer : public ActivationLayer {
 protected:
     // TODO: implement more stable (softmax + cross-entropy loss) layer
@@ -1162,6 +1143,7 @@ public:
     SoftmaxLayer(size_t n) : ActivationLayer(n, linearActivation), dhdy(n*n) {}
     virtual std::string tag() const { return "SoftmaxLayer"; }
 };
+*/
 
 /** A feed-forward neural network is a stack of layers. */
 class Net {
