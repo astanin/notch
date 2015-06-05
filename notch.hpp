@@ -1091,7 +1091,7 @@ public:
 
 /** Euclidean loss.
  *
- * Loss is an Euclidean distance between two vectors:
+ * Loss is the Euclidean distance between two vectors:
  *
  * $$ E_2(\mathbf{y}, \mathbf{d}) = \sqrt{ \sum_i (y_i - d_i)^2 } $$
  *
@@ -1107,13 +1107,13 @@ public:
  *  - Langford, John. "Loss Function Semantics" (2007)
  *    Online: http://hunch.net/?p=269
  */
-class L2Loss : public ALossLayer {
+class EuclideanLoss : public ALossLayer {
 protected:
     size_t nSize;
     Array lossGrad; //< $\partial E/\partial y_i$
 
 public:
-    L2Loss(size_t n) : nSize(n), lossGrad(0.0, n) {}
+    EuclideanLoss(size_t n) : nSize(n), lossGrad(0.0, n) {}
 
     virtual float output(const Array &actual, const Array &expected) {
         float lossSquared;
@@ -1132,7 +1132,7 @@ public:
     }
 
     virtual std::shared_ptr<ALossLayer> clone() const {
-        auto c = std::make_shared<L2Loss>(*this);
+        auto c = std::make_shared<EuclideanLoss>(*this);
         c->shared = shared.clone();
         return c;
     }
@@ -1344,7 +1344,7 @@ public:
                 layer(new FullyConnectedLayer(inSize, outSize, af));
             append(layer);
         }
-        append(std::make_shared<L2Loss>(*pIn));
+        append(std::make_shared<EuclideanLoss>(*pIn));
     }
 };
 

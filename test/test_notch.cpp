@@ -181,7 +181,7 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     Net net;
     net.append(std::shared_ptr<FullyConnectedLayer>(&fcLinear));
     net.append(std::shared_ptr<ActivationLayer>(&alTanh));
-    net.append(std::make_shared<L2Loss>(2));
+    net.append(std::make_shared<EuclideanLoss>(2));
     // forward propagation
     const Array input = {2, 4};
     const Array &fclOut = fcTanh.output(input);
@@ -231,8 +231,8 @@ TEST_CASE("AL cloning", "[core][activation]") {
     CHECK_FALSE(out2 == out2clone); // not shared
 }
 
-TEST_CASE("L2Loss output", "[core][loss][math]") {
-    L2Loss layer(2);
+TEST_CASE("EuclideanLoss output", "[core][loss][math]") {
+    EuclideanLoss layer(2);
     Array target {1, 1};
     Array error {3, 4};
     Array y = target + error;
@@ -244,17 +244,17 @@ TEST_CASE("L2Loss output", "[core][loss][math]") {
     CHECK(lossGrad[1] == -error[1]);
 }
 
-TEST_CASE("FC-to-L2Loss shared buffers", "[core][fc][loss]") {
+TEST_CASE("FC-to-L2 shared buffers", "[core][fc][loss]") {
     size_t n_in = 3;
     size_t n_out = 7;
     FullyConnectedLayer fc(n_in, n_out, linearActivation);
-    L2Loss loss(n_out);
+    EuclideanLoss loss(n_out);
     connect(fc, loss); // buffers are shared
-    auto lossBuffer = GetShared<L2Loss>::ref(loss).inputBuffer;
+    auto lossBuffer = GetShared<EuclideanLoss>::ref(loss).inputBuffer;
     CHECK(fc.getOutputBuffer() == lossBuffer);
     auto lossClonePtr = loss.clone(); // buffers are not shared
-    L2Loss &lossClone = static_cast<L2Loss&>(*lossClonePtr);
-    auto lossCloneBuffer = GetShared<L2Loss>::ref(lossClone).inputBuffer;
+    EuclideanLoss &lossClone = static_cast<EuclideanLoss&>(*lossClonePtr);
+    auto lossCloneBuffer = GetShared<EuclideanLoss>::ref(lossClone).inputBuffer;
     CHECK_FALSE(fc.getOutputBuffer() == lossCloneBuffer);
 }
 
@@ -278,7 +278,7 @@ TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
     MultilayerPerceptron mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
-    mlp.append(std::make_shared<L2Loss>(1));
+    mlp.append(std::make_shared<EuclideanLoss>(1));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};
@@ -304,14 +304,14 @@ TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
     MultilayerPerceptron mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
-    mlp.append(std::make_shared<L2Loss>(1));
+    mlp.append(std::make_shared<EuclideanLoss>(1));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};
     // forward propagation
     mlp.outputWithLoss(in, expected);
     // backpropagation
-    mlp.backprop(); // magic! (L2Loss does all the work)
+    mlp.backprop(); // magic! (EuclideanLoss does all the work)
     // check calculated weight sensitivity at the bottom layer:
     Array &actual_dEdw = layer1.getWeightSensitivity();
     Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
