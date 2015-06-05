@@ -11,8 +11,9 @@
 #include "notch.hpp"
 #include "notch_io.hpp"
 
-
 using namespace std;
+
+#include "test_notch_io.hpp"
 
 // Abbreviations:
 // FC  = FullyConnectedLayer
@@ -366,4 +367,3 @@ TEST_CASE("FixedRateWithMomentum: generalized delta rule policy", "[core][train]
     }
 }
 
-#include "test_notch_io.hpp"
