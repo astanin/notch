@@ -6,6 +6,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include "notch.hpp"
 #include "notch_io.hpp"
@@ -199,12 +200,12 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     Net net;
     net.append(std::shared_ptr<FullyConnectedLayer>(&fcLinear));
     net.append(std::shared_ptr<ActivationLayer>(&alTanh));
+    net.append(std::make_shared<L2Loss>(2));
     // forward propagation
     const Array input = {2, 4};
     const Array &fclOut = fcTanh.output(input);
     const Array &netOut = net.output(input);
-    cerr << "netOut: " << netOut << "\n";
-    CHECK(fclOut.size() == 1);
+    CHECK(fclOut.size() == 2);
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fclOut[i] == Approx(netOut[i]));
     }
@@ -262,13 +263,14 @@ TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
 
 /* This test is based on the backpropagation example by Dan Ventura
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
-TEST_CASE("backprop example", "[core][math][fc][mlp]") {
+TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
     // initialize network weights as in the example
     FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
     FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
     MultilayerPerceptron mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
+    mlp.append(std::make_shared<L2Loss>(2));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};
@@ -279,6 +281,29 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     // backpropagation
     auto error = expected - actual_out;
     auto &bpError = mlp.backprop(error);
+    // check calculated weight sensitivity at the bottom layer:
+    Array &actual_dEdw = layer1.getWeightSensitivity();
+    Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+    for (size_t i = 0; i < 4; ++i) {
+        CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
+    }
+}
+
+TEST_CASE("backprop example with LossLayer", "[core][math][fc][mlp]") {
+    // initialize network weights as in the example
+    FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
+    FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
+    MultilayerPerceptron mlp;
+    mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
+    mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
+    mlp.append(std::make_shared<L2Loss>(2));
+    // training example: (0.3, 0.7) -> 0.0
+    Array in {0.3, 0.7};
+    Array expected {0.0};
+    // forward propagation
+    mlp.outputWithLoss(in, expected);
+    // backpropagation
+    mlp.backprop(); // magic! (L2Loss does all the work)
     // check calculated weight sensitivity at the bottom layer:
     Array &actual_dEdw = layer1.getWeightSensitivity();
     Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
