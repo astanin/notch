@@ -722,8 +722,12 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
     size_t rows = std::distance(b_begin, b_end);
     size_t n = std::distance(m_begin, m_end);
     if (n != rows * cols) {
-        std::string what = "blas_gemv: incompatible matrix and vector shapes";
-        throw std::invalid_argument(what);
+        std::ostringstream what;
+        what << "blas_gemv: incompatible matrix and vector shapes:\n"
+            << " matrix size = " << n
+            << " vector size = " << cols
+            << " result size = " << rows;
+        throw std::invalid_argument(what.str());
     }
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
                 rows, cols,
@@ -747,8 +751,12 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
     size_t rows = std::distance(b_begin, b_end);
     size_t n = std::distance(m_begin, m_end);
     if (n != rows * cols) {
-        std::string what = "stl_gemv: incompatible matrix and vector shapes";
-        throw std::invalid_argument(what);
+        std::ostringstream what;
+        what << "stl_gemv: incompatible matrix and vector shapes:\n"
+            << " matrix size = " << n
+            << " vector size = " << cols
+            << " result size = " << rows;
+        throw std::invalid_argument(what.str());
     }
     size_t r = 0; // current row number
     for (auto b = b_begin; b != b_end; ++b, ++r) {
@@ -1273,13 +1281,13 @@ public:
     // TODO: optimize: remember last output and don't recalculate it
     float loss(const Array &inputs, const Array &expected) {
         auto &out = output(inputs);
-        return loss(out, expected);
+        return lossLayer->output(out, expected);
     }
 
     std::tuple<const Array &, float>
     outputWithLoss(const Array &inputs, const Array &expected) {
         const Array &out = output(inputs);
-        float lossValue = loss(out, expected);
+        float lossValue = lossLayer->output(out, expected);
         return std::make_tuple(out, lossValue);
     }
 
