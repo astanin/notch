@@ -250,9 +250,12 @@ TEST_CASE("FC-to-L2Loss shared buffers", "[core][fc][loss]") {
     FullyConnectedLayer fc(n_in, n_out, linearActivation);
     L2Loss loss(n_out);
     connect(fc, loss); // buffers are shared
-    CHECK(fc.getOutputBuffer() == loss.getInputBuffer());
-    auto lossClone = loss.clone(); // buffers are not shared
-    CHECK_FALSE(fc.getOutputBuffer() == lossClone->getInputBuffer());
+    auto lossBuffer = GetShared<L2Loss>::ref(loss).inputBuffer;
+    CHECK(fc.getOutputBuffer() == lossBuffer);
+    auto lossClonePtr = loss.clone(); // buffers are not shared
+    L2Loss &lossClone = static_cast<L2Loss&>(*lossClonePtr);
+    auto lossCloneBuffer = GetShared<L2Loss>::ref(lossClone).inputBuffer;
+    CHECK_FALSE(fc.getOutputBuffer() == lossCloneBuffer);
 }
 
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {

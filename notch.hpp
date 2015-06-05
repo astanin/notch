@@ -662,7 +662,6 @@ public:
 
     virtual size_t inputDim() const = 0;
     virtual size_t outputDim() const = 0;
-    virtual std::shared_ptr<Array> getInputBuffer() const = 0;
 };
 
 
@@ -1140,10 +1139,6 @@ public:
 
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
-
-    virtual std::shared_ptr<Array> getInputBuffer() const {
-        return shared.inputBuffer;
-    }
 };
 
 
