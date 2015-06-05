@@ -487,7 +487,6 @@ class ALearningPolicy {
 public:
     virtual void correctWeights(Array& weightSensitivy, Array &weights) = 0;
     virtual void correctBias(Array& biasSensitivity, Array &bias) = 0;
-    virtual void resize(size_t nInputs, size_t nOutputs) = 0;
     virtual std::unique_ptr<ALearningPolicy> clone() const = 0;
 };
 
@@ -508,7 +507,6 @@ public:
     virtual void correctBias(Array& biasSensitivity, Array &bias) {
         bias -= (learningRate * biasSensitivity);
     }
-    virtual void resize(size_t, size_t) {}
     virtual std::unique_ptr<ALearningPolicy> clone() const {
         auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(learningRate));
         return c;
@@ -554,10 +552,6 @@ public:
         lastDeltaB = (momentum * lastDeltaB - learningRate * biasSensitivity);
         bias += lastDeltaB;
     }
-    virtual void resize(size_t nInputs, size_t nOutputs) {
-        lastDeltaW.resize(nInputs * nOutputs, 0.0);
-        lastDeltaB.resize(nOutputs, 0.0);
-    }
     virtual std::unique_ptr<ALearningPolicy> clone() const {
         auto c = std::unique_ptr<ALearningPolicy>(
                   new FixedRateWithMomentum(learningRate, momentum));
@@ -565,52 +559,14 @@ public:
     }
 };
 
-/** The top-most layer of the network.
+
+/** Input-output buffers can be shared between layers.
  *
- * Loss layers compare calculated output of the network
- * with the desired output, calculate loss and error gradient
- * to propagate back. */
-class ALossLayer {
-};
-
-
-class ABackpropLayer {
+ * SharedBuffers are allocated on-demand only when layers
+ * are actually connected. This allows to avoid allocating
+ * the same buffer twice. */
+class SharedBuffers {
 public:
-    /// A name to identify layer type.
-    virtual std::string tag() const = 0;
-
-    /// Get the number of input variables.
-    virtual size_t inputDim() const = 0;
-    /// Get the number of output variables.
-    virtual size_t outputDim() const = 0;
-
-    /// Randomly initialize layer parameters.
-    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
-
-    /// Share output buffers with the nextLayer.
-    virtual void connectTo(ABackpropLayer& nextLayer) = 0;
-    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
-    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
-
-    /// Create a copy of the layer with its own buffers
-    virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
-
-    /** Forward propagaiton pass.
-     *
-     * @return inputs for the next layer. */
-    virtual const Array &output(const Array &inputs) = 0;
-    /** Back propagation pass.
-     *
-     * @return error signals $e_i$ propagated to the previous layer */
-    virtual const Array &backprop(const Array &errors) = 0;
-    /** Specify how the weights have to be adjusted. */
-    virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
-    /** Adjust layer parameters after the backpropagation pass. */
-    virtual void update() = 0;
-};
-
-
-struct SharedBuffers {
     std::shared_ptr<Array> inputBuffer;
     std::shared_ptr<Array> outputBuffer;
     bool ready() const {
@@ -628,12 +584,7 @@ struct SharedBuffers {
             outputBuffer = std::make_shared<Array>(0.0, nOutputs);
         }
     }
-    /// reallocate input-output buffers of new dimensions
-    void resize(size_t nInputs, size_t nOutputs) {
-        inputBuffer = std::make_shared<Array>(0.0, nInputs);
-        outputBuffer = std::make_shared<Array>(0.0, nOutputs);
-    }
-    /// clone buffers (make them non-shared)
+   /// clone buffers (make them non-shared)
     SharedBuffers clone() const {
         SharedBuffers newBuffers;
         if (inputBuffer) {
@@ -645,6 +596,89 @@ struct SharedBuffers {
         return newBuffers;
     }
 };
+
+
+/** An intermediate layer of the network with back-propagation capability. */
+class ABackpropLayer {
+protected:
+    // Forward and backpropagation results can be shared between layers.
+    // The buffers are allocated once either in connect() or at the begining of
+    // the forward or backprop pass respectively (see output() and backprop()).
+    SharedBuffers shared;
+
+public:
+    /// A name to identify layer type.
+    virtual std::string tag() const = 0;
+
+    /// Get the number of input variables.
+    virtual size_t inputDim() const = 0;
+    /// Get the number of output variables.
+    virtual size_t outputDim() const = 0;
+
+    /// Randomly initialize layer parameters.
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
+
+    /// Share output buffers with the nextLayer.
+    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
+    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
+
+    /// Create a copy of the layer with its own detached buffers.
+    virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
+
+    /// Forward propagaiton pass.
+    ///
+    /// @return inputs for the next layer.
+    virtual const Array &output(const Array &inputs) = 0;
+    /// Back propagation pass.
+    ///
+    /// @return error signals $e_i$ propagated to the previous layer
+    virtual const Array &backprop(const Array &errors) = 0;
+    /// Specify how layer parameters have to be adjusted.
+    virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
+    /// Adjust layer parameters after the backpropagation pass.
+    virtual void update() = 0;
+};
+
+
+/** The top-most layer of the network.
+ *
+ * Loss layers compare calculated output of the network
+ * with the desired output, calculate loss and error gradient
+ * to propagate back. */
+class ALossLayer {
+protected:
+    SharedBuffers shared;
+};
+
+
+template<class LAYER>
+class GetShared : public LAYER {
+public:
+    /// Get a reference to protected 'shared' member of a LAYER class.
+    static SharedBuffers& ref(LAYER &l) {
+        auto &access = static_cast<GetShared<LAYER>&>(l);
+        return access.shared;
+    }
+};
+
+
+/** connect<PREV_LAYER, NEXT_LAYER>() allows to connect layers
+ * of different types to each other.
+ *
+ * Both layer classes are expected to have these members:
+ *
+ *  - 'protected SharedBuffers shared'
+ */
+template<class PREV_LAYER, class NEXT_LAYER>
+void connect(PREV_LAYER & prevLayer, NEXT_LAYER &nextLayer) {
+    if (nextLayer.inputDim() != prevLayer.outputDim()) {
+        throw std::invalid_argument("can't connect: layer shapes do not match");
+    }
+    size_t prevIn = prevLayer.inputDim();
+    size_t prevOut = prevLayer.outputDim();
+    GetShared<PREV_LAYER>::ref(prevLayer).allocate(prevIn, prevOut);
+    nextLayer.getInputBuffer() = prevLayer.getOutputBuffer();
+}
 
 #ifdef NOTCH_USE_CBLAS
 
@@ -720,13 +754,6 @@ protected:
     Array weightSensitivity;  //< $\partial E/\partial w_{ji}$
     Array biasSensitivity;    //< $\partial E/\partial b_{j}$
     Array propagatedErrors; //< backpropagation result
-
-    // Forward and backpropagation results can be shared between layers.
-    // The buffers are allocated once either in init() or at the begining of the
-    // forward or backprop pass respectively (see output() and backprop()).
-    // Actual allocation is implemented in allocateInOutBuffers() method,
-    // connectTo() method implements sharing.
-    SharedBuffers shared; //< $x_i$ and $y_j = \phi(v_j)$
 
     std::shared_ptr<ALearningPolicy> policy;
 
@@ -859,53 +886,11 @@ protected:
         calcPropagatedErrors();
     }
 
-    /// Allocates inputBuffer and outputBuffer buffers if they're not allocated yet.
-    void allocateInOutBuffers() {
-        shared.allocate(nInputs, nOutputs);
-    }
-
     /// @return true if input-output buffers are allocated _and_ shared
     bool isConnected() const {
         return (shared.ready() &&
                 !(shared.inputBuffer.unique() &&
                   shared.outputBuffer.unique()));
-    }
-
-    /// Resize all layer buffers if it is initialized with a weight matrix
-    /// of different shape. We can do it only if the layer is not connected
-    /// to other layer (is not sharing buffers), i.e. before connectTo().
-    void initResize(const Weights& weights, const Weights &bias) {
-        bool needResize = this->weights.size() != weights.size() ||
-                          this->bias.size() != bias.size();
-        if (needResize) {
-            if (isConnected()) {
-                throw std::invalid_argument("cannot reshape a connected layer");
-            } else {
-                size_t n_in = weights.size() / bias.size();
-                size_t n_out = bias.size();
-                if (n_in * n_out != weights.size()) {
-                    throw std::invalid_argument("incompatible weights/bias shapes");
-                }
-                // resize everything
-                nInputs = n_in;
-                nOutputs = n_out;
-                this->weights.resize(n_in * n_out, 0.0);
-                this->bias.resize(n_out);
-                inducedLocalField.resize(n_out);
-                activationGrad.resize(n_out);
-                localGrad.resize(n_out);
-                weightSensitivity.resize(n_in * n_out, 0.0);
-                biasSensitivity.resize(n_out, 0.0);
-                propagatedErrors.resize(n_in, 0.0);
-                // resize shared buffers which may happen to be allocated
-                // in the stand-alone (disconnected) layer
-                shared.resize(n_in, n_out);
-                // resize buffers for historical values
-                if (policy) {
-                    policy->resize(n_in, n_out);
-                }
-           }
-        }
     }
 
 public:
@@ -945,15 +930,6 @@ public:
         init(rng, bias, nInputs, nOutputs);
     }
 
-    /// Interlayer connections allow to share input-output buffers between two layers.
-    virtual void connectTo(ABackpropLayer& nextLayer) {
-        if (nextLayer.inputDim() != this->outputDim()) {
-            throw std::invalid_argument("incompatible shape of the nextLayer");
-        }
-        allocateInOutBuffers();
-        nextLayer.getInputBuffer() = this->getOutputBuffer();
-    }
-
     virtual std::shared_ptr<Array> &getInputBuffer() {
         return shared.inputBuffer;
     }
@@ -974,14 +950,14 @@ public:
     }
 
     virtual const Array &output(const Array &inputs) {
-        allocateInOutBuffers(); // just in case the user didn't init()
+        shared.allocate(nInputs, nOutputs); // just in case user didn't init()
         outputInplace(inputs);
         return *shared.outputBuffer;
     }
 
     // TODO: optimize and don't copy inputs or errors if layers are connected
     virtual const Array &backprop(const Array &errors) {
-        allocateInOutBuffers(); // just in case the user didn't init()
+        shared.allocate(nInputs, nOutputs); // just in case user didn't init()
         backpropInplace(errors);
         return propagatedErrors;
     }
@@ -1009,7 +985,6 @@ protected:
     size_t nSize; // the number of input and outputs is the same
     const ActivationFunction *activationFunction; //< $\phi$
     Array activationGrad; //< $\phi^\prime(v)$
-    SharedBuffers shared; //< $v$ and $\phi(v)$
     Array propagatedErrors;
 
     std::shared_ptr<ActivationLayer> makeClone() const {
@@ -1045,10 +1020,6 @@ protected:
         propagatedErrors = activationGrad * errors;
     }
 
-    void allocateInOutBuffers() {
-        shared.allocate(nSize, nSize);
-    }
-
 public:
     ActivationLayer(size_t n, const ActivationFunction &af)
         : nSize(n), activationFunction(&af),
@@ -1059,27 +1030,20 @@ public:
 
     // this layer doesn't have parameters, nothing to initialize
     virtual void init(std::unique_ptr<RNG> &, WeightInit) {}
-    virtual void connectTo(ABackpropLayer& nextLayer) {
-        if (nextLayer.inputDim() != this->outputDim()) {
-            throw std::invalid_argument("incompatible shape of the nextLayer");
-        }
-        allocateInOutBuffers();
-        nextLayer.getInputBuffer() = this->getOutputBuffer();
-    }
     virtual std::shared_ptr<Array> &getInputBuffer() { return shared.inputBuffer; }
     virtual std::shared_ptr<Array> &getOutputBuffer() { return shared.outputBuffer; }
     virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }
     virtual const Array &output(const Array &inputs) {
-        allocateInOutBuffers(); // just in case the user didn't init()
+        shared.allocate(nSize, nSize); // just in case user didn't init()
         assert (shared.ready());
         assert (nSize == inputs.size());
         outputInplace(inputs);
         return *shared.outputBuffer;
     }
     virtual const Array &backprop(const Array &errors) {
-        allocateInOutBuffers(); // just in case the user didn't init()
+        shared.allocate(nSize, nSize); // just in case user didn't init()
         assert (shared.ready());
         assert (nSize == errors.size());
         backpropInplace(errors);
@@ -1166,7 +1130,7 @@ public:
         layers.push_back(std::move(layer));
         if (layers.size() >= 2) { // connect the last two layers
            auto n = layers.size();
-           layers[n-2]->connectTo(*layers[n-1]);
+           connect(*layers[n-2], *layers[n-1]);
         }
         return *this;
     }
@@ -1188,6 +1152,7 @@ public:
     virtual Net &append(const ALossLayer &loss) {
         // TODO: implement .clone on ALossLayer
         //return append(loss.clone());
+        return *this;
     }
 
     virtual void

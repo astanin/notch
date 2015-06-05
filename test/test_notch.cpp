@@ -92,9 +92,9 @@ TEST_CASE("FC shared buffers", "[core][fc]") {
     auto rng = newRNG();
     FullyConnectedLayer_Test fc(n_in, n_out, linearActivation);
     FullyConnectedLayer_Test fc2(n_out, n_out_next, linearActivation);
-    CHECK_FALSE(fc.getBuffersReadyFlag()); // not until connectTo()
+    CHECK_FALSE(fc.getBuffersReadyFlag()); // not until connect()
 
-    fc.connectTo(fc2);
+    connect(fc, fc2);
     CHECK(fc.getBuffersReadyFlag()); // now ready
     CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
 
@@ -131,7 +131,7 @@ TEST_CASE("FC cloning", "[core][fc]") {
     const Array bias = {0, 0};  // bias
     FullyConnectedLayer fc1(w, bias, linearActivation);
     FullyConnectedLayer fc2(w, bias, linearActivation);
-    fc1.connectTo(fc2);
+    connect(fc1, fc2);
     // initially:
     auto weights1 = FCLParams::getWeights(fc1);
     auto weights2 = FCLParams::getWeights(fc2);
@@ -233,8 +233,8 @@ TEST_CASE("AL cloning", "[core][activation]") {
     FullyConnectedLayer fc1(1, 2, linearActivation);
     ActivationLayer a2(2, logisticActivation);
     FullyConnectedLayer fc3(2, 1, defaultTanh);
-    fc1.connectTo(a2);
-    a2.connectTo(fc3);
+    connect(fc1, a2);
+    connect(a2, fc3);
     // initially buffers are shared:
     CHECK(fc1.getOutputBuffer() == a2.getInputBuffer());
     CHECK(a2.getOutputBuffer() == fc3.getInputBuffer());
