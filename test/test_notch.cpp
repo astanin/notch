@@ -271,7 +271,7 @@ TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
     MultilayerPerceptron mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
-    mlp.append(std::make_shared<L2Loss>(2));
+    mlp.append(std::make_shared<L2Loss>(1));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};
@@ -297,7 +297,7 @@ TEST_CASE("backprop example with LossLayer", "[core][math][fc][mlp]") {
     MultilayerPerceptron mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
-    mlp.append(std::make_shared<L2Loss>(2));
+    mlp.append(std::make_shared<L2Loss>(1));
     // training example: (0.3, 0.7) -> 0.0
     Array in {0.3, 0.7};
     Array expected {0.0};
