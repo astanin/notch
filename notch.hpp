@@ -565,6 +565,14 @@ public:
     }
 };
 
+/** The top-most layer of the network.
+ *
+ * Loss layers compare calculated output of the network
+ * with the desired output, calculate loss and error gradient
+ * to propagate back. */
+class ALossLayer {
+};
+
 
 class ABackpropLayer {
 public:
@@ -1149,6 +1157,7 @@ public:
 class Net {
 protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
+    std::shared_ptr<ALossLayer> loss;
 
 public:
     Net() : layers(0) {}
@@ -1164,6 +1173,21 @@ public:
 
     virtual Net &append(const ABackpropLayer &layer) {
         return append(layer.clone());
+    }
+
+    virtual Net &append(std::shared_ptr<ALossLayer> loss) {
+        if (!this->loss) {
+            // TODO: check loss layer shape and connect the last layer
+            // TODO: prevent appending
+            this->loss = loss;
+        } else {
+            throw std::logic_error("cannot append another loss layer");
+        }
+    }
+
+    virtual Net &append(const ALossLayer &loss) {
+        // TODO: implement .clone on ALossLayer
+        //return append(loss.clone());
     }
 
     virtual void
