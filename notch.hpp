@@ -631,7 +631,7 @@ public:
     virtual const Array &output(const Array &inputs) = 0;
     /// Back propagation pass.
     ///
-    /// @return error signals $e_i$ propagated to the previous layer
+    /// @return error signals $e_i$ propagated to the previous layer.
     virtual const Array &backprop(const Array &errors) = 0;
     /// Specify how layer parameters have to be adjusted.
     virtual void setLearningPolicy(const ALearningPolicy &lp) = 0;
@@ -642,12 +642,21 @@ public:
 
 /** The top-most layer of the network.
  *
- * Loss layers compare calculated output of the network
- * with the desired output, calculate loss and error gradient
- * to propagate back. */
+ * Loss layers compare calculated output of the network with the desired
+ * output, calculate loss and error gradient to propagate back. */
 class ALossLayer {
 protected:
     SharedBuffers shared;
+
+public:
+    /// Calculate loss.
+    virtual float output(const Array &actual, const Array &expected) = 0;
+
+    /// Return error signals $e_i$ to propagate to the previous layer.
+    virtual const Array &backprop() = 0;
+
+    /// Create a copy of the layer with its own detached buffers.
+    virtual std::shared_ptr<ALossLayer> clone() const = 0;
 };
 
 
@@ -670,7 +679,7 @@ public:
  *  - 'protected SharedBuffers shared'
  */
 template<class PREV_LAYER, class NEXT_LAYER>
-void connect(PREV_LAYER & prevLayer, NEXT_LAYER &nextLayer) {
+void connect(PREV_LAYER &prevLayer, NEXT_LAYER &nextLayer) {
     if (nextLayer.inputDim() != prevLayer.outputDim()) {
         throw std::invalid_argument("can't connect: layer shapes do not match");
     }
@@ -1055,6 +1064,61 @@ public:
 };
 
 
+/**
+ * Loss Layers
+ * -----------
+ **/
+
+/** Euclidean loss.
+ *
+ * Loss is an Euclidean distance between two vectors:
+ *
+ * $$ E_2(\mathbf{y}, \mathbf{d}) = \sqrt{ \sum_i (y_i - d_i)^2 } $$
+ *
+ * This loss layer may be used for regressing real-valued labels.
+ * Minimizing Euclidean loss $E(y,d)$ means predicting
+ * the conditional mean of $d$.
+ *
+ * References:
+ *
+ *  - https://en.wikipedia.org/wiki/Convolutional_neural_network#Loss_layer
+ *  - Rosasco, Lorenzo, et al. "Are loss functions all the same?." Neural
+ *    Computation 16.5 (2004): 1063-1076.
+ *  - Langford, John. "Loss Function Semantics" (2007)
+ *    Online: http://hunch.net/?p=269
+ */
+class L2Loss : public ALossLayer {
+protected:
+    size_t nSize;
+    Array lossGrad; //< $\partial E/\partial y_i$
+
+public:
+    L2Loss(size_t n) : nSize(n), lossGrad(0.0, n) {}
+
+    virtual float output(const Array &actual, const Array &expected) {
+        float lossSquared;
+        assert (nSize == actual.size());
+        assert (nSize == expected.size());
+        for (size_t i = 0; i < nSize; ++i) {
+            float delta = expected[i] - actual[i];
+            lossSquared += (delta*delta);
+            lossGrad[i] = delta;
+        }
+        return std::sqrt(lossSquared);
+    }
+
+    virtual const Array &backprop() {
+        return lossGrad;
+    }
+
+    virtual std::shared_ptr<ALossLayer> clone() const {
+        auto c = std::make_shared<L2Loss>(*this);
+        c->shared = shared.clone();
+        return c;
+    }
+};
+
+
 /** Apply the softmax function.
  *
  * Softmax function is a generalization of the logistic function and
@@ -1121,7 +1185,16 @@ public:
 class Net {
 protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
-    std::shared_ptr<ALossLayer> loss;
+    std::shared_ptr<ALossLayer> lossLayer;
+
+    void selfCheck() const {
+        if (layers.empty()) {
+            throw std::logic_error("no layers");
+        }
+        if (!lossLayer) {
+            throw std::logic_error("Net has no loss layer");
+        }
+    }
 
 public:
     Net() : layers(0) {}
@@ -1140,19 +1213,17 @@ public:
     }
 
     virtual Net &append(std::shared_ptr<ALossLayer> loss) {
-        if (!this->loss) {
+        if (!this->lossLayer) {
             // TODO: check loss layer shape and connect the last layer
             // TODO: prevent appending
-            this->loss = loss;
+            this->lossLayer = loss;
         } else {
             throw std::logic_error("cannot append another loss layer");
         }
     }
 
     virtual Net &append(const ALossLayer &loss) {
-        // TODO: implement .clone on ALossLayer
-        //return append(loss.clone());
-        return *this;
+        return append(loss.clone());
     }
 
     virtual void
@@ -1165,9 +1236,7 @@ public:
     virtual void clear() { layers.clear(); }
 
     const Array &output(const Array &inputs) {
-        if (layers.empty()) {
-            throw std::logic_error("no layers");
-        }
+        selfCheck();
         const Array *out = &(layers[0]->output(inputs));
         for (auto i = 1u; i < layers.size(); ++i) {
             out = &(layers[i]->output(*out));
@@ -1175,17 +1244,29 @@ public:
         return *out;
     }
 
+    // TODO: checks on order of calls + tests (loss and backprop after output)
+    // TODO: a method to return loss and output together
+    float loss(const Array &inputs, const Array &expected) {
+        auto &out = output(inputs);
+        return loss(out, expected);
+    }
+
     const Array &backprop(const Array &errors) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
         }
+        const Array *bpr = &errors;
         size_t n = layers.size();
-        const Array *bpr = &(layers[n - 1]->backprop(errors));
-        for (size_t offset = 1; offset < n; ++offset) {
-            size_t i = n - 1 - offset;
+        for (size_t back_offset = 0; back_offset < n; ++back_offset) {
+            size_t i = n - 1 - back_offset;
             bpr = &(layers[i]->backprop(*bpr));
         }
         return *bpr;
+    }
+
+    const Array &backprop() {
+        selfCheck();
+        return backprop(lossLayer->backprop());
     }
 
     void setLearningPolicy(const ALearningPolicy &lp) {
@@ -1211,9 +1292,13 @@ public:
     MultilayerPerceptron() {}
 
     MultilayerPerceptron(std::initializer_list<unsigned int> shape,
-                         const ActivationFunction &af = scaledTanh) {
+                         const ActivationFunction &af = scaledTanh,
+                         int lossType = 2) {
         if (shape.size() <= 0) {
             throw std::invalid_argument("initializer list is empty");
+        }
+        if (lossType != 2) {
+            throw std::invalid_argument("unsupported lossType");
         }
         auto pIn = shape.begin();
         auto pOut = std::next(pIn);
@@ -1224,6 +1309,7 @@ public:
                 layer(new FullyConnectedLayer(inSize, outSize, af));
             append(layer);
         }
+        append(std::make_shared<L2Loss>(*pIn));
     }
 };
 
@@ -1232,30 +1318,8 @@ public:
 // TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...
 // TODO: sliding window search for CNNs
 
-/**
- * Loss Functions
- * --------------
- *
- **/
 
-using LossFunction = std::function<float(const Output &, const Output &)>;
-
-/** Euclidean loss.
- *
- * $$ E_2(\mathbf{a}, \mathbf{b}) = \sqrt{ \sum_i (a_i - b_i)^2 } $$
- *
- * It may be used for regressing real-valued labels.
- * https://en.wikipedia.org/wiki/Convolutional_neural_network#Loss_layer */
-float L2_loss(const Output &actualOutput, const Output &expectedOutput) {
-    float loss2 = std::inner_product(
-            std::begin(actualOutput), std::end(actualOutput),
-            std::begin(expectedOutput),
-            0.0,
-            [](float s_i, float s_inext) { return s_i + s_inext; },
-            [](float a_i, float b_i) { return (a_i - b_i)*(a_i - b_i); });
-    return sqrt(loss2);
-}
-
+#if 0
 /** Multi-class cross-entropy loss.
  *
  * For a multi-class classification problem with $C$ different classes
@@ -1275,19 +1339,7 @@ float CrossEntropyLoss(const Output &actual, const Output &expected) {
             [](float d_i, float y_i) { return d_i * std::log(y_i); });
     return -negLoss;
 }
-
-// TODO: remove loss argument, use the top loss layer or L2 loss by default
-/** Calculate total loss across the entire testSet. */
-float totalLoss(LossFunction loss,
-                Net &net,
-                const LabeledDataset& testSet) {
-    float totalLoss = 0.0;
-    for (auto sample : testSet) {
-        auto &out = net.output(sample.data);
-        totalLoss += loss(out, sample.label);
-    }
-    return totalLoss;
-}
+#endif /*0*/
 
 // return true from TrainCallback to stop training early
 using TrainCallback = std::function<bool(int epoch)>;
@@ -1324,11 +1376,11 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
             }
         }
         trainSet.shuffle(rng);
+        float totalLoss = 0.0;
         for (auto sample : trainSet) {
-            auto &out = net.output(sample.data);
-            // TODO: pass $d(E)/d(o_i)$ where $E$ is any loss function
-            Array err = sample.label - out;
-            net.backprop(err);
+            float loss = net.loss(sample.data, sample.label);
+            totalLoss += loss;
+            net.backprop();
             net.update();
         }
     }

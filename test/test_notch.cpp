@@ -201,16 +201,17 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     net.append(std::shared_ptr<ActivationLayer>(&alTanh));
     // forward propagation
     const Array input = {2, 4};
-    auto &fclOut = fcTanh.output(input);
-    auto &netOut = net.output(input);
-    CHECK(fclOut.size() == netOut.size());
+    const Array &fclOut = fcTanh.output(input);
+    const Array &netOut = net.output(input);
+    cerr << "netOut: " << netOut << "\n";
+    CHECK(fclOut.size() == 1);
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fclOut[i] == Approx(netOut[i]));
     }
     // backpropagation
     const Array error = { 17, 42 };
-    auto &fcl_bpErrors = fcTanh.backprop(error);
-    auto &net_bpErrors = net.backprop(error);
+    const Array &fcl_bpErrors = fcTanh.backprop(error);
+    const Array &net_bpErrors = net.backprop(error);
     CHECK(fcl_bpErrors.size() == net_bpErrors.size());
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fcl_bpErrors[i] == Approx(net_bpErrors[i]));
