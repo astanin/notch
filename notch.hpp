@@ -49,6 +49,7 @@ THE SOFTWARE.
 #include <ostream>    // ostream
 #include <random>
 #include <string>
+#include <tuple>      // tuple, make_tuple
 #include <typeinfo>   // typeid
 #include <type_traits> // enable_if, is_pointer
 #include <valarray>
@@ -1220,6 +1221,7 @@ public:
         } else {
             throw std::logic_error("cannot append another loss layer");
         }
+        return *this;
     }
 
     virtual Net &append(const ALossLayer &loss) {
@@ -1245,10 +1247,17 @@ public:
     }
 
     // TODO: checks on order of calls + tests (loss and backprop after output)
-    // TODO: a method to return loss and output together
+    // TODO: optimize: remember last output and don't recalculate it
     float loss(const Array &inputs, const Array &expected) {
         auto &out = output(inputs);
         return loss(out, expected);
+    }
+
+    std::tuple<const Array &, float>
+    outputWithLoss(const Array &inputs, const Array &expected) {
+        const Array &out = output(inputs);
+        float lossValue = loss(out, expected);
+        return std::make_tuple(out, lossValue);
     }
 
     const Array &backprop(const Array &errors) {
