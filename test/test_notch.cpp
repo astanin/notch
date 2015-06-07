@@ -258,6 +258,32 @@ TEST_CASE("FC-to-L2 shared buffers", "[core][fc][loss]") {
     CHECK_FALSE(fc.getOutputBuffer() == lossCloneBuffer);
 }
 
+TEST_CASE("SoftmaxWithLoss output", "[core][loss][math]") {
+    SoftmaxWithLoss layer(2);
+    Array target {0, 1};
+    Array y {1, 4};
+    float loss = layer.output(y, target);
+    CHECK(loss == Approx(0.0486).epsilon(0.0001));
+    Array lossGrad = layer.backprop();
+    REQUIRE(lossGrad.size() == 2);
+    CHECK(lossGrad[0] == Approx(0.0474).epsilon(0.0001));
+    CHECK(lossGrad[1] == Approx(-0.0474).epsilon(0.0001));
+}
+
+TEST_CASE("FC-to-SoftmaxWithLoss shared buffers", "[core][fc][loss]") {
+    size_t n_in = 3;
+    size_t n_out = 7;
+    FullyConnectedLayer fc(n_in, n_out, linearActivation);
+    SoftmaxWithLoss loss(n_out);
+    connect(fc, loss); // buffers are shared
+    auto lossBuffer = GetShared<SoftmaxWithLoss>::ref(loss).inputBuffer;
+    CHECK(fc.getOutputBuffer() == lossBuffer);
+    auto lossClonePtr = loss.clone(); // buffers are not shared
+    SoftmaxWithLoss &lossClone = static_cast<SoftmaxWithLoss&>(*lossClonePtr);
+    auto lossCloneBuffer = GetShared<SoftmaxWithLoss>::ref(lossClone).inputBuffer;
+    CHECK_FALSE(fc.getOutputBuffer() == lossCloneBuffer);
+}
+
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};
