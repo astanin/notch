@@ -925,7 +925,7 @@ protected:
 public:
     /// Create a layer with zero weights.
     FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af = linearActivation)
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -934,7 +934,7 @@ public:
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -943,7 +943,7 @@ public:
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
-                        const ActivationFunction &af = scaledTanh)
+                        const ActivationFunction &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
