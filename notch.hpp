@@ -661,7 +661,7 @@ public:
     virtual std::shared_ptr<ALossLayer> clone() const = 0;
 
     virtual size_t inputDim() const = 0;
-    virtual size_t outputDim() const = 0;
+    virtual size_t outputDim() const { return 0; }
 };
 
 
@@ -1138,71 +1138,82 @@ public:
     }
 
     virtual size_t inputDim() const { return nSize; }
-    virtual size_t outputDim() const { return nSize; }
 };
 
 
-/** Apply the softmax function.
+/** Softmax activation with multinomial cross-entropy loss.
  *
  * Softmax function is a generalization of the logistic function and
  * produces outputs in the range (0,1) which sum to 1.
- * Given inputs $y_i$, the softmax function $h_j$ is defined as
+ * Given inputs $y_i$, the softmax function $\phi_j$ is defined as
  *
- * $$ h_j = \frac {\exp{y_j}} {\sum_i \exp{y_i}} $$
+ * $$ \phi(\mathbf{y})_j = \frac {\exp{y_j}} {\sum_i \exp{y_i}} $$
  *
  * It is often used as the last layer in the multiclass classification
- * problems using a cross-entropy loss function.
+ * problems using a cross-entropy loss function. Class labels should be
+ * non-negative and sum to 1.
+ *
+ * For a multiclass classification problem with $K$ different classes
+ * where $d_i$ is the true (desired) propability that the sample belongs
+ * to class $i$, and $\phi_i$ is the predicted probability, the
+ * cross-entropy loss function is defined as
+ *
+ * $$ E(\mathbf{\phi}, \mathbf{d}) = - \sum_{i = 1}^{K} d_i \ln \phi_i $$
+ *
+ * OneHotEncoder may be used to encode categorical labels for use with
+ * the cross-entropy loss function.
  *
  * References:
  *
+ *  - PRML, 4.3.4 Multiclass logistic regression, Page 209.
  *  - http://stats.stackexchange.com/q/79454
  *  - http://en.wikipedia.org/wiki/Softmax_function
- **/
-/*
-class SoftmaxLayer : public ActivationLayer {
+ *  - https://en.wikipedia.org/wiki/Cross_entropy
+ */
+class SoftmaxWithLoss : public ALossLayer {
 protected:
-    // TODO: implement more stable (softmax + cross-entropy loss) layer
-    Array dhdy; //< Jacobian $\partial h_i/\partial y_j$
-
-    virtual void outputInplace(const Array &inputs, Array &outputs) {
-        if (outputs.size() != nSize) {
-            outputs.resize(nSize);
-        }
-        if (dhdy.size() != (nSize*nSize)) {
-            dhdy.resize(nSize*nSize);
-        }
-        // save a copy of inputs
-        *inputBuffer = inputs;
-        // calculate output
-        float total = 0.0;
-        for (size_t i = 0; i < nSize; ++i) {
-            outputs[i] = std::exp(inputs[i]);
-            total += outputs[i];
-        }
-        for (size_t i = 0; i < nSize; ++i) {
-            outputs[i] /= total;
-        }
-        // calculate Jacobian matrix
-        for (size_t i = 0; i < nSize; ++i) {
-            for (size_t j = j; j < nSize; ++j) {
-                int delta_ij = (i == j);
-                dhdy[i*nSize + j] = delta_ij*outputs[i] - outputs[i]*outputs[j];
-            }
-        }
-    }
-
-    virtual void backpropInplace(const Array &errors, Array &propagatedErrors) {
-        propagatedErrors = 0.0;
-        gemv(std::begin(dhdy), std::end(dhdy),
-             std::begin(errors), std::end(errors),
-             std::begin(propagatedErrors), std::end(propagatedErrors));
-    }
+    size_t nSize;
+    Array softmaxOutput; //< $\phi(\mathbf{y})_i$
+    Array lossGrad; //< $\partial E/\partial y_i$
 
 public:
-    SoftmaxLayer(size_t n) : ActivationLayer(n, linearActivation), dhdy(n*n) {}
-    virtual std::string tag() const { return "SoftmaxLayer"; }
+    SoftmaxWithLoss(size_t n) : nSize(n), softmaxOutput(n), lossGrad(n) {}
+
+    virtual float output(const Array &actual, const Array &expected) {
+        float lossTotal = 0.0;
+        assert (nSize == actual.size());
+        assert (nSize == expected.size());
+        float expTotal = 0.0;
+        for (size_t i = 0; i < nSize; ++i) { // calculate exponents
+            softmaxOutput[i] = std::exp(actual[i]);
+            expTotal += softmaxOutput[i];
+        }
+        for (size_t i = 0; i < nSize; ++i) {
+            softmaxOutput[i] /= expTotal; // normalize exponents
+            // accumulate loss across all class labels
+            lossTotal -= expected[i] * std::log(softmaxOutput[i]);
+            // combination of softmax activation with cross-entropy loss
+            // allows to simplify loss gradient calculation:
+            //
+            // $$ \grad_y E = \phi(y) - d $$
+            lossGrad[i] = softmaxOutput[i] - expected[i];
+        }
+        return lossTotal;
+    }
+
+    virtual const Array &backprop() {
+        return lossGrad;
+    }
+
+    virtual std::shared_ptr<ALossLayer> clone() const {
+        auto c = std::make_shared<SoftmaxWithLoss>(*this);
+        c->shared = shared.clone();
+        return c;
+    }
+
+    virtual size_t inputDim() const { return nSize; }
 };
-*/
+
 
 /** A feed-forward neural network is a stack of layers. */
 class Net {
@@ -1353,28 +1364,6 @@ public:
 // TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...
 // TODO: sliding window search for CNNs
 
-
-#if 0
-/** Multi-class cross-entropy loss.
- *
- * For a multi-class classification problem with $C$ different classes
- * and one-hot encoding used to represent results (see OneHotEncoder),
- * target ($\mathbf{d}$) and output ($\mathbf{y}$) values in the range (0,1),
- * the loss function is defined as
- *
- * $$ E(y, d) = - \sum_{i}^C d_i \ln y_i $$
- *
- */
-float CrossEntropyLoss(const Output &actual, const Output &expected) {
-    float negLoss = std::inner_product(
-            std::begin(actual), std::end(actual),
-            std::begin(expected),
-            0.0,
-            [](float sum, float s_i) { return sum + s_i; },
-            [](float d_i, float y_i) { return d_i * std::log(y_i); });
-    return -negLoss;
-}
-#endif /*0*/
 
 // return true from TrainCallback to stop training early
 using TrainCallback = std::function<bool(int epoch)>;
