@@ -1,7 +1,7 @@
 NOTCH
 =====
 
-A C++11 implementation of the selected Neural Network algorithms.
+Feed-forward Neural Networks in C++11 for the rest of us.
 
 This is (supposed to be)
 
@@ -19,54 +19,30 @@ This library is named after Notch, a transmembrane protein which acts as a
 receptor and has a role, amonth other things, in neuronal function and
 development.
 
+Motivation
+----------
+
+ * Most of the neural network frameworks are notoriously difficult to
+   install and deploy.
+
+   Some of them work only on a particular operating system flavor,
+   or have very specific hardware requirements.
+
+   Notch is supposed to lower the barrier to entry and be a tool which
+   works anywhere where a modern C++ compiler is available.
+   Just copy a header file. No need to install anything.
+
+ * Many neural network frameworks are designed to _train_ neural
+   networks. Few care about _using_ them and integrating with end-user
+   software.
+
+   Notch is designed to be embedded into other software.
+
 
 How to use
 ----------
 
 See `examples/`.
-
-
-How to build examples
----------------------
-
-### On Linux
-
-```
-mkdir build
-cd build
-cmake ..
-make
-```
-
-
-### On Windows
-
-To build using GNU C++, install MinGW and CMake:
-
-```
-mkdir build
-cd build
-cmake.exe -G "MinGW Makefiles" .`
-mingw32-make
-```
-
-For a debug build use
-
-```
-cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
-```
-
-To build using Visual Studio 2013 (Community):
-
-```
-cmake.exe -G "Visual Studio 12 2013" ..
-```
-
-then open the solution.
-
-### Linking with CBLAS
-
-To enable CBLAS linking in examples, pass `-DUSE_CBLAS=YES` to cmake.
 
 
 Bibliography

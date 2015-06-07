@@ -9,3 +9,47 @@ Notch Examples
     it reads data from a CSV file and applies one-hot encoding to labels
 
  * `demo_multilayer_io` shows how to save and load a multilayer perceptron
+
+
+How to build examples
+---------------------
+
+### On Linux
+
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+
+### On Windows
+
+To build using GNU C++, install MinGW and CMake:
+
+```
+mkdir build
+cd build
+cmake.exe -G "MinGW Makefiles" .`
+mingw32-make
+```
+
+For a debug build use
+
+```
+cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+```
+
+To build using Visual Studio 2013 (Community):
+
+```
+cmake.exe -G "Visual Studio 12 2013" ..
+```
+
+then open the solution.
+
+### Linking with CBLAS
+
+To enable CBLAS linking in examples, pass `-DUSE_CBLAS=YES` to cmake.
+
