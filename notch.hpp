@@ -397,7 +397,7 @@ public:
  *
  * - NNLM3, Chapter 4, page 145;
  * - Y. LeCun (1989) Generalization and Network Design Strategies. page 7;
- * - Y. LeCun et al. (2012) Efficient BackProp
+ * - Y. LeCun et al. (2012) Efficient BackProp. In: NNTT.
  */
 class TanhActivation : public ActivationFunction {
 private:
@@ -529,7 +529,7 @@ public:
  * References:
  *
  *  - NNLM3, Eq (4.41), page 137
- *  - LeCun (2012) Efficient Backprop, page 21
+ *  - LeCun (2012) Efficient Backprop, page 21. In: NNTT.
  */
 class FixedRateWithMomentum : public ALearningPolicy {
 private:
@@ -1397,7 +1397,7 @@ using TrainCallback = std::function<bool(int epoch)>;
  *
  * See:
  *
- *  - Efficient BackProp (2012) LeCun et al
+ *  - Efficient BackProp (2012) LeCun et al. In: NNTT.
  *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
 void trainWithSGD(Net &net, LabeledDataset &trainSet,
