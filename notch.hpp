@@ -1376,6 +1376,117 @@ public:
     LayerIterator end() const { return layers.cend(); }
 };
 
+
+/// Layer factory.
+class MakeLayer {
+public:
+    size_t nInputs = 0;
+    size_t nOutputs = 0;
+    const Array *maybeWeights = nullptr;
+    const Array *maybeBias = nullptr;
+    const ActivationFunction *maybeActivation = nullptr;
+
+    MakeLayer() {}
+    MakeLayer(size_t n)
+        : nInputs(n), nOutputs(n) {}
+    MakeLayer(size_t n, const ActivationFunction &af)
+        : nInputs(n), nOutputs(n), maybeActivation(&af) {}
+    MakeLayer(size_t nInputs, size_t nOutputs)
+        : nInputs(nInputs), nOutputs(nOutputs) {}
+    MakeLayer(size_t nInputs, size_t nOutputs, const ActivationFunction &af)
+        : nInputs(nInputs), nOutputs(nOutputs), maybeActivation(&af) {}
+    MakeLayer(const Array &weights, const Array &bias)
+        : maybeWeights(&weights), maybeBias(&bias) {}
+    MakeLayer(const Array &weights, const Array &bias, const ActivationFunction &af)
+        : maybeWeights(&weights), maybeBias(&bias), maybeActivation(&af) {}
+
+    MakeLayer &setInputDim(size_t n) {
+        nInputs = n;
+        return *this;
+    }
+    MakeLayer &setOutputDim(size_t n) {
+        nOutputs = n;
+        return *this;
+    }
+    MakeLayer &setWeights(Array &w) {
+        maybeWeights = &w;
+        return *this;
+    }
+    MakeLayer &setBias(Array &b) {
+        maybeBias = &b;
+        return *this;
+    }
+    MakeLayer &setActivation(const ActivationFunction &af) {
+        maybeActivation = &af;
+        return *this;
+    }
+
+    /// create a new FullyConnectedLayer
+    std::shared_ptr<FullyConnectedLayer> fc() {
+        if (!maybeActivation) {
+            maybeActivation = &linearActivation;
+        }
+        if (maybeWeights && maybeBias) {
+            return std::make_shared<FullyConnectedLayer>
+                (*maybeWeights, *maybeBias, *maybeActivation);
+        } else if (nInputs && nOutputs) {
+            return std::make_shared<FullyConnectedLayer>
+                (nInputs, nOutputs, *maybeActivation);
+        } else {
+            logic_error("a FullyConnectedLayer");
+        }
+    }
+
+    /// create a new ActivationLayer
+    std::shared_ptr<ActivationLayer> activation() {
+        if (!maybeActivation) {
+            maybeActivation = &linearActivation;
+        }
+        if (nOutputs && !nInputs) {
+            nInputs = nOutputs;
+        }
+        if (nInputs) {
+            return std::make_shared<ActivationLayer>(nInputs, *maybeActivation);
+        } else {
+            logic_error("an ActivationLayer");
+        }
+    }
+
+    /// create a new EuclideanLoss layer
+    std::shared_ptr<EuclideanLoss> l2loss() {
+        if (nInputs) {
+            return std::make_shared<EuclideanLoss>(nInputs);
+        } else {
+            logic_error("an EuclideanLoss");
+        }
+     }
+
+    /// create a new SoftmaxWithLoss layer
+    std::shared_ptr<SoftmaxWithLoss> softmax() {
+        if (nInputs) {
+            return std::make_shared<SoftmaxWithLoss>(nInputs);
+        } else {
+            logic_error("a SoftmaxWithLoss layer");
+       }
+    }
+
+    /// create a new HingeLoss layer
+    std::shared_ptr<HingeLoss> hinge() {
+        if (nInputs) {
+            return std::make_shared<HingeLoss>();
+        } else {
+            logic_error("a HingeLoss");
+        }
+     }
+
+private:
+    void logic_error(std::string what) {
+        auto m = "cannot create " + what + ": invalid configuration";
+        throw std::logic_error(m);
+     }
+};
+
+
 /// Multiple `FullyConnectedLayer's stacked one upon another.
 class MultilayerPerceptron : public Net {
 public:
