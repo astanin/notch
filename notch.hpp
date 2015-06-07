@@ -1546,7 +1546,8 @@ using TrainCallback = std::function<bool(int epoch)>;
  */
 void trainWithSGD(Net &net, LabeledDataset &trainSet,
         std::unique_ptr<RNG> &rng, int epochs,
-        int callbackPeriod=0, TrainCallback callback=nullptr) {
+        int callbackPeriod=0, TrainCallback callback=nullptr,
+        float *totalLoss=nullptr) {
     for (int j = 0; j < epochs; ++j) {
         if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
             bool shouldStop = callback(j);
@@ -1555,12 +1556,15 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
             }
         }
         trainSet.shuffle(rng);
-        float totalLoss = 0.0;
+        float epochTotalLoss = 0.0;
         for (auto sample : trainSet) {
             float loss = net.loss(sample.data, sample.label);
-            totalLoss += loss;
+            epochTotalLoss += loss;
             net.backprop();
             net.update();
+        }
+        if (totalLoss) {
+            *totalLoss = epochTotalLoss;
         }
     }
     if (callback && callbackPeriod > 0) {
