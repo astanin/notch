@@ -284,6 +284,28 @@ TEST_CASE("FC-to-SoftmaxWithLoss shared buffers", "[core][fc][loss]") {
     CHECK_FALSE(fc.getOutputBuffer() == lossCloneBuffer);
 }
 
+TEST_CASE("HingeLoss output", "[core][loss][math]") {
+    HingeLoss hinge;
+    {
+        float loss = hinge.output({-0.25}, {1.0});
+        Array lossGrad = hinge.backprop();
+        CHECK(loss == 1.25);
+        CHECK(lossGrad[0] == -1.0);
+    }
+    {
+        float loss = hinge.output({1.25}, {1.0});
+        Array lossGrad = hinge.backprop();
+        CHECK(loss == 0.0);
+        CHECK(lossGrad[0] == 0.0);
+    }
+    {
+        float loss = hinge.output({0.5}, {-1.0});
+        Array lossGrad = hinge.backprop();
+        CHECK(loss == 1.5);
+        CHECK(lossGrad[0] == 1.0);
+    }
+}
+
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};

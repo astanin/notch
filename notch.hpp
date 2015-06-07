@@ -1215,6 +1215,50 @@ public:
 };
 
 
+/** Hinge loss for binary classification.
+ *
+ * For a binary classification problem with true (desired) labels
+ * $d = +1$ and $d = -1$, and classifier output $y$, the hinge
+ * loss is defined as
+ *
+ * $$ E(y, d) = \max(0, 1 - d y) $$
+ */
+class HingeLoss : public ALossLayer {
+protected:
+    Array lossGrad;
+
+public:
+    HingeLoss() : lossGrad(1) {}
+
+    virtual float output(const Array &actual, const Array &expected) {
+        assert (1 == actual.size());
+        assert (1 == expected.size());
+        float loss;
+        float p = actual[0]*expected[0];
+        if (p >= 1.0) {
+            lossGrad[0] = 0.0;
+            loss = 0.0;
+        } else {
+            lossGrad[0] = - expected[0];
+            loss = 1 - p;
+        }
+        return loss;
+    }
+
+    virtual const Array &backprop() {
+        return lossGrad;
+    }
+
+    virtual std::shared_ptr<ALossLayer> clone() const {
+        auto c = std::make_shared<HingeLoss>(*this);
+        c->shared = shared.clone();
+        return c;
+    }
+
+    virtual size_t inputDim() const { return 1; }
+};
+
+
 /** A feed-forward neural network is a stack of layers. */
 class Net {
 protected:
@@ -1412,7 +1456,5 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
         callback(epochs);
     }
 }
-
-// TODO: Hinge loss
 
 #endif /* NOTCH_H */
