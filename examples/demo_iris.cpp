@@ -1,6 +1,6 @@
-/// @file demo_multilayer_iris.cpp -- A multilayer perceptron on Iris dataset
+/// @file demo_iris.cpp -- A multilayer perceptron on Iris dataset
 ///
-/// usage: demo_multilayer_iris [path_to_data (default: ../data/iris.csv)]
+/// usage: demo_iris [path_to_data (default: ../data/iris.csv)]
 
 #include <iostream>
 #include <fstream>

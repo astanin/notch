@@ -1,4 +1,4 @@
-/// @file demo_multilayer_xor.cpp -- A multilayer perceptron for XOR problem
+/// @file demo_xor.cpp -- A multilayer perceptron for XOR problem
 
 #include <iostream>
 #include <cmath>

@@ -1,4 +1,4 @@
-/// @file demo_multilayer_io.cpp -- Saving and loading multilayer perceptron parameters
+/// @file demo_io.cpp -- Save and load neural network parameters.
 
 #include <iostream>
 #include <sstream>
