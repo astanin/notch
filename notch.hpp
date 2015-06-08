@@ -33,10 +33,6 @@ THE SOFTWARE.
 
 */
 
-// TODO: remove these debug includes, get rid of asserts
-#include <assert.h>
-#include <iostream>   // cout
-
 #include <algorithm>  // generate, transform
 #include <array>      // array
 #include <cmath>      // sqrt, exp
@@ -98,6 +94,8 @@ std::unique_ptr<RNG> newRNG() {
 using Array = std::valarray<float>;
 using Input = Array;
 using Output = Array;
+
+#include "notch_debug.hpp"  // TODO: remove from release
 
 // TODO: NDArray, mostly compatible with Array; like struct { shape; data; };
 
