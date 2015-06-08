@@ -78,11 +78,13 @@ int main(int argc, char *argv[]) {
     OneHotEncoder labelEnc(irisData.getLabels());
     irisData.transformLabels(labelEnc);
 
-    Net net;
-    net.append(MakeLayer(4, 8, scaledTanh).fc());
-    net.append(MakeLayer(8, 3, scaledTanh).fc());
-    net.append(MakeLayer(3, 3, linearActivation).fc());
-    net.append(MakeLayer(3).softmax());
+    Net net = MakeNet()
+        .setInputDim(4)
+        .addFC(8, scaledTanh)
+        .addFC(3, scaledTanh)
+        .addFC(3, linearActivation)
+        .addSoftmax()
+        .make();
 
     unique_ptr<RNG> rng(newRNG());
     net.init(rng);

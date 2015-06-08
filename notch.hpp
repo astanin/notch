@@ -1276,7 +1276,10 @@ public:
 };
 
 
-/** A feed-forward neural network is a stack of layers. */
+/** A feed-forward neural network.
+ *
+ * It is recommended to use MakeNet builder class to
+ * construct and configure Nets. */
 class Net {
 protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
@@ -1439,7 +1442,7 @@ public:
     }
 
     /// create a new FullyConnectedLayer
-    std::shared_ptr<FullyConnectedLayer> fc() {
+    std::shared_ptr<FullyConnectedLayer> FC() {
         if (!maybeActivation) {
             maybeActivation = &linearActivation;
         }
@@ -1456,7 +1459,7 @@ public:
     }
 
     /// create a new ActivationLayer
-    std::shared_ptr<ActivationLayer> activation() {
+    std::shared_ptr<ActivationLayer> Activation() {
         if (!maybeActivation) {
             maybeActivation = &linearActivation;
         }
@@ -1472,7 +1475,7 @@ public:
     }
 
     /// create a new EuclideanLoss layer
-    std::shared_ptr<EuclideanLoss> l2loss() {
+    std::shared_ptr<EuclideanLoss> L2() {
         if (nInputs) {
             return std::make_shared<EuclideanLoss>(nInputs);
         } else {
@@ -1482,7 +1485,7 @@ public:
      }
 
     /// create a new SoftmaxWithLoss layer
-    std::shared_ptr<SoftmaxWithLoss> softmax() {
+    std::shared_ptr<SoftmaxWithLoss> Softmax() {
         if (nInputs) {
             return std::make_shared<SoftmaxWithLoss>(nInputs);
         } else {
@@ -1492,7 +1495,7 @@ public:
     }
 
     /// create a new HingeLoss layer
-    std::shared_ptr<HingeLoss> hinge() {
+    std::shared_ptr<HingeLoss> Hinge() {
         if (nInputs) {
             return std::make_shared<HingeLoss>();
         } else {
@@ -1506,6 +1509,154 @@ private:
         auto m = "cannot create " + what + ": invalid configuration";
         throw std::logic_error(m);
      }
+};
+
+
+class MakeNet {
+protected:
+    size_t nInputs;
+    size_t nOutputs;
+
+    enum class LayerType { FC, Activation, L2, Softmax, Hinge };
+    std::vector<MakeLayer> layerMakers;
+    std::vector<LayerType> layerTypes;
+    bool hasLoss = false;
+
+public:
+    MakeNet(size_t nInputs = 0)
+        : nInputs(nInputs), nOutputs(nInputs), layerMakers(0) {}
+
+    /// Set the number of nodes in the input layer.
+    MakeNet &setInputDim(size_t n) {
+        if (!layerMakers.empty()) {
+            throw std::logic_error("cannot setInputDim() with layers above");
+        }
+        nInputs = n;
+        nOutputs = n;
+        return *this;
+    }
+
+    /// Append a FullyConnectedLayer.
+    MakeNet &addFC(size_t n, const ActivationFunction &af = scaledTanh) {
+        checkConfig();
+        if (!n) {
+            throw std::logic_error("cannot add a layer with zero outputs");
+        }
+        MakeLayer mk(nOutputs, n, af);
+        layerMakers.push_back(mk);
+        layerTypes.push_back(LayerType::FC);
+        nOutputs = n;
+        return *this;
+    }
+
+    // TODO: MakeNet::addFC(weights, bias, af)
+
+    /// Append an ActivationLayer.
+    MakeNet &addActivation(const ActivationFunction &af) {
+        checkConfig();
+        MakeLayer mk(nOutputs, af);
+        layerMakers.push_back(mk);
+        layerTypes.push_back(LayerType::FC);
+        return *this;
+    }
+
+    /// Append an EuclideanLoss layer.
+    MakeNet &addL2() {
+        return addLoss(LayerType::L2);
+    }
+
+    /// Append a SoftmaxWithLoss layer (softmax activation + cross-entropy loss).
+    MakeNet &addSoftmax() {
+        return addLoss(LayerType::Softmax);
+    }
+
+    /// Append a HingeLoss layer.
+    MakeNet &addHingeLoss() {
+        return addLoss(LayerType::Hinge);
+    }
+
+    /// Configure a new multilayer perceptron (a stack of 'FullyConnectedLayer's).
+    ///
+    /// @param shape   {number_of_input_nodes, layer_1_size, ..., layer_N_size}
+    /// @param af      activation function
+    MakeNet &MultilayerPerceptron(std::vector<size_t> shape,
+                                  const ActivationFunction &af = scaledTanh) {
+        if (shape.size() < 2) {
+            throw std::invalid_argument("shape should define at least one layer");
+        }
+        if (layerMakers.empty()) {
+            setInputDim(shape[0]);
+        } else {
+            if (nOutputs != shape[0]) {
+                throw std::logic_error("cannot add an MLP with wrong inputDim");
+            }
+        }
+        for (size_t i = 1; i < shape.size(); ++i) {
+            addFC(shape[i], af);
+        }
+        return *this;
+    }
+
+    /// Create a new feed-forward neural net.
+    Net make() {
+        Net net;
+        for (size_t i = 0; i < layerMakers.size(); ++i) {
+            auto ltype = layerTypes[i];
+            auto lmaker = layerMakers[i];
+            switch (ltype) {
+                case LayerType::FC:
+                    net.append(lmaker.FC()); break;
+                case LayerType::Activation:
+                    net.append(lmaker.Activation()); break;
+                case LayerType::L2:
+                    net.append(lmaker.L2()); break;
+                case LayerType::Softmax:
+                    net.append(lmaker.Softmax()); break;
+                case LayerType::Hinge:
+                    net.append(lmaker.Hinge()); break;
+                default:
+                    throw std::logic_error("unsupported layer type"); break;
+            }
+        }
+        return net;
+    }
+
+    /// Create and initialize a new feed-forward neural net.
+    Net init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
+        Net net = make();
+        net.init(rng, init);
+        return net;
+    }
+
+    /// Create and initialize a new feed-forward neural net.
+    ///
+    /// A temporary random number generator is seeded,
+    /// used and then discarded.
+    Net init(WeightInit init = normalXavier) {
+        std::unique_ptr<RNG> rng(newRNG());
+        Net net = this->init(rng, init);
+        return net;
+    }
+
+private:
+    void checkConfig() {
+        if (!nInputs) {
+            throw std::logic_error("cannot add a layer before setInputDim()");
+        }
+        if (hasLoss) {
+            throw std::logic_error("cannot add a layer after a loss layer");
+        }
+    }
+
+    MakeNet &addLoss(LayerType lt) {
+        checkConfig();
+        MakeLayer mk(nOutputs);
+        layerMakers.push_back(mk);
+        layerTypes.push_back(lt);
+        nOutputs = 0;
+        hasLoss = true;
+        return *this;
+    }
 };
 
 

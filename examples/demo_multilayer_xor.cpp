@@ -40,11 +40,9 @@ int main(int, char *[]) {
                             {{1,0},{1}},
                             {{1,1},{0}}};
 
-    Net xorNet;
-    xorNet.append(MakeLayer(2, 2, scaledTanh).fc());
-    xorNet.append(MakeLayer(2, 1, scaledTanh).fc());
-    xorNet.append(MakeLayer(1).l2loss());
-    xorNet.init(rng);
+    Net xorNet = MakeNet()
+        .MultilayerPerceptron({2, 2, 1}, scaledTanh)
+        .addL2().init();
 
     cout << "training set:\n" << CSVFormat(dataset) << "\n";
     print_net("initial", xorNet, dataset);
