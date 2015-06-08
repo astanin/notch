@@ -9,6 +9,7 @@
 using namespace std;
 
 int main() {
+#if 0
     auto rng = newRNG();
     stringstream ss;
     MultilayerPerceptron mlp {2, 2, 1};
@@ -26,5 +27,5 @@ int main() {
     cout << "loaded:\n\n```\n";
     PlainTextNetworkWriter(cout) << mlp_copy;
     cout << "```\n\n";
-
+#endif
 }
