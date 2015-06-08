@@ -1669,7 +1669,7 @@ private:
 // return true from TrainCallback to stop training early
 using TrainCallback = std::function<bool(int epoch)>;
 
-/** Traing using stochastic gradient descent.
+/** Train using stochastic gradient descent.
  *
  * Use net.setLearningPolicy() to change learning parameters of the network
  * _before_ calling `trainWithSGD`.
@@ -1717,9 +1717,11 @@ void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
     }
 }
 
-/** This version of trainWithSGD creates, seeds, uses then discards
+/** Train using stochastic gradient descent.
+ *
+ * This version of trainWithSGD creates, seeds, uses then discards
  * a temporary random number generator. Otherwise this function is
- * identical to 'trainWithSGD' which takes also 'rng' parameters. */
+ * identical to trainWithSGD which takes also an 'rng' parameter. */
 void trainWithSGD(Net &net, LabeledDataset &trainSet,
         int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
         float *totalLoss=nullptr) {
