@@ -28,19 +28,39 @@ ostream &operator<<(ostream &out, const Dataset &d) {
 class IntClassifier : public AClassifier < int, 1 > {
 private:
 	OneHotEncoder &enc;
-	MultilayerPerceptron &net;
+	Net &net;
 
 public:
-	IntClassifier(MultilayerPerceptron &net, OneHotEncoder &enc)
+	IntClassifier(Net &net, OneHotEncoder &enc)
 		: enc(enc), net(net) {}
 
 	virtual int aslabel(const Output &out) {
 		return enc.inverse_transform(out)[0];
 	}
 	virtual int classify(const Input &in) {
-		return enc.inverse_transform(*(net.output(in)))[0];
+		return enc.inverse_transform(net.output(in))[0];
 	}
 };
+
+float meanLoss(Net &net, LabeledDataset &dataset) {
+    float total;
+    size_t n = 0;
+    for (auto sample : dataset) {
+        total += net.loss(sample.data, sample.label);
+        n++;
+    }
+    return total / n;
+}
+
+void print_metrics(IntClassifier &classifier, LabeledDataset &dataset) {
+    auto cm = classifier.test(dataset); // cm is a confusion matrix
+    cout << "F1(0) = " << setprecision(2) << setw(4) << cm.F1score(0)
+        << " F1(1) = " << setprecision(2) << setw(4) << cm.F1score(1)
+        << " F1(2) = " << setprecision(2) << setw(4) << cm.F1score(2)
+        << " accuracy = " << cm.accuracy()
+        << endl;
+}
+
 
 int main(int argc, char *argv[]) {
     string csvFile("../data/iris.csv");
@@ -58,32 +78,28 @@ int main(int argc, char *argv[]) {
     OneHotEncoder labelEnc(irisData.getLabels());
     irisData.transformLabels(labelEnc);
 
-    MultilayerPerceptron net({ 4, 6, 3 }, scaledTanh);
+    Net net;
+    net.append(MakeLayer(4, 8, scaledTanh).fc());
+    net.append(MakeLayer(8, 3, scaledTanh).fc());
+    net.append(MakeLayer(3, 3, linearActivation).fc());
+    net.append(MakeLayer(3).softmax());
+
     unique_ptr<RNG> rng(newRNG());
     net.init(rng);
-    PlainTextNetworkWriter(cout) << net << "\n";
 
     IntClassifier classifier(net, labelEnc);
-    auto cm = classifier.test(irisData); // cm is a confusion matrix
-    for (int c = 0; c < 3; ++c) {
-        cout << "F1score(" << c << "): " << cm.F1score(c) << "\n";
-    }
-    cout << "accuracy: " << cm.accuracy() << "\n\n";
 
-    net.setLearningPolicy(FixedRateWithMomentum(0.01f, 0.9));
-    trainWithSGD(net, irisData, rng, 1000,
+    net.setLearningPolicy(FixedRateWithMomentum(0.0001, 0.9));
+    trainWithSGD(net, irisData, rng, 1500,
             /* callbackEvery */ 100,
             /* callback */ [&](int i) {
-                cout << "epoch " << i << " total loss = "
-                     << totalLoss(L2_loss, net, irisData) << "\n";
+                cout << "epoch "
+                     << setw(4) << i << " "
+                     << "loss = "
+                     << setprecision(3) << setw(6)
+                     << meanLoss(net, irisData) << " ";
+                print_metrics(classifier, irisData);
                 return false;
-            });
+           });
     cout << "\n";
-    PlainTextNetworkWriter(cout) << net << "\n";
-
-    cm = classifier.test(irisData); // cm is a confusion matrix
-    for (int c = 0; c < 3; ++c) {
-        cout << "F1score(" << c << "): " << cm.F1score(c) << "\n";
-    }
-    cout << "accuracy: " << cm.accuracy() << "\n\n";
 }
