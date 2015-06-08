@@ -13,12 +13,13 @@
 
 using namespace std;
 
+#if 0
 #include "test_notch_io.hpp"
+#endif
 
 // Abbreviations:
 // FC  = FullyConnectedLayer
 // AL  = ActivationLayer
-// MLP = MultilayerPerceptron
 
 /// FullyConnectedLayer_Test breaks encapsulation of FullyConnectedLayer to
 /// explore its inner state.
@@ -324,7 +325,7 @@ TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
     // initialize network weights as in the example
     FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
     FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
-    MultilayerPerceptron mlp;
+    Net mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
     mlp.append(std::make_shared<EuclideanLoss>(1));
@@ -350,7 +351,7 @@ TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
     // initialize network weights as in the example
     FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
     FullyConnectedLayer_Test layer2({-0.12, -0.88}, {0}, logisticActivation);
-    MultilayerPerceptron mlp;
+    Net mlp;
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer1));
     mlp.append(shared_ptr<FullyConnectedLayer>(&layer2));
     mlp.append(std::make_shared<EuclideanLoss>(1));
