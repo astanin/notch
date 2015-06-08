@@ -1660,33 +1660,6 @@ private:
 };
 
 
-/// Multiple `FullyConnectedLayer's stacked one upon another.
-class MultilayerPerceptron : public Net {
-public:
-    MultilayerPerceptron() {}
-
-    MultilayerPerceptron(std::initializer_list<unsigned int> shape,
-                         const ActivationFunction &af = scaledTanh,
-                         int lossType = 2) {
-        if (shape.size() <= 0) {
-            throw std::invalid_argument("initializer list is empty");
-        }
-        if (lossType != 2) {
-            throw std::invalid_argument("unsupported lossType");
-        }
-        auto pIn = shape.begin();
-        auto pOut = std::next(pIn);
-        for (; pOut != shape.end(); ++pIn, ++pOut) {
-            auto inSize = *pIn;
-            auto outSize = *pOut;
-            std::shared_ptr<ABackpropLayer>
-                layer(new FullyConnectedLayer(inSize, outSize, af));
-            append(layer);
-        }
-        append(std::make_shared<EuclideanLoss>(*pIn));
-    }
-};
-
 // TODO: CNN layer
 // TODO: max-pooling layer
 // TODO: NN builder which takes Ciresan's string-like specs: 100c5-mp2-...

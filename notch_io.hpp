@@ -582,6 +582,7 @@ public:
         return layer;
     }
 
+#if 0
     MultilayerPerceptron &load(MultilayerPerceptron &mlp) {
         std::string netTag;
         size_t nLayers;
@@ -600,16 +601,19 @@ public:
         }
         return mlp;
     }
+#endif
 
     PlainTextNetworkReader &operator>>(FullyConnectedLayer &layer) {
         load(layer);
         return *this;
     }
 
+#if 0
     PlainTextNetworkReader &operator>>(MultilayerPerceptron &mlp) {
         load(mlp);
         return *this;
     }
+#endif
 };
 
 /// Write neural network parameters to a record-jar text file.
@@ -641,6 +645,7 @@ public:
         }
     }
 
+#if 0
     void save(const MultilayerPerceptron &net) {
         size_t nLayers = std::distance(net.begin(), net.end());
         if (!nLayers) {
@@ -662,6 +667,7 @@ public:
             }
         }
     }
+#endif
 
     PlainTextNetworkWriter &operator<<(const std::string &s) {
         out << s;
@@ -673,10 +679,12 @@ public:
         return *this;
     }
 
+#if 0
     PlainTextNetworkWriter &operator<<(const MultilayerPerceptron &net) {
         save(net);
         return *this;
     }
+#endif
 };
 
 
