@@ -439,7 +439,7 @@ std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
  *
  * LAYER class should have protected
  * 'Array weights', 'Array bias', 'size_t nInputs', 'size_t nOutputs',
- * and 'const ActivationFunction *activationFunction' members.
+ * and 'const Activation *activationFunction' members.
  *
  * Expected use:
  *
@@ -458,7 +458,7 @@ public:
         auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
         return lp.bias;
     }
-    static const ActivationFunction &getActivation(const LAYER &l) {
+    static const Activation &getActivation(const LAYER &l) {
         auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
         return *lp.activationFunction;
     }
@@ -478,7 +478,7 @@ public:
         lp.weights = weights;
         lp.bias = bias;
     }
-    static void setActivation(LAYER &l, const ActivationFunction &af) {
+    static void setActivation(LAYER &l, const Activation &af) {
         auto &lp = static_cast<LayerParameters<LAYER>&>(l);
         lp.activationFunction = &af;
     }
@@ -496,7 +496,7 @@ class PlainTextNetworkReader {
 private:
     std::istream &in;
 
-    const std::map<std::string, const ActivationFunction&>
+    const std::map<std::string, const Activation&>
          knownActivations = {{"tanh", defaultTanh},
                              {"scaledTanh", scaledTanh},
                              {"linear", linearActivation},
@@ -570,15 +570,14 @@ public:
             auto what = "unknown activation: " + activationTag;
             throw std::runtime_error(what);
         }
-        const ActivationFunction &activation =
-            knownActivations.find(activationTag)->second;
+        const Activation &a = knownActivations.find(activationTag)->second;
         Weights w(0.0, nInputs * nOutputs);
         Weights b(0.0, nOutputs);
         read_weights("bias_and_weights:", w, b);
         consume_end_of_record();
         // modify the layer
         FCLParams::init(layer, nInputs, nOutputs, w, b);
-        FCLParams::setActivation(layer, activation);
+        FCLParams::setActivation(layer, a);
         return layer;
     }
 
@@ -630,7 +629,7 @@ public:
         out << "layer: " << layer.tag() << "\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
-        const ActivationFunction &af = FCLParams::getActivation(layer);
+        const Activation &af = FCLParams::getActivation(layer);
         out << "activation: "; af.print(out); out << "\n";
         out << "bias_and_weights:\n";
         auto bias = FCLParams::getBias(layer);

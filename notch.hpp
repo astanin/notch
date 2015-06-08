@@ -341,7 +341,7 @@ void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
  /** Activation functions are applied to neuron's output to introduce
  * non-linearity and map output to specific range. Backpropagation algorithm
  * requires differentiable activation functions. */
-class ActivationFunction {
+class Activation {
 public:
     virtual float operator()(float v) const = 0;
     virtual float derivative(float v) const = 0;
@@ -357,7 +357,7 @@ public:
  *
  * where $s$ is its derivative at zero.
  * See  NNLM3, Chapter 4, page 135. */
-class LogisticActivation : public ActivationFunction {
+class LogisticActivation : public Activation {
 private:
     float slope = 1.0;
 
@@ -397,7 +397,7 @@ public:
  * - Y. LeCun (1989) Generalization and Network Design Strategies. page 7;
  * - Y. LeCun et al. (2012) Efficient BackProp. In: NNTT.
  */
-class TanhActivation : public ActivationFunction {
+class TanhActivation : public Activation {
 private:
     float a;
     float b;
@@ -424,7 +424,7 @@ public:
  * Rectifiers are often used in deep neural networks because they don't
  * suffer from diminishing gradients problem and allow for sparse activation
  * (neurons with negative induced local field remain dormant). */
-class PiecewiseLinearActivation : public ActivationFunction {
+class PiecewiseLinearActivation : public Activation {
 private:
     float negativeSlope;
     float positiveSlope;
@@ -773,7 +773,7 @@ protected:
     size_t nOutputs; //< the number of neurons in the layer
     Array weights; //< weights matrix $w_ji$ for the entire layer, row-major order
     Array bias;    //< bias values $b_j$ for the entire layer, one per neuron
-    const ActivationFunction *activationFunction;
+    const Activation *activationFunction;
 
     Array inducedLocalField;  //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;     //< $\partial y/\partial v_j = \phi^\prime (v_j)$
@@ -923,7 +923,7 @@ protected:
 public:
     /// Create a layer with zero weights.
     FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
-                        const ActivationFunction &af = linearActivation)
+                        const Activation &af = linearActivation)
         : nInputs(nInputs), nOutputs(nOutputs),
           weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -932,7 +932,7 @@ public:
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Weights &&weights, Weights &&bias,
-                        const ActivationFunction &af)
+                        const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -941,7 +941,7 @@ public:
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Weights &weights, const Weights &bias,
-                        const ActivationFunction &af)
+                        const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
           inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
@@ -1004,13 +1004,13 @@ public:
 };
 
 
-/** Apply ActivationFunction to all inputs.
+/** Apply Activation to all inputs.
  *
  * This layer doesn't have any parameters (weights). */
 class ActivationLayer : public ABackpropLayer {
 protected:
     size_t nSize; // the number of input and outputs is the same
-    const ActivationFunction *activationFunction; //< $\phi$
+    const Activation *activationFunction; //< $\phi$
     Array activationGrad; //< $\phi^\prime(v)$
     Array propagatedErrors;
 
@@ -1048,7 +1048,7 @@ protected:
     }
 
 public:
-    ActivationLayer(size_t n, const ActivationFunction &af)
+    ActivationLayer(size_t n, const Activation &af)
         : nSize(n), activationFunction(&af),
           activationGrad(n), propagatedErrors(n) {}
 
@@ -1404,20 +1404,20 @@ public:
     size_t nOutputs = 0;
     const Array *maybeWeights = nullptr;
     const Array *maybeBias = nullptr;
-    const ActivationFunction *maybeActivation = nullptr;
+    const Activation *maybeActivation = nullptr;
 
     MakeLayer() {}
     MakeLayer(size_t n)
         : nInputs(n), nOutputs(n) {}
-    MakeLayer(size_t n, const ActivationFunction &af)
+    MakeLayer(size_t n, const Activation &af)
         : nInputs(n), nOutputs(n), maybeActivation(&af) {}
     MakeLayer(size_t nInputs, size_t nOutputs)
         : nInputs(nInputs), nOutputs(nOutputs) {}
-    MakeLayer(size_t nInputs, size_t nOutputs, const ActivationFunction &af)
+    MakeLayer(size_t nInputs, size_t nOutputs, const Activation &af)
         : nInputs(nInputs), nOutputs(nOutputs), maybeActivation(&af) {}
     MakeLayer(const Array &weights, const Array &bias)
         : maybeWeights(&weights), maybeBias(&bias) {}
-    MakeLayer(const Array &weights, const Array &bias, const ActivationFunction &af)
+    MakeLayer(const Array &weights, const Array &bias, const Activation &af)
         : maybeWeights(&weights), maybeBias(&bias), maybeActivation(&af) {}
 
     MakeLayer &setInputDim(size_t n) {
@@ -1436,7 +1436,7 @@ public:
         maybeBias = &b;
         return *this;
     }
-    MakeLayer &setActivation(const ActivationFunction &af) {
+    MakeLayer &setActivation(const Activation &af) {
         maybeActivation = &af;
         return *this;
     }
@@ -1459,7 +1459,7 @@ public:
     }
 
     /// create a new ActivationLayer
-    std::shared_ptr<ActivationLayer> Activation() {
+    std::shared_ptr<ActivationLayer> activation() {
         if (!maybeActivation) {
             maybeActivation = &linearActivation;
         }
@@ -1485,7 +1485,7 @@ public:
      }
 
     /// create a new SoftmaxWithLoss layer
-    std::shared_ptr<SoftmaxWithLoss> Softmax() {
+    std::shared_ptr<SoftmaxWithLoss> softmax() {
         if (nInputs) {
             return std::make_shared<SoftmaxWithLoss>(nInputs);
         } else {
@@ -1495,7 +1495,7 @@ public:
     }
 
     /// create a new HingeLoss layer
-    std::shared_ptr<HingeLoss> Hinge() {
+    std::shared_ptr<HingeLoss> hinge() {
         if (nInputs) {
             return std::make_shared<HingeLoss>();
         } else {
@@ -1537,7 +1537,7 @@ public:
     }
 
     /// Append a FullyConnectedLayer.
-    MakeNet &addFC(size_t n, const ActivationFunction &af = scaledTanh) {
+    MakeNet &addFC(size_t n, const Activation &af = scaledTanh) {
         checkConfig();
         if (!n) {
             throw std::logic_error("cannot add a layer with zero outputs");
@@ -1552,7 +1552,7 @@ public:
     // TODO: MakeNet::addFC(weights, bias, af)
 
     /// Append an ActivationLayer.
-    MakeNet &addActivation(const ActivationFunction &af) {
+    MakeNet &addActivation(const Activation &af) {
         checkConfig();
         MakeLayer mk(nOutputs, af);
         layerMakers.push_back(mk);
@@ -1580,7 +1580,7 @@ public:
     /// @param shape   {number_of_input_nodes, layer_1_size, ..., layer_N_size}
     /// @param af      activation function
     MakeNet &MultilayerPerceptron(std::vector<size_t> shape,
-                                  const ActivationFunction &af = scaledTanh) {
+                                  const Activation &af = scaledTanh) {
         if (shape.size() < 2) {
             throw std::invalid_argument("shape should define at least one layer");
         }
@@ -1607,13 +1607,13 @@ public:
                 case LayerType::FC:
                     net.append(lmaker.FC()); break;
                 case LayerType::Activation:
-                    net.append(lmaker.Activation()); break;
+                    net.append(lmaker.activation()); break;
                 case LayerType::L2Loss:
                     net.append(lmaker.L2Loss()); break;
                 case LayerType::Softmax:
-                    net.append(lmaker.Softmax()); break;
+                    net.append(lmaker.softmax()); break;
                 case LayerType::Hinge:
-                    net.append(lmaker.Hinge()); break;
+                    net.append(lmaker.hinge()); break;
                 default:
                     throw std::logic_error("unsupported layer type"); break;
             }

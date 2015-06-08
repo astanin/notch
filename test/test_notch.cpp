@@ -25,10 +25,10 @@ using namespace std;
 class FullyConnectedLayer_Test : public FullyConnectedLayer {
 public:
     FullyConnectedLayer_Test(size_t in, size_t out,
-                             const ActivationFunction &af)
+                             const Activation &af)
         : FullyConnectedLayer(in, out, af) {}
     FullyConnectedLayer_Test(const Weights &weights, const Weights &bias,
-                             const ActivationFunction &af)
+                             const Activation &af)
         : FullyConnectedLayer(weights, bias, af) {}
 
     Array &getWeights() { return weights; }
