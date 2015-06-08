@@ -1,9 +1,10 @@
 *.sw*
 *.o
+*.dll
+*.a
 *~
 *.exe
 *.gch
 tags
 .idea
-build
-
+build*
