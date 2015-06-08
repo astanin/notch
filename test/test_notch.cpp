@@ -263,11 +263,12 @@ TEST_CASE("SoftmaxWithLoss output", "[core][loss][math]") {
     Array target {0, 1};
     Array y {1, 4};
     float loss = layer.output(y, target);
-    CHECK(loss == Approx(0.0486).epsilon(0.0001));
+    float e = 0.0001;
+    CHECK(loss == Approx(0.0486).epsilon(e));
     Array lossGrad = layer.backprop();
     REQUIRE(lossGrad.size() == 2);
-    CHECK(lossGrad[0] == Approx(0.0474).epsilon(0.0001));
-    CHECK(lossGrad[1] == Approx(-0.0474).epsilon(0.0001));
+    CHECK(lossGrad[0] == Approx(-0.0474).epsilon(e));
+    CHECK(lossGrad[1] == Approx( 0.0474).epsilon(e));
 }
 
 TEST_CASE("FC-to-SoftmaxWithLoss shared buffers", "[core][fc][loss]") {

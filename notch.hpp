@@ -1139,6 +1139,30 @@ public:
 };
 
 
+/** Softmax activation. */
+Array softmax(const Array &input) {
+    Array softmaxOutput(0.0, input.size());
+    size_t nSize = input.size();
+    // a trick to avoid unbounded exponents
+    float maxInput = std::numeric_limits<float>::min();
+    for (size_t i = 0; i < nSize; ++i) {
+        if (input[i] > maxInput) {
+            maxInput = input[i];
+        }
+    }
+    // calculate exponents
+    float expTotal;
+    for (size_t i = 0; i < nSize; ++i) { // calculate exponents
+        softmaxOutput[i] = std::exp(input[i] - maxInput);
+        expTotal += softmaxOutput[i];
+    }
+    // normalize exponents
+    float expTotalInv = 1.0/expTotal;
+    softmaxOutput *= expTotalInv;
+    return softmaxOutput;
+}
+
+
 /** Softmax activation with multinomial cross-entropy loss.
  *
  * Softmax function is a generalization of the logistic function and
@@ -1181,20 +1205,15 @@ public:
         float lossTotal = 0.0;
         assert (nSize == actual.size());
         assert (nSize == expected.size());
-        float expTotal = 0.0;
-        for (size_t i = 0; i < nSize; ++i) { // calculate exponents
-            softmaxOutput[i] = std::exp(actual[i]);
-            expTotal += softmaxOutput[i];
-        }
+        softmaxOutput = softmax(actual);
         for (size_t i = 0; i < nSize; ++i) {
-            softmaxOutput[i] /= expTotal; // normalize exponents
             // accumulate loss across all class labels
             lossTotal -= expected[i] * std::log(softmaxOutput[i]);
             // combination of softmax activation with cross-entropy loss
             // allows to simplify loss gradient calculation:
             //
-            // $$ \grad_y E = \phi(y) - d $$
-            lossGrad[i] = softmaxOutput[i] - expected[i];
+            // $$ \grad_y E = d - \phi(y)$$
+            lossGrad[i] = expected[i] - softmaxOutput[i];
         }
         return lossTotal;
     }
@@ -1432,6 +1451,7 @@ public:
                 (nInputs, nOutputs, *maybeActivation);
         } else {
             logic_error("a FullyConnectedLayer");
+            return nullptr; // unreachable
         }
     }
 
@@ -1447,6 +1467,7 @@ public:
             return std::make_shared<ActivationLayer>(nInputs, *maybeActivation);
         } else {
             logic_error("an ActivationLayer");
+            return nullptr; // unreachable
         }
     }
 
@@ -1456,6 +1477,7 @@ public:
             return std::make_shared<EuclideanLoss>(nInputs);
         } else {
             logic_error("an EuclideanLoss");
+            return nullptr; // unreachable
         }
      }
 
@@ -1465,6 +1487,7 @@ public:
             return std::make_shared<SoftmaxWithLoss>(nInputs);
         } else {
             logic_error("a SoftmaxWithLoss layer");
+            return nullptr; // unreachable
        }
     }
 
@@ -1474,6 +1497,7 @@ public:
             return std::make_shared<HingeLoss>();
         } else {
             logic_error("a HingeLoss");
+            return nullptr; // unreachable
         }
      }
 
