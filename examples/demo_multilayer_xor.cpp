@@ -34,7 +34,6 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 
 
 int main(int, char *[]) {
-    unique_ptr<RNG> rng(newRNG());
     LabeledDataset dataset {{{0,0},{0}},
                             {{0,1},{1}},
                             {{1,0},{1}},
@@ -47,10 +46,10 @@ int main(int, char *[]) {
     cout << "training set:\n" << CSVFormat(dataset) << "\n";
     print_net("initial", xorNet, dataset);
 
-    xorNet.setLearningPolicy(FixedRateWithMomentum(0.1, 0.9));
-    trainWithSGD(xorNet, dataset, rng,
-                 100 /* epochs */,
-                 10 /* callbackPeriod */,
+    xorNet.setLearningPolicy(FixedRateWithMomentum(0.01, 0.9));
+    trainWithSGD(xorNet, dataset,
+                 500 /* epochs */,
+                 100 /* callbackPeriod */,
                  [&](int i) { /* callback */
                     float loss = meanLoss(xorNet, dataset);
                     cout << "epoch " << setw(3) << right << i

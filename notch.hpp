@@ -1630,8 +1630,8 @@ public:
 
     /// Create and initialize a new feed-forward neural net.
     ///
-    /// A temporary random number generator is seeded,
-    /// used and then discarded.
+    /// This version of init() method creates, seeds, uses, and then discards a
+    /// temporary random number generator.
     Net init(WeightInit init = normalXavier) {
         std::unique_ptr<RNG> rng(newRNG());
         Net net = this->init(rng, init);
@@ -1690,9 +1690,8 @@ using TrainCallback = std::function<bool(int epoch)>;
  *  - Efficient BackProp (2012) LeCun et al. In: NNTT.
  *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
-void trainWithSGD(Net &net, LabeledDataset &trainSet,
-        std::unique_ptr<RNG> &rng, int epochs,
-        int callbackPeriod=0, TrainCallback callback=nullptr,
+void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
+        int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
         float *totalLoss=nullptr) {
     for (int j = 0; j < epochs; ++j) {
         if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
@@ -1718,4 +1717,14 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
     }
 }
 
-#endif /* NOTCH_H */
+/** This version of trainWithSGD creates, seeds, uses then discards
+ * a temporary random number generator. Otherwise this function is
+ * identical to 'trainWithSGD' which takes also 'rng' parameters. */
+void trainWithSGD(Net &net, LabeledDataset &trainSet,
+        int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
+        float *totalLoss=nullptr) {
+    std::unique_ptr<RNG> rng(newRNG());
+    trainWithSGD(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
+}
+
+ #endif /* NOTCH_H */

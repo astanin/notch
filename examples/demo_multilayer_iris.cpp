@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     IntClassifier classifier(net, labelEnc);
 
     net.setLearningPolicy(FixedRateWithMomentum(0.0001, 0.9));
-    trainWithSGD(net, irisData, rng, 1500,
+    trainWithSGD(rng, net, irisData, 1500,
             /* callbackEvery */ 100,
             /* callback */ [&](int i) {
                 cout << "epoch "
