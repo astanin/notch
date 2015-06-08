@@ -41,7 +41,7 @@ int main(int, char *[]) {
 
     Net xorNet = MakeNet()
         .MultilayerPerceptron({2, 2, 1}, scaledTanh)
-        .addL2().init();
+        .addL2Loss().init();
 
     cout << "training set:\n" << CSVFormat(dataset) << "\n";
     print_net("initial", xorNet, dataset);

@@ -1475,7 +1475,7 @@ public:
     }
 
     /// create a new EuclideanLoss layer
-    std::shared_ptr<EuclideanLoss> L2() {
+    std::shared_ptr<EuclideanLoss> L2Loss() {
         if (nInputs) {
             return std::make_shared<EuclideanLoss>(nInputs);
         } else {
@@ -1517,7 +1517,7 @@ protected:
     size_t nInputs;
     size_t nOutputs;
 
-    enum class LayerType { FC, Activation, L2, Softmax, Hinge };
+    enum class LayerType { FC, Activation, L2Loss, Softmax, Hinge };
     std::vector<MakeLayer> layerMakers;
     std::vector<LayerType> layerTypes;
     bool hasLoss = false;
@@ -1561,8 +1561,8 @@ public:
     }
 
     /// Append an EuclideanLoss layer.
-    MakeNet &addL2() {
-        return addLoss(LayerType::L2);
+    MakeNet &addL2Loss() {
+        return addLoss(LayerType::L2Loss);
     }
 
     /// Append a SoftmaxWithLoss layer (softmax activation + cross-entropy loss).
@@ -1608,8 +1608,8 @@ public:
                     net.append(lmaker.FC()); break;
                 case LayerType::Activation:
                     net.append(lmaker.Activation()); break;
-                case LayerType::L2:
-                    net.append(lmaker.L2()); break;
+                case LayerType::L2Loss:
+                    net.append(lmaker.L2Loss()); break;
                 case LayerType::Softmax:
                     net.append(lmaker.Softmax()); break;
                 case LayerType::Hinge:
