@@ -46,14 +46,24 @@ THE SOFTWARE.
  **/
 
 /** Input and Output values are space-separated values.*/
-std::istream &operator>>(std::istream &in, Input &xs) {
+std::istream &operator>>(std::istream &in, Array &xs) {
     for (size_t i = 0; i < xs.size(); ++i) {
         in >> xs[i];
     }
     return in;
 }
 
-std::ostream &operator<<(std::ostream &out, const Input &xs) {
+std::ostream &operator<<(std::ostream &out, const Array &xs) {
+    for (auto it = std::begin(xs); it != std::end(xs); ++it) {
+        if (it != std::begin(xs)) {
+            out << " ";
+        }
+        out << *it;
+    }
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs) {
     for (auto it = std::begin(xs); it != std::end(xs); ++it) {
         if (it != std::begin(xs)) {
             out << " ";
