@@ -534,8 +534,11 @@ private:
             lastDelta.resize(n, 0.0);
         }
         for (size_t i = 0; i < n; ++i) {
-            lastDelta[i] = momentum * lastDelta[i] - learningRate * grad[i];
-            var[i] += lastDelta[i];
+            float &lastDelta_i = lastDelta[i];
+            float grad_i = grad[i];
+            float delta_i = momentum * lastDelta_i - learningRate * grad_i;
+            lastDelta_i = delta_i;
+            var[i] += delta_i;
         }
     }
 
