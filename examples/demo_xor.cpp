@@ -46,7 +46,7 @@ int main(int, char *[]) {
     cout << "training set:\n" << CSVFormat(dataset) << "\n";
     print_net("initial", xorNet, dataset);
 
-    xorNet.setLearningPolicy(FixedRateWithMomentum(0.01, 0.9));
+    xorNet.setLearningPolicy(FixedRate(0.01 /* rate */, 0.9 /* momentum */));
     trainWithSGD(xorNet, dataset,
                  500 /* epochs */,
                  100 /* callbackPeriod */,

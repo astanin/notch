@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
 
     IntClassifier classifier(net, labelEnc);
 
-    net.setLearningPolicy(FixedRateWithMomentum(0.0001, 0.9));
-    trainWithSGD(rng, net, irisData, 1500,
+    net.setLearningPolicy(FixedRate(0.0001 /* rate */, 0.9 /* momentum */));
+    trainWithSGD(rng, net, irisData, 1500 /* epochs */,
             /* callbackEvery */ 100,
             /* callback */ [&](int i) {
                 cout << "epoch "

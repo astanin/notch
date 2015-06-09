@@ -490,30 +490,7 @@ public:
     virtual std::unique_ptr<ALearningPolicy> clone() const = 0;
 };
 
-/** A classic delta rule.
- *
- * $w_{ji} (n) = w_{ji} (n-1) + \Delta w_{ji}$, where
- * $\Delta w_{ji} = - \eta \partial E / \partial w_{ji}$.
- *
- * Reference: NNLM3, Chapter 4, page 131; (LeCun, 2012), page 12. */
-class FixedRate : public ALearningPolicy {
-private:
-    float learningRate;
-public:
-    FixedRate(float learningRate = 0.01) : learningRate(learningRate) {}
-    virtual void correctWeights(Array& weightSensitivity, Array &weights) {
-        weights -= (learningRate * weightSensitivity);
-    }
-    virtual void correctBias(Array& biasSensitivity, Array &bias) {
-        bias -= (learningRate * biasSensitivity);
-    }
-    virtual std::unique_ptr<ALearningPolicy> clone() const {
-        auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(learningRate));
-        return c;
-    }
-};
-
-/** Generalized delta rule for learning with _momentum_ term.
+/** Generalized delta rule for learning with fixed rate and a momentum term.
  *
  * $$\Delta w_{ji} (n) = \alpha \Delta w_{ji} (n-1)
  *                     - \eta \partial E / \partial w_{ji},$$
@@ -524,45 +501,68 @@ public:
  * when the partial derivative $\partial E/\partial w_{ji}$ has the same sign
  * on consecutive iterations. It has stabilizing effect otherwise.
  *
+ * If the momentum $\alpha = 0$ then the learning policy becomes classic delta
+ * rule:
+ *
+ * $$\Delta w_{ji} = - \eta \partial E / \partial w_{ji}.$$
+ *
  * References:
  *
- *  - NNLM3, Eq (4.41), page 137
- *  - LeCun (2012) Efficient Backprop, page 21. In: NNTT.
- */
-class FixedRateWithMomentum : public ALearningPolicy {
+ *  - Delta rule: NNLM3, Eq (4.14), page 131
+ *  - Generalized delta rule: NNLM3, Eq (4.41), page 137
+ *  - LeCun (2012) Efficient Backprop, page 12 and 21. In: NNTT
+ **/
+class FixedRate : public ALearningPolicy {
 private:
     float learningRate;
     float momentum;
     Array lastDeltaW;
     Array lastDeltaB;
+
+    /// update @param var using a classic delta rule
+    void deltaRule(Array& var, const Array &grad) {
+        size_t n = var.size();
+        for (size_t i = 0; i < n; ++i) {
+            var[i] -= learningRate * grad[i];
+        }
+    }
+
+    /// udpate @param var using a generalized delta rule
+    void deltaRuleWithMomentum(Array &var, Array &lastDelta, const Array &grad) {
+        size_t n = var.size();
+        if (lastDelta.size() != n) {
+            lastDelta.resize(n, 0.0);
+        }
+        for (size_t i = 0; i < n; ++i) {
+            lastDelta[i] = momentum * lastDelta[i] - learningRate * grad[i];
+            var[i] += lastDelta[i];
+        }
+    }
+
 public:
-    FixedRateWithMomentum(float learningRate = 0.01, float momentum = 0.9)
+    FixedRate(float learningRate = 0.01, float momentum = 0.0)
         : learningRate(learningRate), momentum(momentum) {}
+
     virtual void correctWeights(Array& weightSensitivity, Array &weights) {
-        size_t n = weights.size();
-        if (lastDeltaW.size() != n) {
-            lastDeltaW.resize(n, 0.0);
-        }
-        for (size_t i = 0; i < n; ++i) {
-            lastDeltaW[i] = momentum * lastDeltaW[i]
-                          - learningRate * weightSensitivity[i];
-            weights[i] += lastDeltaW[i];
+        if (momentum == 0.0) {
+            deltaRule(weights, weightSensitivity);
+        } else {
+            deltaRuleWithMomentum(weights, lastDeltaW, weightSensitivity);
         }
     }
+
     virtual void correctBias(Array& biasSensitivity, Array &bias) {
-        size_t n = bias.size();
-        if (lastDeltaB.size() != n) {
-            lastDeltaB.resize(n, 0.0);
-        }
-        for (size_t i = 0; i < n; ++i) {
-            lastDeltaB[i] = momentum * lastDeltaB[i]
-                          - learningRate * biasSensitivity[i];
-            bias[i] += lastDeltaB[i];
+        if (momentum == 0.0) {
+            deltaRule(bias, biasSensitivity);
+        } else {
+            deltaRuleWithMomentum(bias, lastDeltaB, biasSensitivity);
         }
     }
+
     virtual std::unique_ptr<ALearningPolicy> clone() const {
-        auto c = std::unique_ptr<ALearningPolicy>(
-                  new FixedRateWithMomentum(learningRate, momentum));
+        float lr = learningRate;
+        float m = momentum;
+        auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(lr, m));
         return c;
     }
 };
