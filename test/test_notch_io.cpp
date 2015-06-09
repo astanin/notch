@@ -4,7 +4,7 @@
 using namespace std;
 
 
-#define NOTCH_DISABLE_DEFINITIONS
+#define NOTCH_ONLY_DECLARATIONS
 #include "notch.hpp"
 #include "notch_io.hpp"
 

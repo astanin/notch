@@ -45,6 +45,11 @@ THE SOFTWARE.
  * --------------------
  **/
 
+std::istream &operator>>(std::istream &in, Array &xs);
+std::ostream &operator<<(std::ostream &out, const Array &xs);
+std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs);
+
+#ifndef NOTCH_ONLY_DECLARATIONS
 /** Input and Output values are space-separated values.*/
 std::istream &operator>>(std::istream &in, Array &xs) {
     for (size_t i = 0; i < xs.size(); ++i) {
@@ -72,6 +77,7 @@ std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs) {
     }
     return out;
 }
+#endif
 
 
 /**
@@ -358,6 +364,8 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const FANNFormat &w);
 };
 
+std::ostream &operator<<(std::ostream &out, const FANNFormat &w);
+#ifndef NOTCH_ONLY_DECLARATIONS
 std::ostream &operator<<(std::ostream &out, const FANNFormat &w) {
     out << w.dataset.size() << " "
         << w.dataset.inputDim() << " "
@@ -367,6 +375,7 @@ std::ostream &operator<<(std::ostream &out, const FANNFormat &w) {
     }
     return out;
 }
+#endif
 
 /** A formatter to write datasets as one mapping per line. */
 class ArrowFormat {
@@ -377,12 +386,15 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const ArrowFormat &w);
 };
 
+std::ostream &operator<<(std::ostream &out, const ArrowFormat &w);
+#ifndef NOTCH_ONLY_DECLARATIONS
 std::ostream &operator<<(std::ostream &out, const ArrowFormat &w) {
     for (auto sample : w.dataset) {
         out << sample.data << " -> " << sample.label << "\n";
     }
     return out;
 }
+#endif
 
 /** A formatter to write a labeled dataset to CSV file. */
 class CSVFormat {
@@ -393,6 +405,8 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const CSVFormat &w);
 };
 
+std::ostream &operator<<(std::ostream &out, const CSVFormat &writer);
+#ifndef NOTCH_ONLY_DECLARATIONS
 std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
     auto inDim = writer.dataset.inputDim();
     auto outDim = writer.dataset.outputDim();

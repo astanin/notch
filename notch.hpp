@@ -69,6 +69,8 @@ THE SOFTWARE.
 using RNG = std::mt19937;
 
 /// Create and seed a new random number generator.
+std::unique_ptr<RNG> newRNG();
+#ifndef NOTCH_ONLY_DECLARATIONS
 std::unique_ptr<RNG> newRNG() {
     std::random_device rd;
     std::array<uint32_t, std::mt19937::state_size> seed_data;
@@ -78,6 +80,7 @@ std::unique_ptr<RNG> newRNG() {
     rng->seed(sseq);
     return rng;
 }
+#endif
 
 /**
  * Data types
@@ -305,6 +308,8 @@ using WeightInit = std::function<void(std::unique_ptr<RNG> &, Weights &, int, in
  *
  *  - NNLM3, Chapter 4, page 149;
  *  - http://andyljones.tumblr.com/post/110998971763/ **/
+void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int);
+#ifndef NOTCH_ONLY_DECLARATIONS
 void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
     float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
     std::normal_distribution<float> nd(0.0, sigma);
@@ -313,6 +318,7 @@ void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
         return w;
     });
 }
+#endif
 
 /** Uniform one-sided Xavier initialization.
  *
@@ -323,6 +329,8 @@ void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
  *
  *  - NNLM3, Chapter 4, page 149;
  *  - http://andyljones.tumblr.com/post/110998971763/ **/
+void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int);
+#ifndef NOTCH_ONLY_DECLARATIONS
 void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
     float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
     float a = sigma * sqrt(3.0);
@@ -332,6 +340,7 @@ void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
                 return w;
              });
 }
+#endif
 
 /**
  * Activation Functions
@@ -1255,6 +1264,8 @@ public:
 
 
 /** Softmax activation. */
+Array softmax(const Array &input);
+#ifndef NOTCH_ONLY_DECLARATIONS
 Array softmax(const Array &input) {
     Array softmaxOutput(0.0, input.size());
     size_t nSize = input.size();
@@ -1276,6 +1287,7 @@ Array softmax(const Array &input) {
     softmaxOutput *= expTotalInv;
     return softmaxOutput;
 }
+#endif
 
 
 /** Softmax activation with multinomial cross-entropy loss.
@@ -1806,6 +1818,10 @@ using TrainCallback = std::function<bool(int epoch)>;
  *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
  */
 void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
+        int epochs, int callbackPeriod, TrainCallback callback,
+        float *totalLoss);
+#ifndef NOTCH_ONLY_DECLARATIONS
+void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
         int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
         float *totalLoss=nullptr) {
     for (int j = 0; j < epochs; ++j) {
@@ -1831,6 +1847,7 @@ void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
         callback(epochs);
     }
 }
+#endif
 
 /** Train using stochastic gradient descent.
  *
@@ -1838,10 +1855,15 @@ void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
  * a temporary random number generator. Otherwise this function is
  * identical to trainWithSGD which takes also an 'rng' parameter. */
 void trainWithSGD(Net &net, LabeledDataset &trainSet,
+        int epochs, int callbackPeriod, TrainCallback callback,
+        float *totalLoss);
+#ifndef NOTCH_ONLY_DECLARATIONS
+void trainWithSGD(Net &net, LabeledDataset &trainSet,
         int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
         float *totalLoss=nullptr) {
     std::unique_ptr<RNG> rng(newRNG());
     trainWithSGD(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
 }
+#endif
 
 #endif /* NOTCH_H */
