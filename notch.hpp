@@ -933,6 +933,7 @@ protected:
         if (propagatedErrors.size() != nInputs) {
             propagatedErrors.resize(nInputs);
         }
+#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float e_j = 0.0;
             for (size_t k = 0; k < nOutputs; ++k) { // for all neurons
@@ -940,6 +941,32 @@ protected:
             }
             propagatedErrors[j] = e_j;
         }
+#else /* optimized version (fewer operator[] calls, better locality) */
+        // reset propagatedErrors to zero and use as an accumulator
+        propagatedErrors = 0.0;
+        // iterate over weights in row-major order (w_ptr)
+        auto w_ptr = std::begin(weights); // w_ji
+        auto w_end = std::end(weights);
+        // iterate over localGrad simultaneously (grad_v_ptr)
+        auto grad_v_ptr = std::begin(localGrad);
+        // iterate over propagatedErrors simultaneously (e_ptr)
+        auto e_begin = std::begin(propagatedErrors);
+        auto e_end = std::end(propagatedErrors);
+        auto e_ptr = e_begin;
+        for (; w_ptr != w_end; ++w_ptr) {
+            (*e_ptr) += (*w_ptr) * (*grad_v_ptr);
+            // propagatedErrors is a vector of per-column sums:
+            // $ e_j := \sum_k w_{kj} g_k $,
+            // but we iterate row-major, so we should increment e_ptr every time
+            ++e_ptr;
+            if (e_ptr == e_end) { // end of row
+                // start iterating over propagatedErrors again
+                e_ptr = e_begin;
+                // take the next value ("row") of localGrad
+                ++grad_v_ptr;
+            }
+        }
+#endif
     }
 
     /// Backpropagation algorithm
