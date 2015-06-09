@@ -490,7 +490,10 @@ public:
     virtual std::unique_ptr<ALearningPolicy> clone() const = 0;
 };
 
-/** Generalized delta rule for learning with fixed rate and a momentum term.
+
+/** Learning with fixed rate, momentum term and weight-decay.
+ *
+ * Generalized delta rule for learning with fixed rate with a momentum term:
  *
  * $$\Delta w_{ji} (n) = \alpha \Delta w_{ji} (n-1)
  *                     - \eta \partial E / \partial w_{ji},$$
@@ -506,16 +509,33 @@ public:
  *
  * $$\Delta w_{ji} = - \eta \partial E / \partial w_{ji}.$$
  *
+ * If weightDecay parameter $\lambda$ is not zero, it has an effect of
+ * adding a complexity penalty term to the loss function:
+ *
+ * $$E_c(\mathbf{w}) = \lambda ||\mathbf{w}||^2$$
+ *
+ * and accordingly an extra term to $\partial E/\partial w_{ji}$:
+ *
+ * $$\partial E_c/\partial w_{ji} = 2 \lambda \mathbf{w}_{ji}$$
+ *
+ * Weight-decay has an effect of reducing excess weights of the network
+ * (weights which have little influence on the network performance).
+ * It may improve generatlization of the network.
+ * For a method how to choose parameter $\lambda$ see (Rognvaldsson, 2012).
+ *
  * References:
  *
  *  - Delta rule: NNLM3, Eq (4.14), page 131
  *  - Generalized delta rule: NNLM3, Eq (4.41), page 137
  *  - LeCun (2012) Efficient Backprop, page 12 and 21. In: NNTT
+ *  - NNLM3, Weight-decay procedure, Eq (4.96), page 176.
+ *  - Rognvaldsson (2012) A Simple Trick ..., page 71. In: NNTT
  **/
 class FixedRate : public ALearningPolicy {
 private:
     float learningRate;
     float momentum;
+    float weightDecay;
     Array lastDeltaW;
     Array lastDeltaB;
 
@@ -536,10 +556,14 @@ private:
 #ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
         for (size_t i = 0; i < n; ++i) {
             float &lastDelta_i = lastDelta[i];
+            float &var_i = var[i];
             float grad_i = grad[i];
             float delta_i = momentum * lastDelta_i - learningRate * grad_i;
+            if (weightDecay != 0.0) {
+                delta_i -= learningRate * 2.0 * weightDecay * var_i;
+            }
             lastDelta_i = delta_i;
-            var[i] += delta_i;
+            var_i += delta_i;
         }
 #else /* optimized version (fewer operator[] calls) */
         auto last_delta_ptr = std::begin(lastDelta);
@@ -549,6 +573,9 @@ private:
             float last_delta_i = (*last_delta_ptr);
             float grad_i = (*grad_ptr);
             float delta_i = momentum * last_delta_i - learningRate * grad_i;
+            if (weightDecay != 0.0) {
+                delta_i -= learningRate * 2.0 * weightDecay * (*var_ptr);
+            }
             (*last_delta_ptr) = delta_i;
             (*var_ptr) += delta_i;
             ++last_delta_ptr; ++grad_ptr; ++var_ptr;
@@ -557,8 +584,12 @@ private:
     }
 
 public:
-    FixedRate(float learningRate = 0.01, float momentum = 0.0)
-        : learningRate(learningRate), momentum(momentum) {}
+    FixedRate(float learningRate = 0.01,
+              float momentum = 0.0,
+              float weightDecay = 0.0)
+        : learningRate(learningRate),
+          momentum(momentum),
+          weightDecay(weightDecay) {}
 
     virtual void correctWeights(Array& weightSensitivity, Array &weights) {
         if (momentum == 0.0) {
@@ -579,7 +610,8 @@ public:
     virtual std::unique_ptr<ALearningPolicy> clone() const {
         float lr = learningRate;
         float m = momentum;
-        auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(lr, m));
+        float wd = weightDecay;
+        auto c = std::unique_ptr<ALearningPolicy>(new FixedRate(lr, m, wd));
         return c;
     }
 };
