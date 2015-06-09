@@ -424,3 +424,38 @@ TEST_CASE("FixedRate with momentum: generalized delta rule policy", "[core][trai
     }
 }
 
+TEST_CASE("FixedRate with weight-decay", "[core][train]") {
+    float eta = 0.1;
+    float momentum = 0.0;
+    float decay = 0.1;
+    Array weights { 100, 200 };
+    Array bias { 20, 10 };
+    Array oldWeights = weights;
+    Array oldBias = bias;
+    // weight updates
+    Array dEdw { 10, 20 };
+    Array dBdw { -10, -10 };
+    // apply policy without momentum
+    FixedRate policy(eta, momentum, decay);
+    policy.correctWeights(dEdw, weights);
+    policy.correctBias(dBdw, bias);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        CHECK(weights[i] == oldWeights[i] - eta*(dEdw[i] + 2*decay*oldWeights[i]));
+    }
+    for (size_t i = 0; i < bias.size(); ++i) {
+        CHECK(bias[i] == oldBias[i] - eta*(dBdw[i] + 2*decay*oldBias[i]));
+    }
+    // apply policy with momentum
+    FixedRate policy2(eta, 0.9, decay);
+    weights = oldWeights;
+    bias = oldBias;
+    policy2.correctWeights(dEdw, weights);
+    policy2.correctBias(dBdw, bias);
+    for (size_t i = 0; i < weights.size(); ++i) {
+        CHECK(weights[i] == oldWeights[i] - eta*(dEdw[i] + 2*decay*oldWeights[i]));
+    }
+    for (size_t i = 0; i < bias.size(); ++i) {
+        CHECK(bias[i] == oldBias[i] - eta*(dBdw[i] + 2*decay*oldBias[i]));
+    }
+}
+
