@@ -884,6 +884,7 @@ protected:
         assert(localGrad.size() == nOutputs);
         Array &input = *shared.inputBuffer;
         assert(input.size() == nInputs);
+#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
                 float y_i = input[i];
@@ -891,6 +892,32 @@ protected:
             }
             biasSensitivity[j] = (-1.0 * localGrad[j]);
         }
+#else /* optimized version (fewer operator[] calls); 3-5x faster in seq. code */
+        // iterate over weightSensitivity in row-major order (grad_w_ptr)
+        auto grad_w_ptr = std::begin(weightSensitivity); // dE/dw_ji
+        auto grad_w_end = std::end(weightSensitivity);
+        // iterate over biasSensitivity and localGrad simultaneously
+        auto grad_b_ptr = std::begin(biasSensitivity); // dE/db_j
+        auto grad_v_ptr = std::begin(localGrad); // dE/dv_j
+        // an iterator over input columns
+        auto y_ptr_begin = std::begin(input);
+        auto y_ptr_end = std::end(input);
+        auto y_ptr = y_ptr_begin;
+        for (; grad_w_ptr != grad_w_end; ++grad_w_ptr) {
+            // update weightSensitivity in row-major order
+            *grad_w_ptr = (-1.0 * (*grad_v_ptr) * (*y_ptr));
+            ++y_ptr;
+            if (y_ptr == y_ptr_end) { // end of row:
+                    // update biasSensitivity
+                    *grad_b_ptr = (-1.0 * (*grad_v_ptr));
+                    // increment pointers to biasSensitivity and localGrad
+                    ++grad_b_ptr;
+                    ++grad_v_ptr;
+                    // reset iterator over input columns
+                    y_ptr = y_ptr_begin;
+            }
+        }
+#endif
     }
 
     /** Calculate back-propagated error signal and corrections to synaptic weights.
