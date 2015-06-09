@@ -543,7 +543,12 @@ private:
     void deltaRule(Array& var, const Array &grad) {
         size_t n = var.size();
         for (size_t i = 0; i < n; ++i) {
-            var[i] -= learningRate * grad[i];
+            float &var_i = var[i];
+            float delta_i = - learningRate * grad[i];
+            if (weightDecay != 0.0) {
+                delta_i -= learningRate * 2.0 * weightDecay * var_i;
+            }
+            var_i += delta_i;
         }
     }
 
