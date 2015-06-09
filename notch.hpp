@@ -533,6 +533,7 @@ private:
         if (lastDelta.size() != n) {
             lastDelta.resize(n, 0.0);
         }
+#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
         for (size_t i = 0; i < n; ++i) {
             float &lastDelta_i = lastDelta[i];
             float grad_i = grad[i];
@@ -540,6 +541,19 @@ private:
             lastDelta_i = delta_i;
             var[i] += delta_i;
         }
+#else /* optimized version (fewer operator[] calls) */
+        auto last_delta_ptr = std::begin(lastDelta);
+        auto grad_ptr = std::begin(grad);
+        auto var_ptr = std::begin(var);
+        for (size_t i = 0; i < n; ++i) {
+            float last_delta_i = (*last_delta_ptr);
+            float grad_i = (*grad_ptr);
+            float delta_i = momentum * last_delta_i - learningRate * grad_i;
+            (*last_delta_ptr) = delta_i;
+            (*var_ptr) += delta_i;
+            ++last_delta_ptr; ++grad_ptr; ++var_ptr;
+        }
+#endif
     }
 
 public:
