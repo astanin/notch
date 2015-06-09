@@ -1,8 +1,12 @@
-#ifndef TEST_NOTCH_IO_HPP
-#define TEST_NOTCH_IO_HPP
-
+#include "catch.hpp"
 #include <sstream>
 #include <iterator>
+using namespace std;
+
+
+#define NOTCH_DISABLE_DEFINITIONS
+#include "notch.hpp"
+#include "notch_io.hpp"
 
 
 TEST_CASE("Array plain-text I/O", "[io]") {
@@ -111,6 +115,7 @@ TEST_CASE("Dataset CSV-format reader (categorical labels and quotes)", "[io]") {
     }
 }
 
+#if 0 // TODO
 TEST_CASE("FC input-output to plain-text", "[io][fc]") {
     // output
     stringstream ss;
@@ -137,7 +142,9 @@ TEST_CASE("FC input-output to plain-text", "[io][fc]") {
     auto &out_copy = layer_copy.output({100, 10, 1});
     CHECK(out[0] == Approx(out_copy[0]));
 }
+#endif
 
+#if 0 // TODO
 TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     // create a random MLP and write it to string
     auto rng = newRNG();
@@ -154,5 +161,4 @@ TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     // check equivalence
     CHECK(ss.str() == ss2.str());
 }
-
-#endif /* TEST_NOTCH_IO_HPP */
+#endif

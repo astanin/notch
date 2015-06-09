@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
 #include <algorithm>
@@ -12,10 +11,6 @@
 #include "notch_io.hpp"
 
 using namespace std;
-
-#if 0
-#include "test_notch_io.hpp"
-#endif
 
 // Abbreviations:
 // FC  = FullyConnectedLayer
@@ -116,10 +111,10 @@ TEST_CASE("FC cloning", "[core][fc]") {
     FullyConnectedLayer fc2(w, bias, linearActivation);
     connect(fc1, fc2);
     // initially:
-    auto weights1 = FCLParams::getWeights(fc1);
-    auto weights2 = FCLParams::getWeights(fc2);
-    auto bias1 = FCLParams::getBias(fc1);
-    auto bias2 = FCLParams::getBias(fc2);
+    auto weights1 = GetWeights<FullyConnectedLayer>::ref(fc1);
+    auto weights2 = GetWeights<FullyConnectedLayer>::ref(fc2);
+    auto bias1 = GetBias<FullyConnectedLayer>::ref(fc1);
+    auto bias2 = GetBias<FullyConnectedLayer>::ref(fc2);
     CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
     CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
     CHECK(weights1[0] == weights2[0]); // parameters are the same
@@ -136,8 +131,9 @@ TEST_CASE("FC cloning", "[core][fc]") {
     // clone updates don't affect the original:
     auto rng = newRNG();
     fc1clone->init(rng, uniformXavier);
-    auto cloneWeights = FCLParams::getWeights((FullyConnectedLayer&)*fc1clone);
-    auto cloneBias = FCLParams::getBias((FullyConnectedLayer&)*fc1clone);
+    auto &cloneRef = (FullyConnectedLayer&) *fc1clone;
+    auto cloneWeights = GetWeights<FullyConnectedLayer>::ref(cloneRef);
+    auto cloneBias = GetBias<FullyConnectedLayer>::ref(cloneRef);
     CHECK_FALSE(cloneWeights[0] == weights1[0]);
     CHECK_FALSE(cloneWeights[1] == weights1[1]);
     CHECK_FALSE(cloneWeights[2] == weights1[2]);

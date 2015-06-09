@@ -50,7 +50,9 @@ set(SOURCE_FILES
 
 add_test(test_notch test_notch "[core]")
 add_test(test_notch_io test_notch "[io]")
-add_executable(test_notch test/test_notch.cpp ${SOURCE_FILES})
+add_executable(test_notch
+               test/test_main.cpp test/test_notch.cpp test/test_notch_io.cpp
+               ${SOURCE_FILES})
 target_include_directories(test_notch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(demo_xor examples/demo_xor.cpp ${SOURCE_FILES})
