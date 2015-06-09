@@ -442,70 +442,51 @@ std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
     }
     return out;
 }
+#endif
 
 /**
  * Neural Networks Input-Output
  * ----------------------------
  **/
 
-/** LayerParameters classes break encapsulation of protected layer parameters
- * to allow serialization and reconfiguration of various layer types.
- *
- * LAYER class should have protected
- * 'Array weights', 'Array bias', 'size_t nInputs', 'size_t nOutputs',
- * and 'const Activation *activationFunction' members.
- *
- * Expected use:
- *
- *     auto w = LayerParameter<FullyConnectedLayer>::getWeights(someLayer);
- *     LayerParameter<FullyConnectedLayer>::setWeights(someLayer, newWeights);
- *
- * */
+
+/// Access protected weights member of LAYER classes.
 template<class LAYER>
-class LayerParameters : public LAYER {
+class GetWeights : public LAYER {
 public:
-    static const Array& getWeights(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return lp.weights;
+    /// Get a reference to protected 'weights' member of a LAYER class.
+    static Array& ref(LAYER &l) {
+        auto &access = static_cast<GetWeights<LAYER>&>(l);
+        return access.weights;
     }
-    static const Array& getBias(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return lp.bias;
+    /// Get a reference to protected 'weights' member of a LAYER class.
+    static const Array& ref(const LAYER &l) {
+        auto &access = static_cast<const GetWeights<LAYER>&>(l);
+        return access.weights;
     }
-    static const Activation &getActivation(const LAYER &l) {
-        auto &lp = static_cast<const LayerParameters<LAYER>&>(l);
-        return *lp.activationFunction;
+};
+
+/// Access protected bias member of LAYER classes.
+template<class LAYER>
+class GetBias : public LAYER {
+public:
+     /// Get a reference to protected 'bias' member of a LAYER class.
+    static Array& ref(LAYER &l) {
+        auto &access = static_cast<GetBias<LAYER>&>(l);
+        return access.bias;
     }
-    static void init(LAYER &l, size_t nInputs, size_t nOutputs,
-                     const Array &weights, const Array &bias) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.nInputs = nInputs;
-        lp.nOutputs = nOutputs;
-        lp.weights = weights;
-        lp.bias = bias;
-    }
-    static void init(LAYER &l, size_t nInputs, size_t nOutputs,
-                     Array &&weights, Array &&bias) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.nInputs = nInputs;
-        lp.nOutputs = nOutputs;
-        lp.weights = weights;
-        lp.bias = bias;
-    }
-    static void setActivation(LAYER &l, const Activation &af) {
-        auto &lp = static_cast<LayerParameters<LAYER>&>(l);
-        lp.activationFunction = &af;
+    /// Get a reference to protected 'bias' member of a LAYER class.
+    static const Array& ref(const LAYER &l) {
+        auto &access = static_cast<const GetBias<LAYER>&>(l);
+        return access.bias;
     }
 };
 
 
-using FCLParams = LayerParameters<FullyConnectedLayer>;
-
-// TODO: implement LayerBuilder infrastructure instead of modifying layer inplace
-
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
+#if 0
 class PlainTextNetworkReader {
 private:
     std::istream &in;
@@ -595,7 +576,6 @@ public:
         return layer;
     }
 
-#if 0
     MultilayerPerceptron &load(MultilayerPerceptron &mlp) {
         std::string netTag;
         size_t nLayers;
@@ -614,20 +594,18 @@ public:
         }
         return mlp;
     }
-#endif
 
     PlainTextNetworkReader &operator>>(FullyConnectedLayer &layer) {
         load(layer);
         return *this;
     }
 
-#if 0
     PlainTextNetworkReader &operator>>(MultilayerPerceptron &mlp) {
         load(mlp);
         return *this;
     }
-#endif
 };
+#endif
 
 /// Write neural network parameters to a record-jar text file.
 ///
@@ -639,48 +617,50 @@ private:
 public:
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
-    void save(const FullyConnectedLayer &layer) {
-        out << "layer: " << layer.tag() << "\n";
-        out << "inputs: " << layer.inputDim() << "\n";
-        out << "outputs: " << layer.outputDim() << "\n";
-        const Activation &af = FCLParams::getActivation(layer);
-        out << "activation: "; af.print(out); out << "\n";
-        out << "bias_and_weights:\n";
-        auto bias = FCLParams::getBias(layer);
-        auto weights = FCLParams::getWeights(layer);
-        for (size_t r = 0; r < layer.outputDim(); ++r) {
+    void saveWeightsAndBias(const Array &weights, const Array &bias) {
+        size_t nOutputs = bias.size();
+        size_t nInputs = weights.size() / nOutputs;
+        for (size_t r = 0; r < nOutputs; ++r) {
             out << "   ";
             out << " " << bias[r];
-            for (size_t c = 0; c < layer.inputDim(); ++c) {
-                out << " " << weights[r*layer.inputDim() + c];
+            for (size_t c = 0; c < nInputs; ++c) {
+                out << " " << weights[r*nInputs + c];
             }
             out << "\n";
         }
     }
 
-#if 0
-    void save(const MultilayerPerceptron &net) {
+    void save(const ABackpropLayer &layer) {
+        out << "layer: " << layer.tag() << "\n";
+        out << "inputs: " << layer.inputDim() << "\n";
+        out << "outputs: " << layer.outputDim() << "\n";
+        // TODO: print activation if any
+        if (layer.tag() == "FullyConnectedLayer") { // if layer has parameters
+            out << "bias_and_weights:\n";
+            auto &fcl = dynamic_cast<const FullyConnectedLayer&>(layer);
+            auto bias = GetBias<FullyConnectedLayer>::ref(fcl);
+            auto weights = GetWeights<FullyConnectedLayer>::ref(fcl);
+            saveWeightsAndBias(weights, bias);
+        }
+    }
+
+    void save(const Net &net) {
         size_t nLayers = std::distance(net.begin(), net.end());
         if (!nLayers) {
             return;
         }
-        out << "net: MultilayerPerceptron\n";
+        out << "net: FeedForwardNet\n";
         out << "layers: " << nLayers << "\n";
         out << "%%\n";
         for (auto it = net.begin(); it != net.end(); ++it) {
             std::string tag = (**it).tag();
-            if (tag == "FullyConnectedLayer") {
-                auto ref = dynamic_cast<const FullyConnectedLayer&>(**it);
-                save(ref);
-            } else {
-                throw std::invalid_argument("unsupported layer type tag: " + tag);
-            }
+            auto &ref = (**it);
+            save(ref);
             if (it + 1 != net.end()) {
                 out << "%%\n";
             }
         }
     }
-#endif
 
     PlainTextNetworkWriter &operator<<(const std::string &s) {
         out << s;
@@ -692,12 +672,10 @@ public:
         return *this;
     }
 
-#if 0
-    PlainTextNetworkWriter &operator<<(const MultilayerPerceptron &net) {
+    PlainTextNetworkWriter &operator<<(const Net &net) {
         save(net);
         return *this;
     }
-#endif
 };
 
 
