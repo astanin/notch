@@ -539,18 +539,26 @@ public:
     FixedRateWithMomentum(float learningRate = 0.01, float momentum = 0.9)
         : learningRate(learningRate), momentum(momentum) {}
     virtual void correctWeights(Array& weightSensitivity, Array &weights) {
-        if (lastDeltaW.size() != weights.size()) {
-            lastDeltaW.resize(weights.size(), 0.0);
+        size_t n = weights.size();
+        if (lastDeltaW.size() != n) {
+            lastDeltaW.resize(n, 0.0);
         }
-        lastDeltaW = (momentum * lastDeltaW - learningRate * weightSensitivity);
-        weights += lastDeltaW;
+        for (size_t i = 0; i < n; ++i) {
+            lastDeltaW[i] = momentum * lastDeltaW[i]
+                          - learningRate * weightSensitivity[i];
+            weights[i] += lastDeltaW[i];
+        }
     }
     virtual void correctBias(Array& biasSensitivity, Array &bias) {
-        if (lastDeltaB.size() != bias.size()) {
-            lastDeltaB.resize(bias.size(), 0.0);
+        size_t n = bias.size();
+        if (lastDeltaB.size() != n) {
+            lastDeltaB.resize(n, 0.0);
         }
-        lastDeltaB = (momentum * lastDeltaB - learningRate * biasSensitivity);
-        bias += lastDeltaB;
+        for (size_t i = 0; i < n; ++i) {
+            lastDeltaB[i] = momentum * lastDeltaB[i]
+                          - learningRate * biasSensitivity[i];
+            bias[i] += lastDeltaB[i];
+        }
     }
     virtual std::unique_ptr<ALearningPolicy> clone() const {
         auto c = std::unique_ptr<ALearningPolicy>(
@@ -1729,4 +1737,4 @@ void trainWithSGD(Net &net, LabeledDataset &trainSet,
     trainWithSGD(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
 }
 
- #endif /* NOTCH_H */
+#endif /* NOTCH_H */
