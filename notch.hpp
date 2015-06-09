@@ -808,7 +808,6 @@ protected:
     }
 
     void rememberInputs(const Array& inputs) {
-        // TODO: avoid copying if inputBuffer points to the same object
         *(shared.inputBuffer) = inputs;  // remember for calcSensitivityFactors()
     }
 
