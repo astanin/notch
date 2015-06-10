@@ -80,20 +80,19 @@ int main(int argc, char *argv[]) {
 
     Net net = MakeNet()
         .setInputDim(4)
-        .addFC(8, scaledTanh)
-        .addFC(3, scaledTanh)
+        .addFC(48, scaledTanh)
         .addFC(3, linearActivation)
         .addSoftmax()
         .make();
 
     unique_ptr<RNG> rng(Init::newRNG());
-    net.init(rng);
+    net.init(rng, Init::uniformNguyenWidrow);
 
     IntClassifier classifier(net, labelEnc);
 
     net.setLearningPolicy(FixedRate(0.0001 /* rate */, 0.9 /* momentum */));
-    SGD::train(rng, net, irisData, 1500 /* epochs */,
-               /* callbackEvery */ 100,
+    SGD::train(rng, net, irisData, 64 /* epochs */,
+               /* callbackEvery */ 4,
                /* callback */ [&](int i) {
                    cout << "epoch "
                         << setw(4) << i << " "

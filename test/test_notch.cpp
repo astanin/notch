@@ -455,3 +455,5 @@ TEST_CASE("FixedRate with weight-decay", "[core][train]") {
     }
 }
 
+// TODO: write tests for all initialization procedures
+

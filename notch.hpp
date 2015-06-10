@@ -299,7 +299,44 @@ public:
         return rng;
     }
 
-    // TODO implement Nguyen-Widrow initialization
+    /** Uniform Nguyen-Widrow initialization.
+     *
+     * It is assumed that elements of the input vector are in the range [-1,+1].
+     * The magnitude of weight vectors is adjusted randomly so that each node
+     * is linear over only a small interval.
+     *
+     * References:
+     *
+     *  - Nguyen; Widrow (1990) Improving the Learning Speed of 2-Layer
+     *    Neural Networks by Choosing Initial Values of the Adaptive Weights
+     *  - http://dsp.vscht.cz/konference_matlab/matlab04/pavelka.pdf
+     *  - http://www.heatonresearch.com/encog/articles/nguyen-widrow-neural-network-weight.html
+     **/
+    static
+    void uniformNguyenWidrow(std::unique_ptr<RNG> &rng,
+                             Array &weights, int nIn, int nOut) {
+        std::uniform_real_distribution<float> U(-1, +1);
+        float overlap = 0.7; // "to have the intervals overlap slightly"
+        float beta = overlap * pow(nOut, 1.0 / nIn); // target row norm
+        if (weights.size() == static_cast<size_t>(nIn*nOut)) {
+            // we're initializing weights
+            float w_row_norm = sqrt(nIn / 3.0); // for nIn elems in U([-1,1])
+            std::generate(std::begin(weights), std::end(weights),
+                    [&U, &rng, beta, w_row_norm] {
+                        // w_{ji} in U([-1,1])
+                        float w_ji = U(*rng.get());
+                        // to have row norm equal beta
+                        return w_ji * beta / w_row_norm;
+                    });
+        } else { // we're initializing bias
+            // b_i = uniform random number in [-beta, beta]
+            std::generate(std::begin(weights), std::end(weights),
+                    [&U, &rng, beta] {
+                        float u = U(*rng.get());
+                        return u * beta;
+                    });
+         }
+    }
 
     /** One-sided Xavier or "Fan-in" initialization.
      *
