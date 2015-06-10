@@ -512,7 +512,7 @@ private:
     }
 
     void
-    read_weights(const std::string expected_tag, Weights &w, Weights &bias) {
+    read_weights(const std::string expected_tag, Array &w, Array &bias) {
         size_t nInputs = w.size() / bias.size();
         size_t nOutputs = bias.size();
         std::string tag;
@@ -566,8 +566,8 @@ public:
             throw std::runtime_error(what);
         }
         const Activation &a = knownActivations.find(activationTag)->second;
-        Weights w(0.0, nInputs * nOutputs);
-        Weights b(0.0, nOutputs);
+        Array w(0.0, nInputs * nOutputs);
+        Array b(0.0, nOutputs);
         read_weights("bias_and_weights:", w, b);
         consume_end_of_record();
         // modify the layer

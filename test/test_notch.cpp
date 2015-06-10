@@ -23,7 +23,7 @@ public:
     FullyConnectedLayer_Test(size_t in, size_t out,
                              const Activation &af)
         : FullyConnectedLayer(in, out, af) {}
-    FullyConnectedLayer_Test(const Weights &weights, const Weights &bias,
+    FullyConnectedLayer_Test(const Array &weights, const Array &bias,
                              const Activation &af)
         : FullyConnectedLayer(weights, bias, af) {}
 

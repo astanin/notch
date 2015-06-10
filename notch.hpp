@@ -275,10 +275,6 @@ public:
  **/
 
 
-/** Synaptic weights */
-using Weights = std::valarray<float>;
-
-
 /**
  * Random Weights Initialization
  * -----------------------------
@@ -318,7 +314,7 @@ public:
      *  - http://andyljones.tumblr.com/post/110998971763/
      **/
     static
-    void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
+    void normalXavier(std::unique_ptr<RNG> &rng, Array &weights, int n_in, int) {
         float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
         std::normal_distribution<float> nd(0.0, sigma);
         std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
@@ -340,7 +336,7 @@ public:
      *  - http://andyljones.tumblr.com/post/110998971763/
      **/
     static
-    void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
+    void uniformXavier(std::unique_ptr<RNG> &rng, Array &weights, int n_in, int) {
         float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
         float a = sigma * sqrt(3.0);
         std::uniform_real_distribution<float> nd(-a, a);
@@ -1065,7 +1061,7 @@ public:
           propagatedErrors(nInputs) {}
 
     /// Create a layer from a weights matrix.
-    FullyConnectedLayer(Weights &&weights, Weights &&bias,
+    FullyConnectedLayer(Array &&weights, Array &&bias,
                         const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
@@ -1074,7 +1070,7 @@ public:
           propagatedErrors(nInputs) {}
 
     /// Create a layer from a copy of a weights matrix.
-    FullyConnectedLayer(const Weights &weights, const Weights &bias,
+    FullyConnectedLayer(const Array &weights, const Array &bias,
                         const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
           weights(weights), bias(bias), activationFunction(&af),
