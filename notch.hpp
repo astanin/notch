@@ -1460,7 +1460,7 @@ public:
 class Net {
 protected:
     std::vector<std::shared_ptr<ABackpropLayer>> layers;
-    std::shared_ptr<ALossLayer> lossLayer;
+    std::shared_ptr<ALossLayer> lossLayer = nullptr;
 
     void selfCheck() const {
         if (layers.empty()) {
@@ -1568,9 +1568,11 @@ public:
         }
     }
 
-    using LayerIterator = decltype(layers.cbegin());
-    LayerIterator begin() const { return layers.cbegin(); }
-    LayerIterator end() const { return layers.cend(); }
+    size_t size() const { return layers.size(); }
+    std::shared_ptr<const ABackpropLayer> getLayer(size_t i) const {
+       return (i < layers.size()) ? layers[i] : nullptr;
+    }
+    std::shared_ptr<const ALossLayer> getLossLayer() const { return lossLayer; }
 };
 
 

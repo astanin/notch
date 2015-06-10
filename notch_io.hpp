@@ -700,20 +700,26 @@ public:
     }
 
     void save(const Net &net) {
-        size_t nLayers = std::distance(net.begin(), net.end());
+        size_t nLayers = net.size();
+        auto lossLayer = net.getLossLayer();
         if (!nLayers) {
             return;
         }
         out << "net: FeedForwardNet\n";
         out << "layers: " << nLayers << "\n";
         out << "%%\n";
-        for (auto it = net.begin(); it != net.end(); ++it) {
-            std::string tag = (**it).tag();
-            auto &ref = (**it);
-            save(ref);
-            if (it + 1 != net.end()) {
+        for (size_t i = 0; i < nLayers; ++i) {
+            auto layer = net.getLayer(i);
+            if (!layer) {
+                continue;
+            }
+            save(*layer);
+            if (i < (nLayers - 1) || lossLayer) {
                 out << "%%\n";
             }
+        }
+        if (lossLayer) {
+            save(*lossLayer);
         }
     }
 
