@@ -92,16 +92,16 @@ int main(int argc, char *argv[]) {
     IntClassifier classifier(net, labelEnc);
 
     net.setLearningPolicy(FixedRate(0.0001 /* rate */, 0.9 /* momentum */));
-    trainWithSGD(rng, net, irisData, 1500 /* epochs */,
-            /* callbackEvery */ 100,
-            /* callback */ [&](int i) {
-                cout << "epoch "
-                     << setw(4) << i << " "
-                     << "loss = "
-                     << setprecision(3) << setw(6)
-                     << meanLoss(net, irisData) << " ";
-                print_metrics(classifier, irisData);
-                return false;
-           });
+    SGD::train(rng, net, irisData, 1500 /* epochs */,
+               /* callbackEvery */ 100,
+               /* callback */ [&](int i) {
+                   cout << "epoch "
+                        << setw(4) << i << " "
+                        << "loss = "
+                        << setprecision(3) << setw(6)
+                        << meanLoss(net, irisData) << " ";
+                   print_metrics(classifier, irisData);
+                   return false;
+               });
     cout << "\n";
 }

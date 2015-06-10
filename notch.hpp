@@ -1792,74 +1792,73 @@ private:
 // return true from TrainCallback to stop training early
 using TrainCallback = std::function<bool(int epoch)>;
 
-/** Train using stochastic gradient descent.
- *
- * Use net.setLearningPolicy() to change learning parameters of the network
- * _before_ calling `trainWithSGD`.
- *
- * @param net             Neural network to be trained.
- * @param trainSet        Training set.
- * @param rng             Random number generator for shuffling.
- * @param epochs          How many iterations (epochs) to run;
- *                        the entire training set is processed once per epoch.
- * @param callbackPeriod  A period of callback invocation if not zero;
- *                        The callback is also called before the first
- *                        and after the last iteration.
- * @param callback        A callback function to be invoked;
- *                        the callback may return true to stop training early.
- *
- * See:
- *
- *  - Efficient BackProp (2012) LeCun et al. In: NNTT.
- *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
- */
-void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
-        int epochs, int callbackPeriod, TrainCallback callback,
-        float *totalLoss);
-#ifndef NOTCH_ONLY_DECLARATIONS
-void trainWithSGD(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
-        int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
-        float *totalLoss=nullptr) {
-    for (int j = 0; j < epochs; ++j) {
-        if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
-            bool shouldStop = callback(j);
-            if (shouldStop) {
-                return;
+
+/** Stochastic gradient descent. */
+class SGD {
+public:
+    /** Train using stochastic gradient descent.
+     *
+     * Use net.setLearningPolicy() to change learning parameters of the network
+     * _before_ calling `SGD::train`.
+     *
+     * @param rng             Random number generator for shuffling.
+     * @param net             Neural network to be trained.
+     * @param trainSet        Training set.
+     * @param epochs          How many iterations (epochs) to run;
+     *                        the entire training set is processed once per epoch.
+     * @param callbackPeriod  A period of callback invocation if not zero;
+     *                        The callback is also called before the first
+     *                        and after the last iteration.
+     * @param callback        A callback function to be invoked;
+     *                        the callback may return true to stop training early.
+     * @param totalLoss       If not a nullptr, it is used to save the total
+     *                        loss over the entire trainSet every epoch.
+     *
+     * See:
+     *
+     *  - Efficient BackProp (2012) LeCun et al. In: NNTT.
+     *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
+     */
+    static
+    void train(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
+            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
+            float *totalLoss=nullptr) {
+        for (int j = 0; j < epochs; ++j) {
+            if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
+                bool shouldStop = callback(j);
+                if (shouldStop) {
+                    return;
+                }
+            }
+            trainSet.shuffle(rng);
+            float epochTotalLoss = 0.0;
+            for (auto sample : trainSet) {
+                float loss = net.loss(sample.data, sample.label);
+                epochTotalLoss += loss;
+                net.backprop();
+                net.update();
+            }
+            if (totalLoss) {
+                *totalLoss = epochTotalLoss;
             }
         }
-        trainSet.shuffle(rng);
-        float epochTotalLoss = 0.0;
-        for (auto sample : trainSet) {
-            float loss = net.loss(sample.data, sample.label);
-            epochTotalLoss += loss;
-            net.backprop();
-            net.update();
-        }
-        if (totalLoss) {
-            *totalLoss = epochTotalLoss;
+        if (callback && callbackPeriod > 0) {
+            callback(epochs);
         }
     }
-    if (callback && callbackPeriod > 0) {
-        callback(epochs);
-    }
-}
-#endif
 
-/** Train using stochastic gradient descent.
- *
- * This version of trainWithSGD creates, seeds, uses then discards
- * a temporary random number generator. Otherwise this function is
- * identical to trainWithSGD which takes also an 'rng' parameter. */
-void trainWithSGD(Net &net, LabeledDataset &trainSet,
-        int epochs, int callbackPeriod, TrainCallback callback,
-        float *totalLoss);
-#ifndef NOTCH_ONLY_DECLARATIONS
-void trainWithSGD(Net &net, LabeledDataset &trainSet,
-        int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
-        float *totalLoss=nullptr) {
-    std::unique_ptr<RNG> rng(newRNG());
-    trainWithSGD(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
-}
-#endif
+    /** Train using stochastic gradient descent.
+     *
+     * This method creates, seeds, uses and then discards
+     * a temporary random number generator. Otherwise this function is
+     * identical to SGD::train which takes also an 'rng' parameter. */
+    static
+    void train(Net &net, LabeledDataset &trainSet,
+            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
+            float *totalLoss=nullptr) {
+        std::unique_ptr<RNG> rng(newRNG());
+        SGD::train(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
+    }
+};
 
 #endif /* NOTCH_H */
