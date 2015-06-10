@@ -654,7 +654,13 @@ public:
             auto weights = GetWeights<FullyConnectedLayer>::ref(fcl);
             out << "bias_and_weights:\n";
             saveWeightsAndBias(weights, bias);
-        }
+        } else if (layer.tag() == "ActivationLayer") {
+            auto &al = dynamic_cast<const ActivationLayer&>(layer);
+            auto &activation = GetActivation<ActivationLayer>::ref(al);
+            out << "activation: "; activation.print(out); out << "\n";
+         } else {
+            throw std::invalid_argument("unsuported layer type: " + layer.tag());
+         }
     }
 
     void save(const Net &net) {
@@ -691,5 +697,6 @@ public:
     }
 };
 
+// TODO: refactor: use an intermediate type-agnostic layer representation
 
 #endif

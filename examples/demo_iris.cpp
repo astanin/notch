@@ -103,4 +103,6 @@ int main(int argc, char *argv[]) {
                    return false;
                });
     cout << "\n";
+
+    PlainTextNetworkWriter(cout) << net << "\n";
 }
