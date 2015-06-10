@@ -13,7 +13,7 @@ using namespace std;
 
 
 void print_net(string tag, Net &xorNet, LabeledDataset dataset) {
-    //PlainTextNetworkWriter(cout) << tag << " net:\n\n" << xorNet << "\n";
+    PlainTextNetworkWriter(cout) << tag << " net:\n\n" << xorNet << "\n";
     cout << tag << " out:\n";
     for (auto s : dataset) {
         auto out = xorNet.output(s.data);

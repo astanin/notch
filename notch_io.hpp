@@ -483,6 +483,18 @@ public:
 };
 
 
+/// Access protected activation function of LAYER classes.
+template<class LAYER>
+class GetActivation : public LAYER {
+public:
+   /// Get a reference to protected 'bias' member of a LAYER class.
+    static const Activation& ref(const LAYER &l) {
+        auto &access = static_cast<const GetActivation<LAYER>&>(l);
+        return *access.activationFunction;
+    }
+};
+
+
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
@@ -634,12 +646,13 @@ public:
         out << "layer: " << layer.tag() << "\n";
         out << "inputs: " << layer.inputDim() << "\n";
         out << "outputs: " << layer.outputDim() << "\n";
-        // TODO: print activation if any
-        if (layer.tag() == "FullyConnectedLayer") { // if layer has parameters
-            out << "bias_and_weights:\n";
+        if (layer.tag() == "FullyConnectedLayer") {
             auto &fcl = dynamic_cast<const FullyConnectedLayer&>(layer);
+            auto &activation = GetActivation<FullyConnectedLayer>::ref(fcl);
+            out << "activation: "; activation.print(out); out << "\n";
             auto bias = GetBias<FullyConnectedLayer>::ref(fcl);
             auto weights = GetWeights<FullyConnectedLayer>::ref(fcl);
+            out << "bias_and_weights:\n";
             saveWeightsAndBias(weights, bias);
         }
     }
