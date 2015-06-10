@@ -110,6 +110,7 @@ using Dataset = std::vector<Array>;
  *  Transformations are supposed to be adaptive (`fit`) and invertable. */
 class ADatasetTransformer {
 public:
+    // TODO: remove fit from ADatasetTransformer; rename methods to apply/unapply
     virtual ADatasetTransformer& fit(const Dataset &) = 0;
     virtual Dataset transform(const Dataset &) = 0;
     virtual Array transform(const Array &) = 0;
@@ -299,48 +300,57 @@ using Weights = std::valarray<float>;
 
 using WeightInit = std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
-/** One-sided Xavier initialization.
- *
- * Pick weights from a zero-centered _normal_ distrubition with variance
- * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
- *
- * See
- *
- *  - NNLM3, Chapter 4, page 149;
- *  - http://andyljones.tumblr.com/post/110998971763/ **/
-void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int);
-#ifndef NOTCH_ONLY_DECLARATIONS
-void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
-    float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
-    std::normal_distribution<float> nd(0.0, sigma);
-    std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
-        float w = nd(*rng.get());
-        return w;
-    });
-}
-#endif
 
-/** Uniform one-sided Xavier initialization.
- *
- * Pick weights from a zero-centered _uniform_ distrubition with variance
- * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
- *
- * See
- *
- *  - NNLM3, Chapter 4, page 149;
- *  - http://andyljones.tumblr.com/post/110998971763/ **/
-void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int);
-#ifndef NOTCH_ONLY_DECLARATIONS
-void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
-    float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
-    float a = sigma * sqrt(3.0);
-    std::uniform_real_distribution<float> nd(-a, a);
-    std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
-                float w = nd(*rng.get());
-                return w;
-             });
-}
-#endif
+// TODO implement Nguyen-Widrow initialization
+
+class Init {
+public:
+    /** One-sided Xavier or "Fan-in" initialization.
+     *
+     * Pick weights from a zero-centered _normal_ distrubition with variance
+     * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+     *
+     * See
+     *
+     *  - NNLM3, Chapter 4, page 149;
+     *  - Glorot, Xavier; Bengio, Yoshua. (2010). Understanding the difficuly
+     *    of training deep feedforward neural networks.
+     *  - http://andyljones.tumblr.com/post/110998971763/
+     **/
+    static
+    void normalXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
+        float sigma = n_in > 0 ? sqrt(1.0 / n_in) : 1.0;
+        std::normal_distribution<float> nd(0.0, sigma);
+        std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
+            float w = nd(*rng.get());
+            return w;
+        });
+    }
+
+    /** Uniform one-sided Xavier or "Fan-in" initialization.
+     *
+     * Pick weights from a zero-centered _uniform_ distrubition with variance
+     * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+     *
+     * See
+     *
+     *  - NNLM3, Chapter 4, page 149;
+     *  - Glorot, Xavier; Bengio, Yoshua. (2010). Understanding the difficuly
+     *    of training deep feedforward neural networks.
+     *  - http://andyljones.tumblr.com/post/110998971763/
+     **/
+    static
+    void uniformXavier(std::unique_ptr<RNG> &rng, Weights &weights, int n_in, int) {
+        float sigma = n_in > 0 ? sqrt(1.0/n_in) : 1.0;
+        float a = sigma * sqrt(3.0);
+        std::uniform_real_distribution<float> nd(-a, a);
+        std::generate(std::begin(weights), std::end(weights), [&nd, &rng] {
+                    float w = nd(*rng.get());
+                    return w;
+                 });
+    }
+};
+
 
 /**
  * Activation Functions
@@ -1453,7 +1463,7 @@ public:
     }
 
     virtual void
-    init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
+    init(std::unique_ptr<RNG> &rng, WeightInit init = Init::normalXavier) {
         for (size_t i = 0u; i < layers.size(); ++i) {
             layers[i]->init(rng, init);
         }
@@ -1745,7 +1755,7 @@ public:
     }
 
     /// Create and initialize a new feed-forward neural net.
-    Net init(std::unique_ptr<RNG> &rng, WeightInit init = normalXavier) {
+    Net init(std::unique_ptr<RNG> &rng, WeightInit init = Init::normalXavier) {
         Net net = make();
         net.init(rng, init);
         return net;
@@ -1755,7 +1765,7 @@ public:
     ///
     /// This version of init() method creates, seeds, uses, and then discards a
     /// temporary random number generator.
-    Net init(WeightInit init = normalXavier) {
+    Net init(WeightInit init = Init::normalXavier) {
         std::unique_ptr<RNG> rng(newRNG());
         Net net = this->init(rng, init);
         return net;

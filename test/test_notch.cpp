@@ -100,7 +100,7 @@ TEST_CASE("FC-to-FC shared buffers", "[core][fc]") {
     CHECK_ARRAY_IS_INITIALIZED(inputBuffer, *fc.getInputBuffer(), n_in);
     CHECK_ARRAY_IS_INITIALIZED(outputBuffer, *fc.getOutputBuffer(), n_out);
 
-    fc.init(rng, normalXavier);
+    fc.init(rng, Init::normalXavier);
     CHECK(fc.getOutputBuffer() == fc2.getInputBuffer()); // buffers are still shared
 }
 
@@ -130,7 +130,7 @@ TEST_CASE("FC cloning", "[core][fc]") {
     CHECK_FALSE(out1 == out1clone); // not shared
     // clone updates don't affect the original:
     auto rng = newRNG();
-    fc1clone->init(rng, uniformXavier);
+    fc1clone->init(rng, Init::uniformXavier);
     auto &cloneRef = (FullyConnectedLayer&) *fc1clone;
     auto cloneWeights = GetWeights<FullyConnectedLayer>::ref(cloneRef);
     auto cloneBias = GetBias<FullyConnectedLayer>::ref(cloneRef);
