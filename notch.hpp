@@ -1263,33 +1263,6 @@ public:
 };
 
 
-/** Softmax activation. */
-Array softmax(const Array &input);
-#ifndef NOTCH_ONLY_DECLARATIONS
-Array softmax(const Array &input) {
-    Array softmaxOutput(0.0, input.size());
-    size_t nSize = input.size();
-    // a trick to avoid unbounded exponents
-    float maxInput = std::numeric_limits<float>::min();
-    for (size_t i = 0; i < nSize; ++i) {
-        if (input[i] > maxInput) {
-            maxInput = input[i];
-        }
-    }
-    // calculate exponents
-    float expTotal;
-    for (size_t i = 0; i < nSize; ++i) { // calculate exponents
-        softmaxOutput[i] = std::exp(input[i] - maxInput);
-        expTotal += softmaxOutput[i];
-    }
-    // normalize exponents
-    float expTotalInv = 1.0/expTotal;
-    softmaxOutput *= expTotalInv;
-    return softmaxOutput;
-}
-#endif
-
-
 /** Softmax activation with multinomial cross-entropy loss.
  *
  * Softmax function is a generalization of the logistic function and
@@ -1324,6 +1297,29 @@ protected:
     size_t nSize;
     Array softmaxOutput; //< $\phi(\mathbf{y})_i$
     Array lossGrad; //< $\partial E/\partial y_i$
+
+    /** Softmax activation. */
+    static Array softmax(const Array &input) {
+        Array softmaxOutput(0.0, input.size());
+        size_t nSize = input.size();
+        // a trick to avoid unbounded exponents
+        float maxInput = std::numeric_limits<float>::min();
+        for (size_t i = 0; i < nSize; ++i) {
+            if (input[i] > maxInput) {
+                maxInput = input[i];
+            }
+        }
+        // calculate exponents
+        float expTotal;
+        for (size_t i = 0; i < nSize; ++i) { // calculate exponents
+            softmaxOutput[i] = std::exp(input[i] - maxInput);
+            expTotal += softmaxOutput[i];
+        }
+        // normalize exponents
+        float expTotalInv = 1.0/expTotal;
+        softmaxOutput *= expTotalInv;
+        return softmaxOutput;
+    }
 
 public:
     SoftmaxWithLoss(size_t n) : nSize(n), softmaxOutput(n), lossGrad(n) {}
