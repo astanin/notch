@@ -68,20 +68,6 @@ THE SOFTWARE.
 
 using RNG = std::mt19937;
 
-/// Create and seed a new random number generator.
-std::unique_ptr<RNG> newRNG();
-#ifndef NOTCH_ONLY_DECLARATIONS
-std::unique_ptr<RNG> newRNG() {
-    std::random_device rd;
-    std::array<uint32_t, std::mt19937::state_size> seed_data;
-    std::generate(seed_data.begin(), seed_data.end(), ref(rd));
-    std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
-    std::unique_ptr<RNG> rng(new RNG());
-    rng->seed(sseq);
-    return rng;
-}
-#endif
-
 /**
  * Data types
  * ----------
@@ -298,13 +284,27 @@ using Weights = std::valarray<float>;
  * -----------------------------
  **/
 
-using WeightInit = std::function<void(std::unique_ptr<RNG> &, Weights &, int, int)>;
 
+using WeightInit =
+    std::function<void(std::unique_ptr<RNG> &rng,
+                       Array &weights, int nInputs, int nOutputs)>;
 
-// TODO implement Nguyen-Widrow initialization
 
 class Init {
 public:
+    /// Create and seed a new random number generator.
+    static std::unique_ptr<RNG> newRNG() {
+        std::random_device rd;
+        std::array<uint32_t, std::mt19937::state_size> seed_data;
+        std::generate(seed_data.begin(), seed_data.end(), ref(rd));
+        std::seed_seq sseq(std::begin(seed_data), std::end(seed_data));
+        std::unique_ptr<RNG> rng(new RNG());
+        rng->seed(sseq);
+        return rng;
+    }
+
+    // TODO implement Nguyen-Widrow initialization
+
     /** One-sided Xavier or "Fan-in" initialization.
      *
      * Pick weights from a zero-centered _normal_ distrubition with variance
@@ -1766,7 +1766,7 @@ public:
     /// This version of init() method creates, seeds, uses, and then discards a
     /// temporary random number generator.
     Net init(WeightInit init = Init::normalXavier) {
-        std::unique_ptr<RNG> rng(newRNG());
+        std::unique_ptr<RNG> rng(Init::newRNG());
         Net net = this->init(rng, init);
         return net;
     }
@@ -1866,7 +1866,7 @@ public:
     void train(Net &net, LabeledDataset &trainSet,
             int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
             float *totalLoss=nullptr) {
-        std::unique_ptr<RNG> rng(newRNG());
+        std::unique_ptr<RNG> rng(Init::newRNG());
         SGD::train(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
     }
 };

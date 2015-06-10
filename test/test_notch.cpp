@@ -87,7 +87,7 @@ TEST_CASE("FC-to-FC shared buffers", "[core][fc]") {
     size_t n_in = 3;
     size_t n_out = 7;
     size_t n_out_next = 4;
-    auto rng = newRNG();
+    auto rng = Init::newRNG();
     FullyConnectedLayer_Test fc(n_in, n_out, linearActivation);
     FullyConnectedLayer_Test fc2(n_out, n_out_next, linearActivation);
     CHECK_FALSE(fc.getBuffersReadyFlag()); // not until connect()
@@ -129,7 +129,7 @@ TEST_CASE("FC cloning", "[core][fc]") {
     shared_ptr<Array> out1clone = fc1clone->getOutputBuffer();
     CHECK_FALSE(out1 == out1clone); // not shared
     // clone updates don't affect the original:
-    auto rng = newRNG();
+    auto rng = Init::newRNG();
     fc1clone->init(rng, Init::uniformXavier);
     auto &cloneRef = (FullyConnectedLayer&) *fc1clone;
     auto cloneWeights = GetWeights<FullyConnectedLayer>::ref(cloneRef);

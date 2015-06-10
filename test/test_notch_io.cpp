@@ -147,7 +147,7 @@ TEST_CASE("FC input-output to plain-text", "[io][fc]") {
 #if 0 // TODO
 TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     // create a random MLP and write it to string
-    auto rng = newRNG();
+    auto rng = Init::newRNG();
     stringstream ss;
     MultilayerPerceptron mlp {2, 2, 1};
     mlp.init(rng, Init::uniformXavier);

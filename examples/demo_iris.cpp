@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
         .addSoftmax()
         .make();
 
-    unique_ptr<RNG> rng(newRNG());
+    unique_ptr<RNG> rng(Init::newRNG());
     net.init(rng);
 
     IntClassifier classifier(net, labelEnc);
