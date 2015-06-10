@@ -495,6 +495,48 @@ public:
 };
 
 
+/** Type-agnostic layer specification for serialization. */
+struct LayerSpec {
+    std::string tag;
+    size_t inputDim = 0;
+    size_t outputDim = 0;
+    std::shared_ptr<std::string> activation = nullptr;
+    std::shared_ptr<Array> weights = nullptr;
+    std::shared_ptr<Array> bias = nullptr;
+
+    LayerSpec(const ABackpropLayer &layer) {
+        std::string tag = layer.tag();
+        this->tag = tag;
+        this->inputDim = layer.inputDim();
+        this->outputDim = layer.outputDim();
+        if (tag == "FullyConnectedLayer") {
+            using LT = FullyConnectedLayer;
+            auto &l = dynamic_cast<const LT&>(layer);
+            auto &af = GetActivation<LT>::ref(l);
+            auto &ws = GetWeights<LT>::ref(l);
+            auto &bs = GetBias<LT>::ref(l);
+            activation = std::make_shared<std::string>(af.tag());
+            weights = std::make_shared<Array>(ws);
+            bias = std::make_shared<Array>(bs);
+        } else if (tag == "ActivationLayer") {
+            using LT = FullyConnectedLayer;
+            auto &l = dynamic_cast<const LT&>(layer);
+            auto &af = GetActivation<LT>::ref(l);
+            activation = std::make_shared<std::string>(af.tag());
+        } else {
+            throw std::invalid_argument("unsupported layer type: " + tag);
+        }
+    }
+
+    LayerSpec(const ALossLayer &layer) {
+        std::string tag = layer.tag();
+        this->tag = tag;
+        this->inputDim = layer.inputDim();
+        this->outputDim = 1;
+    }
+};
+
+
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
@@ -642,25 +684,19 @@ public:
         }
     }
 
-    void save(const ABackpropLayer &layer) {
-        out << "layer: " << layer.tag() << "\n";
-        out << "inputs: " << layer.inputDim() << "\n";
-        out << "outputs: " << layer.outputDim() << "\n";
-        if (layer.tag() == "FullyConnectedLayer") {
-            auto &fcl = dynamic_cast<const FullyConnectedLayer&>(layer);
-            auto &activation = GetActivation<FullyConnectedLayer>::ref(fcl);
-            out << "activation: "; activation.print(out); out << "\n";
-            auto bias = GetBias<FullyConnectedLayer>::ref(fcl);
-            auto weights = GetWeights<FullyConnectedLayer>::ref(fcl);
+    template<class LAYER>
+    void save(const LAYER &layer) {
+        auto spec = LayerSpec(layer);
+        out << "layer: " << spec.tag << "\n";
+        out << "inputs: " << spec.inputDim << "\n";
+        out << "outputs: " << spec.outputDim << "\n";
+        if (spec.activation) {
+            out << "activation: " << *spec.activation << "\n";
+        }
+        if (spec.weights && spec.bias) {
             out << "bias_and_weights:\n";
-            saveWeightsAndBias(weights, bias);
-        } else if (layer.tag() == "ActivationLayer") {
-            auto &al = dynamic_cast<const ActivationLayer&>(layer);
-            auto &activation = GetActivation<ActivationLayer>::ref(al);
-            out << "activation: "; activation.print(out); out << "\n";
-         } else {
-            throw std::invalid_argument("unsuported layer type: " + layer.tag());
-         }
+            saveWeightsAndBias(*spec.weights, *spec.bias);
+        }
     }
 
     void save(const Net &net) {
@@ -686,8 +722,13 @@ public:
         return *this;
     }
 
-    PlainTextNetworkWriter &operator<<(const FullyConnectedLayer &layer) {
-        save(layer);
+    PlainTextNetworkWriter &operator<<(const ABackpropLayer &layer) {
+        save<ABackpropLayer>(layer);
+        return *this;
+    }
+
+    PlainTextNetworkWriter &operator<<(const ALossLayer &layer) {
+        save<ALossLayer>(layer);
         return *this;
     }
 
@@ -696,7 +737,5 @@ public:
         return *this;
     }
 };
-
-// TODO: refactor: use an intermediate type-agnostic layer representation
 
 #endif

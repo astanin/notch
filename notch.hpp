@@ -395,9 +395,9 @@ public:
  * requires differentiable activation functions. */
 class Activation {
 public:
+    virtual std::string tag() const = 0;
     virtual float operator()(float v) const = 0;
     virtual float derivative(float v) const = 0;
-    virtual void print(std::ostream &out) const = 0;
 };
 
 
@@ -425,11 +425,13 @@ public:
         return slope * y * (1 - y);
     }
 
-    virtual void print(std::ostream &out) const {
+    virtual std::string tag() const {
+        std::ostringstream out;
         out << "logistic";
         if (slope != 1.0) {
             out << "(" << slope << ")";
         }
+        return out.str();
     }
 };
 
@@ -466,7 +468,7 @@ public:
         return a * b * (1.0 - y * y);
     }
 
-    virtual void print(std::ostream &out) const { out << name; }
+    virtual std::string tag() const { return name; }
 };
 
 
@@ -504,7 +506,7 @@ public:
         }
     }
 
-    virtual void print(std::ostream &out) const { out << name; }
+    virtual std::string tag() const { return name; }
 };
 
 
@@ -763,6 +765,9 @@ protected:
     SharedBuffers shared;
 
 public:
+    /// A name to identify layer type.
+    virtual std::string tag() const { return "ALossLayer"; }
+
     /// Calculate loss.
     virtual float output(const Array &actual, const Array &expected) = 0;
 
@@ -1280,6 +1285,8 @@ protected:
 public:
     EuclideanLoss(size_t n) : nSize(n), lossGrad(0.0, n) {}
 
+    virtual std::string tag() const { return "EuclideanLoss"; }
+
     virtual float output(const Array &actual, const Array &expected) {
         float lossSquared;
         assert (nSize == actual.size());
@@ -1367,6 +1374,8 @@ protected:
 public:
     SoftmaxWithLoss(size_t n) : nSize(n), softmaxOutput(n), lossGrad(n) {}
 
+    virtual std::string tag() const { return "SoftmaxWithLoss"; }
+
     virtual float output(const Array &actual, const Array &expected) {
         float lossTotal = 0.0;
         assert (nSize == actual.size());
@@ -1412,6 +1421,8 @@ protected:
 
 public:
     HingeLoss() : lossGrad(1) {}
+
+    virtual std::string tag() const { return "HingeLoss"; }
 
     virtual float output(const Array &actual, const Array &expected) {
         assert (1 == actual.size());
