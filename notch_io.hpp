@@ -497,9 +497,9 @@ public:
 
 /** Type-agnostic layer specification for serialization. */
 struct LayerSpec {
-    std::string tag;
-    size_t inputDim = 0;
-    size_t outputDim = 0;
+    std::string tag; //< layer type name
+    size_t inputDim = 0; //< the number of layer inputs
+    size_t outputDim = 0; //< the number of layer outputs (the number of nodes)
     std::shared_ptr<std::string> activation = nullptr;
     std::shared_ptr<Array> weights = nullptr;
     std::shared_ptr<Array> bias = nullptr;
@@ -533,6 +533,29 @@ struct LayerSpec {
         this->tag = tag;
         this->inputDim = layer.inputDim();
         this->outputDim = 1;
+    }
+};
+
+
+/** Type-agnostic specification of the neural network for serialization. */
+struct NetSpec {
+    std::string tag; //< network type name
+    std::vector<LayerSpec> layers; //< all layers, loss including
+    bool hasLoss = false; //< true if there's a loss layer
+
+    NetSpec(const Net &net) {
+        this->tag = "Net";
+        for (size_t i = 0; i < net.size(); ++i) {
+            auto layer = net.getLayer(i);
+            if (layer) {
+                layers.push_back(LayerSpec(*layer));
+            }
+        }
+        auto lossLayer = net.getLossLayer();
+        if (lossLayer) {
+            layers.push_back(LayerSpec(*lossLayer));
+            hasLoss = true;
+        }
     }
 };
 
@@ -668,9 +691,6 @@ class PlainTextNetworkWriter {
 private:
     std::ostream &out;
 
-public:
-    PlainTextNetworkWriter(std::ostream &out) : out(out) {}
-
     void saveWeightsAndBias(const Array &weights, const Array &bias) {
         size_t nOutputs = bias.size();
         size_t nInputs = weights.size() / nOutputs;
@@ -684,9 +704,10 @@ public:
         }
     }
 
-    template<class LAYER>
-    void save(const LAYER &layer) {
-        auto spec = LayerSpec(layer);
+public:
+    PlainTextNetworkWriter(std::ostream &out) : out(out) {}
+
+    void save(LayerSpec &spec) {
         out << "layer: " << spec.tag << "\n";
         out << "inputs: " << spec.inputDim << "\n";
         out << "outputs: " << spec.outputDim << "\n";
@@ -699,27 +720,23 @@ public:
         }
     }
 
+    template<class LAYER>
+    void save(const LAYER &layer) {
+        auto spec = LayerSpec(layer);
+        save(spec);
+    }
+
     void save(const Net &net) {
-        size_t nLayers = net.size();
-        auto lossLayer = net.getLossLayer();
-        if (!nLayers) {
-            return;
-        }
-        out << "net: FeedForwardNet\n";
-        out << "layers: " << nLayers << "\n";
+        auto netSpec = NetSpec(net);
+        size_t n = netSpec.layers.size();
+        out << "net: " << netSpec.tag << "\n";
+        out << "layers: " << n << "\n";
         out << "%%\n";
-        for (size_t i = 0; i < nLayers; ++i) {
-            auto layer = net.getLayer(i);
-            if (!layer) {
-                continue;
-            }
-            save(*layer);
-            if (i < (nLayers - 1) || lossLayer) {
+        for (size_t i = 0; i < n; ++i) {
+            save(netSpec.layers[i]);
+            if (i < (n - 1)) {
                 out << "%%\n";
             }
-        }
-        if (lossLayer) {
-            save(*lossLayer);
         }
     }
 
