@@ -9,23 +9,23 @@
 using namespace std;
 
 int main() {
-#if 0
-    auto rng = newRNG();
+
+    // create a multilayer perceptron and save it to a string stream
+    Net mlp = MakeNet().MultilayerPerceptron({2, 2, 1}).addL2Loss().init();
     stringstream ss;
-    MultilayerPerceptron mlp {2, 2, 1};
-    mlp.init(rng);
     PlainTextNetworkWriter(ss) << mlp;
 
+    // show original
     cout << "saved:\n\n```\n";
     cout << ss.str();
     cout << "```\n\n";
 
+    // read a copy of the multilayer perceptron from the string stream
     ss.seekg(0);
-    MultilayerPerceptron mlp_copy;
-    PlainTextNetworkReader(ss) >> mlp_copy;
+    Net mlp_copy = PlainTextNetworkReader(ss).read();
 
+    // show a copy
     cout << "loaded:\n\n```\n";
     PlainTextNetworkWriter(cout) << mlp_copy;
     cout << "```\n\n";
-#endif
 }
