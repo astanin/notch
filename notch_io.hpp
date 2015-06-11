@@ -532,7 +532,7 @@ struct LayerSpec {
         std::string tag = layer.tag();
         this->tag = tag;
         this->inputDim = layer.inputDim();
-        this->outputDim = 1;
+        this->outputDim = 0;
     }
 };
 
@@ -540,6 +540,8 @@ struct LayerSpec {
 /** Type-agnostic specification of the neural network for serialization. */
 struct NetSpec {
     std::string tag; //< network type name
+    size_t inputDim = 0; //< the number of inputs of the first layer
+    size_t outputDim = 0; //< the number of outputs of the last layer
     std::vector<LayerSpec> layers; //< all layers, loss including
     bool hasLoss = false; //< true if there's a loss layer
 
@@ -548,7 +550,12 @@ struct NetSpec {
         for (size_t i = 0; i < net.size(); ++i) {
             auto layer = net.getLayer(i);
             if (layer) {
-                layers.push_back(LayerSpec(*layer));
+                auto spec = LayerSpec(*layer);
+                layers.push_back(spec);
+                if (i == 0) {
+                    inputDim = spec.inputDim;
+                }
+                outputDim =spec.outputDim;
             }
         }
         auto lossLayer = net.getLossLayer();
@@ -563,7 +570,6 @@ struct NetSpec {
 /// Read neural network parameters from a record-jar text file.
 ///
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
-#if 0
 class PlainTextNetworkReader {
 private:
     std::istream &in;
@@ -575,29 +581,29 @@ private:
                              {"ReLU", ReLU},
                              {"leakyReLU", leakyReLU}};
 
-    template<typename T> T
-    read_tag_value(const std::string expected_tag, T &value) {
+    std::string read_tag() {
         std::string tag;
-        in >> std::ws >> tag;
-        if (tag != expected_tag) {
-            auto what = "unexpected tag: " + tag + " != " + expected_tag;
-            throw std::runtime_error(what);
-        } else {
-            in >> std::ws >> value;
-        }
-        return value;
+        in >> std::ws >> tag >> std::ws;
+        return tag;
     }
 
-    void
-    read_weights(const std::string expected_tag, Array &w, Array &bias) {
+    template<typename T> T
+    read_value(T &value) {
+       in >> std::ws >> value >> std::ws;
+       return value;
+    }
+
+    /// Read a table of bias_and_weights.
+    ///
+    /// Table format:
+    ///
+    ///     b_0 w_00 w_01 w_02 ...
+    ///     b_1 w_10 w_11 w_12 ...
+    ///     ...
+    ///
+    void read_weights(Array &w, Array &bias) {
         size_t nInputs = w.size() / bias.size();
         size_t nOutputs = bias.size();
-        std::string tag;
-        in >> std::ws >> tag;
-        if (tag != expected_tag) {
-            auto what = "unexpected tag: " + tag + " != " + expected_tag;
-            throw std::runtime_error(what);
-        }
         for (size_t row = 0; row < nOutputs; ++row) {
             in >> std::ws >> bias[row];
             for (size_t col = 0; col < nInputs; ++col) {
@@ -606,83 +612,145 @@ private:
         }
     }
 
+    template<typename VALUE>
+    void read_tag_value(std::string const &tag, VALUE &val) {
+        std::string inTag = read_tag();
+        if (inTag != tag) {
+            throw std::runtime_error("tag '" + tag + "' not found");
+        }
+        read_value<VALUE>(val);
+    }
+
     /// read end-of-record sequence if there is any
-    void
+    bool
     consume_end_of_record() {
+        bool isEOR = false;
         in >> std::ws;          // consume whitespace
+        if (!in) {
+            return false;
+        }
         if (in.peek() == '%') {
            in.get();            // read the first %
+           if (!in) {
+               return false;
+           }
            if (in.peek() == '%') {
                in.get();        // read also the second %
+               in >> std::ws;   // consume whitespace
+               isEOR = true;
            } else {
                in.putback('%'); // the first %
            }
         }
-        in >> std::ws;          // consume whitespace
+        return isEOR;
+    }
+
+    /// Read network header block.
+    /// @return the number of layers.
+    size_t read_header(MakeNet &mknet) {
+        std::string netTag;
+        float fmtVersion;
+        size_t inputDim;
+        size_t outputDim;
+        size_t nLayers;
+        read_tag_value<std::string>("net:", netTag);
+        if (netTag != "Net") {
+            throw std::runtime_error("unsupported network type: " + netTag);
+        }
+        read_tag_value<float>("format:", fmtVersion);
+        if (fmtVersion != 1.0) {
+            throw std::runtime_error("unsupported version network format");
+        }
+        read_tag_value<size_t>("inputs:", inputDim);
+        read_tag_value<size_t>("outputs:", outputDim); // ignore
+        read_tag_value<size_t>("layers:", nLayers);
+        consume_end_of_record();
+        mknet.setInputDim(inputDim);
+        return nLayers;
+    }
+
+    void read_layer_config(size_t &inputDim, size_t &outputDim,
+                           std::string &activationTag,
+                           Array &weights, Array &bias) {
+        std::string tag;
+        while (in && !in.eof()) {
+            tag = read_tag();
+            if (!in) { // trying to read past EOF or other errors
+                throw std::runtime_error("unexpected end of layer record");
+            }
+            if (tag == "inputs:") {
+                read_value<size_t>(inputDim);
+            } else if (tag == "outputs:") {
+                read_value<size_t>(outputDim);
+            } else if (tag == "activation:") {
+                read_value<std::string>(activationTag);
+            } else if (tag == "bias_and_weights:") {
+                weights.resize(inputDim * outputDim, 0.0);
+                bias.resize(outputDim, 0.0);
+                read_weights(weights, bias);
+                break; // this should be the last layer attribute
+            } else {
+                throw std::runtime_error("unsupported layer attribute: " + tag);
+            }
+        };
+    }
+
+    void read_layer(MakeNet &mknet) {
+        std::string tag;
+        size_t inputDim = 0;
+        size_t outputDim = 0;
+        std::string activationTag = "";
+        Array w(0);
+        Array b(0);
+        read_tag_value<std::string>("layer:", tag);
+        read_layer_config(inputDim, outputDim, activationTag, w, b);
+        if (tag == "FullyConnectedLayer") {
+            auto af = knownActivations.find(activationTag);
+            if (af != knownActivations.end()) {
+                mknet.addFC(w, b, af->second);
+            } else {
+                throw std::runtime_error("unsupported activation: " +activationTag);
+            }
+        } else if (tag == "ActivationLayer") {
+            auto af = knownActivations.find(activationTag);
+            if (af != knownActivations.end()) {
+                mknet.addActivation(af->second);
+            } else {
+                throw std::runtime_error("unsupported activation: " +activationTag);
+            }
+        } else if (tag == "EuclideanLoss") {
+            mknet.addL2Loss();
+        } else if (tag == "HingeLoss") {
+            mknet.addHingeLoss();
+        } else if (tag == "SoftmaxWithLoss") {
+            mknet.addSoftmax();
+        } else {
+            throw std::runtime_error("unsupported layer type: " + tag);
+        }
+    }
+
+    MakeNet &read_net(MakeNet &mknet) {
+        size_t nLayers;
+        nLayers = read_header(mknet);
+        consume_end_of_record();
+        for (size_t i = 0; i < nLayers; ++i) {
+            read_layer(mknet);
+            consume_end_of_record();
+        }
+        return mknet;
     }
 
 public:
 
     PlainTextNetworkReader(std::istream &in = std::cin) : in(in) {}
 
-    ABackpropLayer &load(FullyConnectedLayer &layer) {
-        std::string layerTag, activationTag;
-        size_t nInputs = 0;
-        size_t nOutputs = 0;
-        // read parameters
-        read_tag_value("layer:", layerTag);
-        if (layerTag != "FullyConnectedLayer") {
-            auto what = "unsupported layer type: " + layerTag;
-            throw std::runtime_error(what);
-        }
-        read_tag_value("inputs:", nInputs);
-        read_tag_value("outputs:", nOutputs);
-        read_tag_value("activation:", activationTag);
-        if (! knownActivations.count(activationTag) ) {
-            auto what = "unknown activation: " + activationTag;
-            throw std::runtime_error(what);
-        }
-        const Activation &a = knownActivations.find(activationTag)->second;
-        Array w(0.0, nInputs * nOutputs);
-        Array b(0.0, nOutputs);
-        read_weights("bias_and_weights:", w, b);
-        consume_end_of_record();
-        // modify the layer
-        FCLParams::init(layer, nInputs, nOutputs, w, b);
-        FCLParams::setActivation(layer, a);
-        return layer;
+    Net read() {
+        MakeNet mknet;
+        return read_net(mknet).make();
     }
 
-    MultilayerPerceptron &load(MultilayerPerceptron &mlp) {
-        std::string netTag;
-        size_t nLayers;
-        read_tag_value("net:", netTag);
-        if (netTag != "MultilayerPerceptron") {
-            auto what = "unsupported network type: " + netTag;
-            throw std::runtime_error(what);
-        }
-        read_tag_value("layers:", nLayers);
-        consume_end_of_record();
-        mlp.clear();
-        for (size_t i = 0; i < nLayers; ++i) {
-            auto layer = std::make_shared<FullyConnectedLayer>();
-            load(*layer);
-            mlp.append(std::move(layer));
-        }
-        return mlp;
-    }
-
-    PlainTextNetworkReader &operator>>(FullyConnectedLayer &layer) {
-        load(layer);
-        return *this;
-    }
-
-    PlainTextNetworkReader &operator>>(MultilayerPerceptron &mlp) {
-        load(mlp);
-        return *this;
-    }
 };
-#endif
+
 
 /// Write neural network parameters to a record-jar text file.
 ///
@@ -709,8 +777,12 @@ public:
 
     void save(LayerSpec &spec) {
         out << "layer: " << spec.tag << "\n";
-        out << "inputs: " << spec.inputDim << "\n";
-        out << "outputs: " << spec.outputDim << "\n";
+        if (spec.inputDim) {
+            out << "inputs: " << spec.inputDim << "\n";
+        }
+        if (spec.outputDim) {
+            out << "outputs: " << spec.outputDim << "\n";
+        }
         if (spec.activation) {
             out << "activation: " << *spec.activation << "\n";
         }
@@ -730,6 +802,9 @@ public:
         auto netSpec = NetSpec(net);
         size_t n = netSpec.layers.size();
         out << "net: " << netSpec.tag << "\n";
+        out << "format: 1.0\n"; // format version
+        out << "inputs: " << netSpec.inputDim << "\n";
+        out << "outputs: " << netSpec.outputDim << "\n";
         out << "layers: " << n << "\n";
         out << "%%\n";
         for (size_t i = 0; i < n; ++i) {

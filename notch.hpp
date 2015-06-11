@@ -1581,8 +1581,8 @@ class MakeLayer {
 public:
     size_t nInputs = 0;
     size_t nOutputs = 0;
-    const Array *maybeWeights = nullptr;
-    const Array *maybeBias = nullptr;
+    std::shared_ptr<Array> maybeWeights = nullptr;
+    std::shared_ptr<Array> maybeBias = nullptr;
     const Activation *maybeActivation = nullptr;
 
     MakeLayer() {}
@@ -1595,9 +1595,12 @@ public:
     MakeLayer(size_t nInputs, size_t nOutputs, const Activation &af)
         : nInputs(nInputs), nOutputs(nOutputs), maybeActivation(&af) {}
     MakeLayer(const Array &weights, const Array &bias)
-        : maybeWeights(&weights), maybeBias(&bias) {}
+        : maybeWeights(std::shared_ptr<Array>(new Array(weights))),
+          maybeBias(std::shared_ptr<Array>(new Array(bias))) {}
     MakeLayer(const Array &weights, const Array &bias, const Activation &af)
-        : maybeWeights(&weights), maybeBias(&bias), maybeActivation(&af) {}
+        : maybeWeights(std::shared_ptr<Array>(new Array(weights))),
+          maybeBias(std::shared_ptr<Array>(new Array(bias))),
+          maybeActivation(&af) {}
 
     MakeLayer &setInputDim(size_t n) {
         nInputs = n;
@@ -1608,11 +1611,11 @@ public:
         return *this;
     }
     MakeLayer &setWeights(Array &w) {
-        maybeWeights = &w;
+        maybeWeights = std::make_shared<Array>(w);
         return *this;
     }
     MakeLayer &setBias(Array &b) {
-        maybeBias = &b;
+        maybeBias = std::make_shared<Array>(b);
         return *this;
     }
     MakeLayer &setActivation(const Activation &af) {
@@ -1702,8 +1705,9 @@ protected:
     bool hasLoss = false;
 
 public:
+    /// Create a new net.
     MakeNet(size_t nInputs = 0)
-        : nInputs(nInputs), nOutputs(nInputs), layerMakers(0) {}
+        : nInputs(nInputs), nOutputs(nInputs), layerMakers(0), layerTypes(0) {}
 
     /// Set the number of nodes in the input layer.
     MakeNet &setInputDim(size_t n) {
@@ -1728,7 +1732,21 @@ public:
         return *this;
     }
 
-    // TODO: MakeNet::addFC(weights, bias, af)
+    /// Append an initialized FullyConnectedLayer.
+    MakeNet &addFC(const Array &weights, const Array &bias,
+                   const Activation &af = scaledTanh) {
+        size_t w_rows = bias.size();
+        size_t w_cols = weights.size() / w_rows;
+        if (w_cols != nOutputs) {
+            throw std::logic_error("cannot add a layer with an incompatible weight matrix");
+        }
+        checkConfig();
+        MakeLayer mk(weights, bias, af);
+        layerMakers.push_back(mk);
+        layerTypes.push_back(LayerType::FC);
+        nOutputs = w_rows;
+        return *this;
+    }
 
     /// Append an ActivationLayer.
     MakeNet &addActivation(const Activation &af) {

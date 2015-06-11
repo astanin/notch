@@ -115,50 +115,16 @@ TEST_CASE("Dataset CSV-format reader (categorical labels and quotes)", "[io]") {
     }
 }
 
-#if 0 // TODO
-TEST_CASE("FC input-output to plain-text", "[io][fc]") {
-    // output
-    stringstream ss;
-    FullyConnectedLayer layer({1, 2, 3}, {0.5}, linearActivation);
-    PlainTextNetworkWriter(ss) << layer;
-    // output check
-    CHECK(ss.str() == "layer: FullyConnectedLayer\n"
-                      "inputs: 3\n"
-                      "outputs: 1\n"
-                      "activation: linear\n"
-                      "bias_and_weights:\n"
-                      "    0.5 1 2 3\n");
-    // input
-    ss.seekg(0);
-    FullyConnectedLayer layer_copy;
-    PlainTextNetworkReader(ss) >> layer_copy;
-    stringstream ss2;
-    PlainTextNetworkWriter(ss2) << layer_copy;
-    CHECK(ss.str() == ss2.str());
-    // input check
-    CHECK(layer.inputDim() == layer_copy.inputDim());
-    CHECK(layer.outputDim() == layer_copy.outputDim());
-    auto &out = layer.output({100, 10, 1});
-    auto &out_copy = layer_copy.output({100, 10, 1});
-    CHECK(out[0] == Approx(out_copy[0]));
-}
-#endif
-
-#if 0 // TODO
 TEST_CASE("MLP input-output to plain-text", "[io][mlp]") {
     // create a random MLP and write it to string
-    auto rng = Init::newRNG();
     stringstream ss;
-    MultilayerPerceptron mlp {2, 2, 1};
-    mlp.init(rng, Init::uniformXavier);
+    Net mlp = MakeNet().MultilayerPerceptron({2, 2, 1}).addL2Loss().init();
     PlainTextNetworkWriter(ss) << mlp;
     // read back
-    MultilayerPerceptron mlp2;
     ss.seekg(0);
-    PlainTextNetworkReader(ss) >> mlp2;
+    Net mlp2 = PlainTextNetworkReader(ss).read();
     stringstream ss2;
     PlainTextNetworkWriter(ss2) << mlp2;
     // check equivalence
     CHECK(ss.str() == ss2.str());
 }
-#endif
