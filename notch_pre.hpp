@@ -112,7 +112,7 @@ public:
         fit(data);
     }
 
-    virtual ADatasetTransformer &fit(const Dataset &d) {
+    ADatasetTransformer &fit(const Dataset &d) {
         if (d.empty()) {
             return *this;
         }
@@ -131,18 +131,18 @@ public:
         return *this;
     }
 
-    virtual Dataset transform(const Dataset &dataIn) {
+    virtual Dataset apply(const Dataset &dataIn) {
         if (dataIn.empty()) {
             return dataIn;
         }
         Dataset dOut;
         for (Array a : dataIn) {
-            dOut.push_back(transform(a));
+            dOut.push_back(apply(a));
         }
         return dOut;
     }
 
-    virtual Array transform(const Array &input) {
+    virtual Array apply(const Array &input) {
         if (input.size() != nInputCols) {
             std::ostringstream ss;
             ss << "input.size(): " << input.size()
@@ -166,18 +166,18 @@ public:
         return output;
     }
 
-    virtual Dataset inverse_transform(const Dataset &dataIn) {
+    virtual Dataset unapply(const Dataset &dataIn) {
         if (dataIn.empty()) {
             return dataIn;
         }
         Dataset dOut;
         for (Array a : dataIn) {
-            dOut.push_back(inverse_transform(a));
+            dOut.push_back(unapply(a));
         }
         return dOut;
     }
 
-    virtual Array inverse_transform(const Array &input) {
+    virtual Array unapply(const Array &input) {
         if (input.size() != nInputCols + nExtraCols) {
             std::ostringstream ss;
             ss << "input.size(): " << input.size()

@@ -35,10 +35,10 @@ public:
 		: enc(enc), net(net) {}
 
 	virtual int aslabel(const Output &out) {
-		return enc.inverse_transform(out)[0];
+		return enc.unapply(out)[0];
 	}
 	virtual int classify(const Input &in) {
-		return enc.inverse_transform(net.output(in))[0];
+		return enc.unapply(net.output(in))[0];
 	}
 };
 
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     LabeledDataset irisData = CSVReader<>::read(f);
     OneHotEncoder labelEnc(irisData.getLabels());
-    irisData.transformLabels(labelEnc);
+    irisData.applyToLabels(labelEnc);
 
     Net net = MakeNet()
         .setInputDim(4)

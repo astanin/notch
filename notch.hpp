@@ -96,12 +96,10 @@ using Dataset = std::vector<Array>;
  *  Transformations are supposed to be adaptive (`fit`) and invertable. */
 class ADatasetTransformer {
 public:
-    // TODO: remove fit from ADatasetTransformer; rename methods to apply/unapply
-    virtual ADatasetTransformer& fit(const Dataset &) = 0;
-    virtual Dataset transform(const Dataset &) = 0;
-    virtual Array transform(const Array &) = 0;
-    virtual Dataset inverse_transform(const Dataset &) = 0;
-    virtual Array inverse_transform(const Array &) = 0;
+    virtual Dataset apply(const Dataset &) = 0;
+    virtual Array apply(const Array &) = 0;
+    virtual Dataset unapply(const Dataset &) = 0;
+    virtual Array unapply(const Array &) = 0;
 };
 
 
@@ -240,14 +238,14 @@ public:
     const Dataset &getLabels() { return outputs; }
 
     /// Preprocess `Input` data
-    void transform(ADatasetTransformer &t) {
-        inputs = t.transform(inputs);
+    void apply(ADatasetTransformer &t) {
+        inputs = t.apply(inputs);
         inputDimension = inputs.size();
     }
 
     /// Preprocess `Output` labels
-    void transformLabels(ADatasetTransformer &t) {
-        outputs = t.transform(outputs);
+    void applyToLabels(ADatasetTransformer &t) {
+        outputs = t.apply(outputs);
         outputDimension = outputs.size();
     }
 
