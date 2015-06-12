@@ -120,3 +120,13 @@ TEST_CASE("SquareAugmented apply and unapply", "[pre]") {
         }
     }
 }
+
+TEST_CASE("Dataset inputDim() changes after transform", "[pre]") {
+    LabeledDataset d {{{1, 2}, {1, 2, 3}}}; // 2 in, 3 out
+    CHECK(d.inputDim() == 2);
+    CHECK(d.outputDim() == 3);
+    SquareAugmented square;
+    d.apply(square);
+    CHECK(d.inputDim() == 2*2);
+    CHECK(d.outputDim() == 3);
+}
