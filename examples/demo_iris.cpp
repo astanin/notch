@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
     irisData.applyToLabels(labelEnc);
 
     Net net = MakeNet()
-        .setInputDim(4)
-        .addFC(48, scaledTanh)
+        .setInputDim(irisData.inputDim())
+        .addFC(24, scaledTanh)
         .addFC(3, linearActivation)
         .addSoftmax()
         .make();
@@ -104,5 +104,9 @@ int main(int argc, char *argv[]) {
                });
     cout << "\n";
 
-    PlainTextNetworkWriter(cout) << net << "\n";
+    ofstream nnfile("demo_iris_network.txt");
+    if (nnfile.is_open()) {
+        PlainTextNetworkWriter(nnfile) << net << "\n";
+        cout << "wrote demo_iris_network.txt\n";
+    }
 }
