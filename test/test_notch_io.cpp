@@ -45,13 +45,6 @@ TEST_CASE("Dataset FANN-format reader", "[io]") {
     }
 }
 
-TEST_CASE("Dataset FANN-format writer", "[io]") {
-    LabeledDataset xorD {{{0,0},{0}}, {{0,1},{1}}, {{1,0},{1}}, {{1,1},{0}}};
-    ostringstream ss;
-    ss << FANNFormat(xorD);
-    CHECK(ss.str() == "4 2 1\n0 0\n0\n0 1\n1\n1 0\n1\n1 1\n0\n");
-}
-
 TEST_CASE("Dataset CSV-format reader", "[io]") {
     stringstream csv("0.0,0.0,0.0\n0,1,1\n1,0,1\n1,1,0\n");
     LabeledDataset d = CSVReader<','>::read(csv);

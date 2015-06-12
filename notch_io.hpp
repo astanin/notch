@@ -353,48 +353,6 @@ public:
 };
 
 // TODO: IDX (MNIST) format reader
-// TODO: LIBSVM format reader
-
-/** A formatter to write a labeled dataset to FANN text file format. */
-class FANNFormat {
-private:
-    const LabeledDataset &dataset;
-public:
-    FANNFormat(const LabeledDataset &dataset) : dataset(dataset) {}
-    friend std::ostream &operator<<(std::ostream &out, const FANNFormat &w);
-};
-
-std::ostream &operator<<(std::ostream &out, const FANNFormat &w);
-#ifndef NOTCH_ONLY_DECLARATIONS
-std::ostream &operator<<(std::ostream &out, const FANNFormat &w) {
-    out << w.dataset.size() << " "
-        << w.dataset.inputDim() << " "
-        << w.dataset.outputDim() << "\n";
-    for (auto sample : w.dataset) {
-        out << sample.data << "\n" << sample.label << "\n";
-    }
-    return out;
-}
-#endif
-
-/** A formatter to write datasets as one mapping per line. */
-class ArrowFormat {
-private:
-    const LabeledDataset &dataset;
-public:
-    ArrowFormat(const LabeledDataset &dataset) : dataset(dataset) {}
-    friend std::ostream &operator<<(std::ostream &out, const ArrowFormat &w);
-};
-
-std::ostream &operator<<(std::ostream &out, const ArrowFormat &w);
-#ifndef NOTCH_ONLY_DECLARATIONS
-std::ostream &operator<<(std::ostream &out, const ArrowFormat &w) {
-    for (auto sample : w.dataset) {
-        out << sample.data << " -> " << sample.label << "\n";
-    }
-    return out;
-}
-#endif
 
 /** A formatter to write a labeled dataset to CSV file. */
 class CSVFormat {
