@@ -1883,8 +1883,6 @@ public:
      *                        and after the last iteration.
      * @param callback        A callback function to be invoked;
      *                        the callback may return true to stop training early.
-     * @param totalLoss       If not a nullptr, it is used to save the total
-     *                        loss over the entire trainSet every epoch.
      *
      * See:
      *
@@ -1893,8 +1891,7 @@ public:
      */
     static
     void train(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
-            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
-            float *totalLoss=nullptr) {
+            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr) {
         for (int j = 0; j < epochs; ++j) {
             if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
                 bool shouldStop = callback(j);
@@ -1903,15 +1900,10 @@ public:
                 }
             }
             trainSet.shuffle(rng);
-            float epochTotalLoss = 0.0;
             for (auto sample : trainSet) {
-                float loss = net.loss(sample.data, sample.label);
-                epochTotalLoss += loss;
+                net.loss(sample.data, sample.label);
                 net.backprop();
                 net.update();
-            }
-            if (totalLoss) {
-                *totalLoss = epochTotalLoss;
             }
         }
         if (callback && callbackPeriod > 0) {
@@ -1926,10 +1918,64 @@ public:
      * identical to SGD::train which takes also an 'rng' parameter. */
     static
     void train(Net &net, LabeledDataset &trainSet,
-            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr,
-            float *totalLoss=nullptr) {
+            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr) {
         std::unique_ptr<RNG> rng(Init::newRNG());
-        SGD::train(rng, net, trainSet, epochs, callbackPeriod, callback, totalLoss);
+        SGD::train(rng, net, trainSet, epochs, callbackPeriod, callback);
+    }
+};
+
+class MinibatchSGD {
+public:
+    static
+    void train(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
+               int epochs, size_t batchSize,
+               int callbackPeriod=0, TrainCallback callback=nullptr) {
+        auto lossLayerPtr = net.getLossLayer();
+        if (!lossLayerPtr) {
+            throw std::logic_error("the network lacks loss layer");
+        }
+        auto &lossLayer = const_cast<ALossLayer&>(*lossLayerPtr);
+        if (batchSize < 1) {
+            throw std::logic_error("zero batchSize");
+        }
+        for (int j = 0; j < epochs; ++j) {
+            if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
+                bool shouldStop = callback(j);
+                if (shouldStop) {
+                    return;
+                }
+            }
+            trainSet.shuffle(rng);
+            auto &data = trainSet.getData();
+            auto &labels = trainSet.getLabels();
+            size_t nOutputs = lossLayer.inputDim();
+            for (size_t i = 0; i < trainSet.size(); i += batchSize) {
+                Array errors(0.0, nOutputs); // accumulate over a minibatch
+                size_t k = 0; // minibatch counter
+                // TODO: parallelize minibatches
+                for (; k < batchSize && (i + k) < trainSet.size(); ++k) {
+                    net.loss(data[i + k], labels[i + k]);
+                    auto layerErrors = lossLayer.backprop();
+                    errors += layerErrors;
+                }
+                errors /= k; // average over the minibatch
+                net.backprop(errors);
+                net.update();
+            }
+        }
+        if (callback && callbackPeriod > 0) {
+            callback(epochs);
+        }
+    }
+
+    static
+    void train(Net &net, LabeledDataset &trainSet,
+               int epochs, size_t batchSize,
+               int callbackPeriod=0, TrainCallback callback=nullptr) {
+        std::unique_ptr<RNG> rng(Init::newRNG());
+        MinibatchSGD::train(rng, net, trainSet,
+                            epochs, batchSize,
+                            callbackPeriod, callback);
     }
 };
 
