@@ -52,6 +52,7 @@ add_test(test_notch test_notch "[core]")
 add_test(test_notch_io test_notch "[io]")
 add_executable(test_notch
                test/test_main.cpp test/test_notch.cpp test/test_notch_io.cpp
+               test/test_notch_pre.cpp
                ${SOURCE_FILES})
 target_include_directories(test_notch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
