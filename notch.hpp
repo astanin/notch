@@ -240,13 +240,17 @@ public:
     /// Preprocess `Input` data
     void apply(ADatasetTransformer &t) {
         inputs = t.apply(inputs);
-        inputDimension = inputs.size();
+        if (!inputs.empty()) {
+            inputDimension = inputs[0].size();
+        }
     }
 
     /// Preprocess `Output` labels
     void applyToLabels(ADatasetTransformer &t) {
         outputs = t.apply(outputs);
-        outputDimension = outputs.size();
+        if (!outputs.empty()) {
+            outputDimension = outputs[0].size();
+        }
     }
 
     /// Randomly shuffle `LabeledData`.
