@@ -355,52 +355,49 @@ public:
 // TODO: IDX (MNIST) format reader
 
 /** A formatter to write a labeled dataset to CSV file. */
-class CSVFormat {
+class CSVWriter {
 private:
-    const LabeledDataset &dataset;
+    std::ostream &out;
 public:
-    CSVFormat(const LabeledDataset &dataset) : dataset(dataset) {}
-    friend std::ostream &operator<<(std::ostream &out, const CSVFormat &w);
-};
+    CSVWriter(std::ostream &out) : out(out) {}
 
-std::ostream &operator<<(std::ostream &out, const CSVFormat &writer);
-#ifndef NOTCH_ONLY_DECLARATIONS
-std::ostream &operator<<(std::ostream &out, const CSVFormat &writer) {
-    auto inDim = writer.dataset.inputDim();
-    auto outDim = writer.dataset.outputDim();
-    auto w = 11;
-    auto p = 5;
-    // header row
-    for (auto i = 1u; i <= inDim; ++i) {
-        std::ostringstream ss;
-        ss << "feature_" << i;
-        out << std::setw(w) << ss.str() << ",";
-    }
-    for (auto i = 1u; i <= outDim; ++i) {
-        std::ostringstream ss;
-        ss << "label_" << i;
-        out << std::setw(w) << ss.str();
-        if (i < outDim) {
-           out << ",";
+    std::ostream &operator<<(LabeledDataset &dataset) {
+        auto inDim = dataset.inputDim();
+        auto outDim = dataset.outputDim();
+        auto w = 11;
+        auto p = 5;
+        // header row
+        for (auto i = 1u; i <= inDim; ++i) {
+            std::ostringstream ss;
+            ss << "feature_" << i;
+            out << std::setw(w) << ss.str() << ",";
         }
-    }
-    out << "\n";
-    // data rows
-    for (auto sample : writer.dataset) {
-        for (auto v : sample.data) {
-           out << std::setw(w) << std::setprecision(p) << v << ",";
-        }
-        for (auto i = 0u; i < outDim; ++i) {
-           out << std::setw(w) << std::setprecision(p) << sample.label[i];
-           if (i + 1 < outDim) {
-               out << ",";
-           }
+        for (auto i = 1u; i <= outDim; ++i) {
+            std::ostringstream ss;
+            ss << "label_" << i;
+            out << std::setw(w) << ss.str();
+            if (i < outDim) {
+                out << ",";
+            }
         }
         out << "\n";
+        // data rows
+        for (auto sample : dataset) {
+            for (auto v : sample.data) {
+                out << std::setw(w) << std::setprecision(p) << v << ",";
+            }
+            for (auto i = 0u; i < outDim; ++i) {
+                out << std::setw(w) << std::setprecision(p) << sample.label[i];
+                if (i + 1 < outDim) {
+                    out << ",";
+                }
+            }
+            out << "\n";
+        }
+        return out;
     }
-    return out;
-}
-#endif
+};
+
 
 /**
  * Neural Networks Input-Output

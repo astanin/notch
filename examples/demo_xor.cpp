@@ -43,7 +43,9 @@ int main(int, char *[]) {
         .MultilayerPerceptron({2, 2, 1}, scaledTanh)
         .addL2Loss().init();
 
-    cout << "training set:\n" << CSVFormat(dataset) << "\n";
+    cout << "training set:\n";
+    CSVWriter(cout) << dataset;
+    cout << "\n";
     print_net("initial", xorNet, dataset);
 
     xorNet.setLearningPolicy(FixedRate(0.01 /* rate */, 0.9 /* momentum */));
