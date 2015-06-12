@@ -61,6 +61,9 @@ target_include_directories(demo_xor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(demo_iris examples/demo_iris.cpp ${SOURCE_FILES})
 target_include_directories(demo_iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(demo_twospirals examples/demo_twospirals.cpp ${SOURCE_FILES})
+target_include_directories(demo_twospirals PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(demo_io examples/demo_io.cpp ${SOURCE_FILES})
 target_include_directories(demo_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -68,6 +71,7 @@ IF(CBLAS_FOUND)
     target_link_libraries(test_notch ${CBLAS_LIBRARIES})
     target_link_libraries(demo_xor ${CBLAS_LIBRARIES})
     target_link_libraries(demo_iris ${CBLAS_LIBRARIES})
+    target_link_libraries(demo_twospirals ${CBLAS_LIBRARIES})
     target_link_libraries(demo_io ${CBLAS_LIBRARIES})
 ELSE(CBLAS_FOUND)
     message(STATUS "Not using CBLAS")
