@@ -98,3 +98,25 @@ TEST_CASE("OneHotEncoder column selection (negative index)", "[pre]") {
         }
     }
 }
+
+TEST_CASE("SquareAugmented apply and unapply", "[pre]") {
+    Dataset x1 {{1, 2}, {3, 4}};
+    Dataset expected {{1, 2, 1, 4}, {3, 4, 9, 16}};
+    Dataset x2 = SquareAugmented().apply(x1);
+    // check apply
+    CHECK(x2.size() == expected.size());
+    for (size_t i = 0; i < x2.size(); ++i) {
+        CHECK(x2[i].size() == expected[i].size());
+        for(size_t j = 0; j < x2[i].size(); ++j) {
+            CHECK(x2[i][j] == expected[i][j]);
+        }
+    }
+    // check unapply
+    for (size_t i = 0; i < x2.size(); ++i) {
+        auto x = SquareAugmented().unapply(x2[i]);
+        CHECK(x.size() == x1[i].size());
+        for (size_t j = 0; j < x.size(); ++j) {
+            CHECK(x[j] == x1[i][j]);
+        }
+    }
+}

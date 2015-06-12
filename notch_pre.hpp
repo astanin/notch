@@ -210,5 +210,77 @@ public:
     }
 };
 
+/** SquareAugmented transformer is a way to implement a SQUARE-MLP (SMLP) network.
+ *
+ * For each input sample with $n$ components ${x_1, ..., x_n}$,
+ * the transformer creates a new sample with $2 n$ components
+ * ${x_1, ..., x_n, x_1^2, ... x_n^2}$, with the extra $n$ inputs
+ * set equal to the squared of the original inputs.
+ *
+ * This transform has the same effect as implementing a "SQuare Unit Augmented,
+ * Radially Extended, Multilayer Perceptron (SQUARE-MLP or SMLP)".
+ * This architecture can efficiently capture not only global dataset
+ * features like normal MLPs, but also local features similar to radial basis
+ * function networks (RBFNs).
+ *
+ * This technique may be used if the target function to be approximated
+ * has localized "bumps" or narrow ridges.
+ *
+ * See also Two-Spiral example.
+ *
+ * References:
+ *
+ *  - Flake, G. W. (2012) Square Unit Augmented, Radially Extended,
+ *    Multilayer Perceptron. In: NNTT.
+ */
+class SquareAugmented : public ADatasetTransformer {
+public:
+    virtual Dataset apply(const Dataset &dataIn) {
+        if (dataIn.empty()) {
+            return dataIn;
+        }
+        Dataset dOut;
+        for (Array a : dataIn) {
+            dOut.push_back(apply(a));
+        }
+        return dOut;
+    }
+
+    virtual Array apply(const Array &input) {
+        size_t n = input.size();
+        Array output(0.0, 2 * n);
+        auto in = std::begin(input);
+        auto inEnd = std::end(input);
+        auto out = std::begin(output);
+        auto outSquare = out + n;
+        for (; in != inEnd; ++in, ++out, ++outSquare) {
+            float x = *in;
+            *out = x;
+            *outSquare = x * x;
+        }
+        return output;
+    }
+
+    virtual Dataset unapply(const Dataset &dataIn) {
+        if (dataIn.empty()) {
+            return dataIn;
+        }
+        Dataset dOut;
+        for (Array a : dataIn) {
+            dOut.push_back(unapply(a));
+        }
+        return dOut;
+    }
+
+    virtual Array unapply(const Array &input) {
+        size_t n = input.size();
+        Array output(0.0, n / 2);
+        std::copy(std::begin(input),
+                  std::begin(input) + (n/2),
+                  std::begin(output));
+        return output;
+    }
+};
+
 
 #endif /* NOTCH_PRE_H */
