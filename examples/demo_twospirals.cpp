@@ -7,6 +7,7 @@ using namespace std;
 #include "notch.hpp"
 #include "notch_io.hpp"      // FANNReader
 #include "notch_metrics.hpp" // AClassifier, ConfusionMatrix
+#include "notch_pre.hpp"     // SquareAugmented
 
 
 class IntClassifier : public AClassifier < int, 0 > {
@@ -33,47 +34,36 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 int main() {
     auto trainset = FANNReader::read("../data/twospirals-train.fann");
     auto testset = FANNReader::read("../data/twospirals-test.fann");
+    SquareAugmented SQUARE;
+    trainset.apply(SQUARE);
+    testset.apply(SQUARE);
 
-    Net net = MakeNet(2)
-        .addFC(5, scaledTanh)
-        .addFC(5, scaledTanh)
+    Net net = MakeNet(2 * 2) // SQUARE augmentation
+        .addFC(200, scaledTanh)
         .addFC(1, scaledTanh)
-        .addHingeLoss()
-        .init(Init::uniformNguyenWidrow);
+        .addL2Loss()
+        .init();
 
-    net.setLearningPolicy(FixedRate(0.001, 0.9, 0.00001));
+    net.setLearningPolicy(FixedRate(1e-3, 0.9, 1e-4));
 
     auto classifier = IntClassifier(net);
 
     SGD::train(net, trainset,
-               5000 /* epochs */,
-               /* callbackEvery */ 1000,
+               10 /* epochs */,
+               /* callbackEvery */ 1,
                /* callback */ [&](int i) {
                    auto cm = classifier.test(testset); // confusion matrix
                    cout << "epoch "
-                        << setw(4) << i << " "
-                        << setprecision(5) << setw(8)
+                        << setw(6) << i << " "
                         << " train loss = "
+                        << setprecision(5) << setw(8)
                         << meanLoss(net, trainset)
                         << " test loss = "
+                        << setprecision(5) << setw(8)
                         << meanLoss(net, testset)
                         << " test accuracy = "
                         << cm.accuracy()
                         << endl;
-                   for (size_t l = 0; l < net.size(); ++l) {
-                        auto lptr = net.getLayer(l);
-                        if (!lptr) {
-                            cerr << "  layer " << l + 1 << " is nullptr\n";
-                            continue;
-                        }
-                        auto &lref = const_cast<ABackpropLayer&>(*lptr);
-                        auto outptr = lref.getOutputBuffer();
-                        if (!outptr) {
-                            cerr << "  layer " << l + 1 << " outputBuffer is nullptr\n";
-                            continue;
-                        }
-                        cout << "  layer " << l + 1 << " out: " << *outptr << "\n";
-                   }
                    return false;
                });
 }
