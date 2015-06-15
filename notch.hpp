@@ -1574,7 +1574,11 @@ public:
     std::shared_ptr<const ABackpropLayer> getLayer(size_t i) const {
        return (i < layers.size()) ? layers[i] : nullptr;
     }
+    std::shared_ptr<ABackpropLayer> getLayer(size_t i) {
+       return (i < layers.size()) ? layers[i] : nullptr;
+    }
     std::shared_ptr<const ALossLayer> getLossLayer() const { return lossLayer; }
+    std::shared_ptr<ALossLayer> getLossLayer() { return lossLayer; }
 };
 
 
