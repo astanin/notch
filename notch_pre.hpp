@@ -1,7 +1,7 @@
 #ifndef NOTCH_PRE_H
 #define NOTCH_PRE_H
 
-/// @file notch_pre.hpp -- optional data preprocessing for Notch library
+/// @file notch_pre.hpp Optional data preprocessing
 
 /*
 
@@ -214,9 +214,9 @@ public:
 
 /** SquareAugmented transformer is a way to implement a SQUARE-MLP (SMLP) network.
  *
- * For each input sample with $n$ components ${x_1, ..., x_n}$,
- * the transformer creates a new sample with $2 n$ components
- * ${x_1, ..., x_n, x_1^2, ... x_n^2}$, with the extra $n$ inputs
+ * For each input sample with $n$ components @f$ {x_1, ..., x_n} @f$,
+ * the transformer creates a new sample with @f$ 2 n @f$ components
+ * @f$ {x_1, ..., x_n, x_1^2, ... x_n^2} @f$, with the extra @f$ n @f$ inputs
  * set equal to the squared of the original inputs.
  *
  * This transform has the same effect as implementing a "SQuare Unit Augmented,

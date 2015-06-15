@@ -1,9 +1,9 @@
 #ifndef NOTCH_IO_H
 #define NOTCH_IO_H
 
-/// notch_io.hpp -- optional input-output helpers for Notch library
+/// @file notch_io.hpp optional input-output helpers
 
-/**
+/*
 
 The MIT License (MIT)
 
@@ -40,10 +40,9 @@ THE SOFTWARE.
 #include "notch.hpp"
 
 
-/**
- * Vectors Input-Output
+/* Vectors Input-Output
  * --------------------
- **/
+ */
 
 std::istream &operator>>(std::istream &in, Array &xs);
 std::ostream &operator<<(std::ostream &out, const Array &xs);
@@ -80,10 +79,9 @@ std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs) {
 #endif
 
 
-/**
- * Dataset Input-output
+/* Dataset Input-output
  * --------------------
- **/
+ */
 
 /** Load labeled datasets from FANN text file format.
  *
@@ -399,10 +397,9 @@ public:
 };
 
 
-/**
- * Neural Networks Input-Output
+/* Neural Networks Input-Output
  * ----------------------------
- **/
+ */
 
 
 /// Access protected weights member of LAYER classes.

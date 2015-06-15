@@ -5,9 +5,9 @@
 // TODO: optional OpenMP implementation
 // TODO: benchmarks
 
-/// notch.hpp -- main header file of the Notch neural networks library
+/// @file notch.hpp The main header file of the Notch neural networks library
 
-/**
+/*
 
 The MIT License (MIT)
 
@@ -56,30 +56,30 @@ THE SOFTWARE.
 #include <cblas.h>
 #endif
 
-/**
- * Library Framework
+/* Library Framework
  * =================
- **/
+ */
 
-/**
- * Random number generation
+/* Random number generation
  * ------------------------
  */
 
+/// A synonym for the random number generator engine type.
 using RNG = std::mt19937;
 
-/**
- * Data types
+/* Data types
  * ----------
  *
  * A neural network consumes a vector of numerical values, and produces a vector
  * of numerical outputs. Without too much loss of generality we may consider
  * them arrays of single-precision floating point numbers.
+ */
+
+/** Library array type.
  *
- * We use C++ `valarray` to store network `Input` and `Output` to make code
- * more concise and expressive (valarrays implement elementwise operations and
- * slices).
- **/
+ * The library uses C++ std::valarray to store network `Input`, `Output` and
+ * parameters to make code more concise and expressive (valarrays implement
+ * elementwise operations and slices). */
 using Array = std::valarray<float>;
 using Input = Array;
 using Output = Array;
@@ -88,12 +88,13 @@ using Output = Array;
 
 // TODO: NDArray, mostly compatible with Array; like struct { shape; data; };
 
-/** Unlabeled dataset are collections or `Input`s or `Output`s. */
+/** Unlabeled dataset is a collection or `Input`s or `Output`s. */
 using Dataset = std::vector<Array>;
 
 
 /** A common interface to preprocess data.
- *  Transformations are supposed to be adaptive (`fit`) and invertable. */
+ *
+ *  Transformations are supposed to be invertable. */
 class ADatasetTransformer {
 public:
     virtual Dataset apply(const Dataset &) = 0;
@@ -103,18 +104,19 @@ public:
 };
 
 
-/** Supervised learning requires labeled data.
- *  A label is a vector of numeric values.
- *  For classification problems it is often a vector with only one element. */
+/** A pair of data vector and its label for supervised learning.
+ *
+ * Supervised learning requires labeled data.
+ * A label is a vector of numeric values. */
 struct LabeledData {
     Input const &data;
     Output const &label;
 };
 
 
-/** A `LabeledDataset` consists of multiple `LabeledData` samples.
- *  `LabeledDataset`s can be used like training or testing sets.
- */
+/** Multiple `LabeledData` samples.
+ *
+ * `LabeledDataset`s can be used like training or testing sets. */
 class LabeledDataset {
 private:
     size_t nSamples;
@@ -271,16 +273,14 @@ public:
 };
 
 
-/**
- * Neurons and Neural Networks
+/* Neurons and Neural Networks
  * ===========================
- **/
+ */
 
 
-/**
- * Random Weights Initialization
+/* Random Weights Initialization
  * -----------------------------
- **/
+ */
 
 
 using WeightInit =
@@ -387,10 +387,9 @@ public:
 };
 
 
-/**
- * Activation Functions
+/* Activation Functions
  * --------------------
- **/
+ */
 
  /** Activation functions are applied to neuron's output to introduce
  * non-linearity and map output to specific range. Backpropagation algorithm
@@ -527,10 +526,9 @@ const PiecewiseLinearActivation leakyReLU(0.01f, 1.0f, "leakyReLU");
 const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
 
 
-/**
- * Multilayer Perceptrons
+/* Multilayer Perceptrons
  * ----------------------
- **/
+ */
 
 // TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
 // TODO: ADADELTA
@@ -965,18 +963,18 @@ protected:
         localGrad = activationGrad * errors;
     }
 
-    /** Calculate sensitivity factors $\partial E/\partial w_{ji}$ and
-     * $\partial E/\partial b_j$ for weights and bias respectively.
+    /** Calculate sensitivity factors $\\partial E/\\partial w_{ji}$ and
+     * $\\partial E/\\partial b_j$ for weights and bias respectively.
      *
      * The derivative are then used to corrections to the matrix of the
      * synaptic weights and biases.
      *
      * NNLM3, Page 134, Eq. (4.27) defines weight correction as
      *
-     *  $$ \Delta w_{ji} (n) = \eta \times \delta_j (n) \times y_{i} (n) $$
+     * $$ \\Delta w_{ji} (n) = \\eta \\times \\delta_j (n) \\times y_{i} (n) $$
      *
-     * where $w_{ji}$ is the synaptic weight connecting neuron $i$ to neuron $j$,
-     * $\eta$ is learning rate, $delta_j (n)$ is the local [error] gradient
+     * where `w_{ji}` is the synaptic weight connecting neuron $i$ to neuron $j$,
+     * `\eta` is learning rate, $delta_j (n)$ is the local [error] gradient
      * $\partial E (n)/\partial v_j (n)$, $y_{i}$ is the input signal of the
      * neuron $i$, $n$ is the epoch number We discard $\eta$ at the moment
      * (because it is part of ALearningPolicy).
@@ -1256,10 +1254,9 @@ public:
 };
 
 
-/**
- * Loss Layers
+/* Loss Layers
  * -----------
- **/
+ */
 
 /** Euclidean loss.
  *
