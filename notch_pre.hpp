@@ -132,10 +132,11 @@ public:
     }
 
     virtual Dataset apply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
         if (dataIn.empty()) {
             return dataIn;
         }
-        Dataset dOut;
         for (Array a : dataIn) {
             dOut.push_back(apply(a));
         }
@@ -167,10 +168,11 @@ public:
     }
 
     virtual Dataset unapply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
         if (dataIn.empty()) {
             return dataIn;
         }
-        Dataset dOut;
         for (Array a : dataIn) {
             dOut.push_back(unapply(a));
         }
@@ -236,10 +238,11 @@ public:
 class SquareAugmented : public ADatasetTransformer {
 public:
     virtual Dataset apply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
         if (dataIn.empty()) {
             return dataIn;
         }
-        Dataset dOut;
         for (Array a : dataIn) {
             dOut.push_back(apply(a));
         }
@@ -262,10 +265,11 @@ public:
     }
 
     virtual Dataset unapply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
         if (dataIn.empty()) {
             return dataIn;
         }
-        Dataset dOut;
         for (Array a : dataIn) {
             dOut.push_back(unapply(a));
         }
