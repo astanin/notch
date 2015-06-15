@@ -287,4 +287,50 @@ public:
 };
 
 
+class CustomTransform : public ADatasetTransformer {
+protected:
+    std::function<Array(const Array &)> transform;
+    std::function<Array(const Array &)> inverseTransform;
+
+public:
+    CustomTransform(std::function<Array(const Array &)> transform,
+                    std::function<Array(const Array &)> inverseTransform)
+        : transform(transform), inverseTransform(inverseTransform) {}
+
+    virtual Dataset apply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
+        if (dataIn.empty()) {
+            return dataIn;
+        }
+        for (Array a : dataIn) {
+            dOut.push_back(apply(a));
+        }
+        return dOut;
+    }
+
+    virtual Array apply(const Array &input) {
+        Array output = transform(input);
+        return output;
+    }
+
+    virtual Dataset unapply(const Dataset &dataIn) {
+        Dataset dOut;
+        dOut.reserve(dataIn.size());
+        if (dataIn.empty()) {
+            return dataIn;
+        }
+        for (Array a : dataIn) {
+            dOut.push_back(unapply(a));
+        }
+        return dOut;
+    }
+
+    virtual Array unapply(const Array &input) {
+        Array output = inverseTransform(input);
+        return output;
+    }
+};
+
+
 #endif /* NOTCH_PRE_H */
