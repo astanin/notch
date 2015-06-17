@@ -350,7 +350,140 @@ public:
     }
 };
 
-// TODO: IDX (MNIST) format reader
+/** Read datasets (images) from IDX File Format (as in MNIST dataset).
+ *
+ * References:
+ *
+ *  - http://yann.lecun.com/exdb/mnist/
+ */
+class IDXReader {
+protected:
+    std::istream *in = nullptr;
+    std::istream *labelsIn = nullptr;
+
+    const int maxDims = 4;
+    size_t dims = 0;
+    size_t labelsDims = 0;
+    size_t shape[4] = {0, 0, 0, 0};
+    size_t labelsShape[4] = {0, 0, 0, 0};
+
+    LabeledDataset read(std::istream &in, std::istream &labelsIn) {
+        LabeledDataset dataset;
+        Dataset images = readDataset(in, &dims, shape);
+        Dataset labels = readDataset(labelsIn, &labelsDims, labelsShape);
+        if (labelsDims != 1) {
+            throw std::runtime_error("IDXReader: labels dataset is not 1D");
+        }
+        if (shape[0] != labelsShape[0]) {
+            throw std::runtime_error("IDXReader: # of images and labels don't match");
+        }
+        size_t nSamples = shape[0];
+        for (size_t i = 0; i < nSamples; ++i) {
+            dataset.append(images[i], labels[i]);
+        }
+        return dataset;
+    }
+
+    Dataset readDataset(std::istream &in, size_t *dims, size_t shape[]) {
+        Dataset dataset;
+        // read shape information
+        *dims = readDims(in);
+        readShape(in, *dims, shape);
+        // calculate sample size in bytes
+        size_t nSamples = shape[0];
+        size_t nSampleSize = sizeof(uint8_t);
+        for (size_t i = 1; i < *dims; ++i) {
+            nSampleSize *= shape[i];
+        }
+        std::cerr << "readDataset: nSamples = " << std::dec << nSamples << "\n";
+        std::cerr << "readDataset: nSampleSize = " << std::dec << nSampleSize << "\n";
+        // read all samples
+        dataset.reserve(nSamples);
+        std::vector<uint8_t> buf(nSampleSize, 0);
+        for (size_t i = 0; i < nSamples; ++i) {
+            Array sample(0.0, nSampleSize);
+            in.read((char*)buf.data(), nSampleSize);
+            size_t n = in.gcount();
+            if (n != nSampleSize) {
+                throw std::runtime_error("IDXReader: cannot read data sample");
+            }
+            for (size_t j = 0; j < nSampleSize; ++j) {
+                sample[j] = buf[j]; // convert uint8_t to float
+            }
+            dataset.push_back(sample);
+        }
+        return dataset;
+    }
+
+    size_t readDims(std::istream &in) {
+        char magic[4] = { 0, 0, 0, 0};
+        in.read(magic, 4);
+        size_t n = in.gcount();
+        for (size_t i = 0; i<4; ++i)
+            std::cerr << "readDims: magic[" << i << "] = 0x" << std::hex << int(magic[i]) << "\n";
+        if (n != 4) {
+            throw std::runtime_error("IDXReader cannot read magic");
+        }
+        if (magic[0] != 0 || magic[1] != 0) {
+            throw std::runtime_error("IDXReader: not an IDX magic");
+        }
+        char typecode = magic[2];
+        if (typecode != 0x08) { // unsigned byte
+            throw std::runtime_error("IDXReader: unsupported IDX type code");
+        }
+        char dims = magic[3];
+        if (dims > maxDims || dims <= 0) {
+            throw std::runtime_error("IDXReader: unsupported number of dimensions");
+        }
+        return dims;
+    }
+
+    void readShape(std::istream &in, size_t dims, size_t shape[]) {
+        for (size_t i = 0; i < dims; ++i) {
+            shape[i] = readBigEndian(in);
+            std::cerr << "readShape: shape[" << i << "] = 0x" << std::hex << shape[i] << "\n";
+        }
+    }
+
+    uint32_t readBigEndian(std::istream &in) { // ntohl is less portable
+        uint32_t x = 0;
+        uint8_t buf[4] = {0, 0, 0, 0};
+        in.read((char*) buf, 4);
+        size_t n = in.gcount();
+        if (n != 4) {
+            throw std::runtime_error("IDXReader: cannot read a 4-byte integer");
+        }
+        x |= (uint32_t(buf[0]) << 24);
+        x |= (uint32_t(buf[1]) << 16);
+        x |= (uint32_t(buf[2]) << 8);
+        x |= (uint32_t(buf[3]));
+        return x;
+    }
+
+public:
+    IDXReader() {}
+    IDXReader(std::istream &imagesIn, std::istream &labelsIn)
+        : in(&imagesIn), labelsIn(&labelsIn) {}
+
+    /** Read a `LabeledDataset` from a file.  */
+    LabeledDataset read(const std::string &imagesFilename,
+                        const std::string &labelsFilename) {
+        if (in) {
+            throw std::logic_error("IDXReader should read from another stream");
+        }
+        std::ifstream imagesfile(imagesFilename, std::ios_base::binary);
+        std::ifstream labelsfile(labelsFilename, std::ios_base::binary);
+        return read(imagesfile, labelsfile);
+    }
+
+    /** Read a `LabeledDataset` from a stream.  */
+    LabeledDataset read() {
+        if (!in || !labelsIn) {
+            throw std::logic_error("IDXReader cannot read if not initialized");
+        }
+        return read(*in, *labelsIn);
+    }
+ };
 
 /** A formatter to write a labeled dataset to CSV file. */
 class CSVWriter {
