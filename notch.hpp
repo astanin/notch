@@ -684,6 +684,30 @@ public:
     }
 };
 
+// TODO: move all linalg functions together
+// TODO: use cblas_sdot if NOTCH_USE_CBLAS
+template <class VectorX_Iter, class VectorY_Iter>
+float
+sdot(VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorY_Iter y_begin, VectorY_Iter y_end) {
+    double dotProduct = 0.0;
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "stl_sdot: vector sizes don't match:\n"
+            << " x size = " << x_size
+            << " y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+    auto x = x_begin;
+    auto y = y_begin;
+    for (; x != x_end; ++x, ++y) {
+        dotProduct += (*x) * (*y);
+    }
+    return static_cast<float>(dotProduct);
+}
+
 
 /** Input-output buffers can be shared between layers.
  *
