@@ -73,32 +73,56 @@ float meanLossEstimate(Net &net, LabeledDataset &dataset, size_t maxcount=0) {
 int main() {
     LabeledDataset mnist = readMNIST(IMAGES_FILE, LABELS_FILE);
     LabeledDataset mnistTest = readMNIST(IMAGES_TEST_FILE, LABELS_TEST_FILE);
+    LabeledDataset mnistMiniTest = readMNIST(IMAGES_TEST_FILE, LABELS_TEST_FILE);
+
     OneHotEncoder onehot(mnist.getLabels());
     mnist.applyToLabels(onehot);
     mnistTest.applyToLabels(onehot);
+    mnistMiniTest.applyToLabels(onehot);
 
     // test on a small dataset while running
     unique_ptr<RNG> rng = Init::newRNG();
-    mnistTest.shuffle(rng);
-    mnistTest.truncate(1000);
+    mnistMiniTest.shuffle(rng);
+    mnistMiniTest.truncate(1000);
 
     Net net = MakeNet(mnist.inputDim())
         .addFC(300, scaledTanh)
+        .addFC(100, leakyReLU)
         .addFC(mnist.outputDim(), scaledTanh)
-        .addL2Loss()
+        .addSoftmax()
         .init();
 
     IntClassifier metrics(net, onehot);
-    net.setLearningPolicy(FixedRate(1e-5, 0.9));
-    SGD::train(net, mnist, 1 /* epochs */,
-               noEpochCallback,
-               IterationCallback { 1000, [&](int i) {
+    net.setLearningPolicy(AdaDelta());
+    SGD::train(net, mnist, 3 /* epochs */,
+               EpochCallback { 1, [&](int i) {
                    auto cm = metrics.test(mnistTest);
-                   cout << "sample "
+                   cout << "epoch "
                         << i << ": "
                         << "E = "
                         << setprecision(6)
                         << meanLossEstimate(net, mnistTest) << " "
+                        << "PPV = "
+                        << setprecision(3)
+                        << cm.precision() << " "
+                        << "TPR = "
+                        << setprecision(3)
+                        << cm.recall() << " "
+                        << "ACC = "
+                        << setprecision(3)
+                        << cm.accuracy() << " "
+                        << "F1 = "
+                        << setprecision(3)
+                        << cm.F1score() << endl;
+                   return false;
+               }},
+               IterationCallback { 1000, [&](int i) {
+                   auto cm = metrics.test(mnistMiniTest);
+                   cout << "sample "
+                        << i << ": "
+                        << "E = "
+                        << setprecision(6)
+                        << meanLossEstimate(net, mnistMiniTest) << " "
                         << "PPV = "
                         << setprecision(3)
                         << cm.precision() << " "
