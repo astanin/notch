@@ -29,12 +29,12 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 IF(USE_CBLAS)
     find_library(CBLAS_LIBRARY NAMES openblas cblas)
-    find_path(CBLAS_INCLUDE_DIR cblas.h
-             PATHS /opt/OpenBLAS/include
-                   /usr/include/openblas)
+    find_path(CBLAS_INCLUDE_DIR cblas.h PATHS /usr/include/openblas)
+    message(STATUS "CBLAS_LIBRARY: " ${CBLAS_LIBRARY})
+    message(STATUS "CBLAS_INCLUDE_DIR: " ${CBLAS_INCLUDE_DIR})
     IF(CBLAS_LIBRARY)
         set(CBLAS_FOUND ON)
-        message(STATUS "Found CBLAS " ${CBLAS_LIBRARY})
+        message(STATUS "Found CBLAS")
         add_definitions(-DNOTCH_USE_CBLAS)
         set(CBLAS_LIBRARIES ${CBLAS_LIBRARY})
         set(CBLAS_INCLUDE_DIRS ${CBLAS_INCLUDE_DIR})

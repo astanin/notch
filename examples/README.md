@@ -46,3 +46,7 @@ then open the solution.
 
 To enable CBLAS linking in examples, pass `-DUSE_CBLAS=YES` to cmake.
 
+If CBLAS is installed in non-standard location, you may need to put it
+in the CMAKE_PREFIX_PATH. For example, if you use Windows and installed
+OpenBLAS to `C:\opt\OpenBLAS`, then you have to additionally pass
+`-DCMAKE_PREFIX_PATH=c:/opt/OpenBLAS` to cmake.
