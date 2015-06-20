@@ -540,7 +540,6 @@ const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
  */
 
 // TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
-// TODO: ADADELTA
 
 /** A base class for the rule to correct weights and bias given sensitivity factors.
  *
@@ -709,6 +708,78 @@ sdot(VectorX_Iter x_begin, VectorX_Iter x_end,
 }
 
 
+/** ADADELTA, an adaptive learning rate method.
+ *
+ * The method is based on two (and a half) ideas:
+ *
+ *  - make weight updates inversely proportional to its root of the
+ *    mean squared gradient over a finite time window
+ *    (i.e. reduce the effective learning rate if the error gradient
+ *    grows, increase the effective learning if the gradient dissipates)
+ *
+ *  - the dimensional units of the weight updates should be the
+ *    same as weight units; so the weight updates are made proportional
+ *    to the mean squared of the previous updates
+ *
+ *  - (the half of an idea): regularize both RMSs in such a way that
+ *    the progress continues even when gradient and recent weight updates
+ *    tend to zero.
+ *
+ * References:
+ *
+ *  - Zeiler (2012) ADADELTA: An Adaptive Learning Rate Method
+ */
+class AdaDelta : public ALearningPolicy {
+protected:
+    float momentum; //< $\rho$, exponential smoothing parameter in (Zeiler, 2012)
+    float epsilon; // $\epsilon$ regularization parameter in (Zeiler, 2012)
+    float squaredWeightsDelta = 0.0;
+    float squaredBiasDelta = 0.0;
+    float squaredGrad_w = 0.0;
+    float squaredGrad_b = 0.0; // TODO: use only one squaredGrad as in (Zeiler, 2012)
+
+    void adaDeltaRule(Array &var, const Array &grad,
+                     float &squaredVarDelta, float &squaredGradAccum) {
+        auto g_begin = std::begin(grad);
+        auto g_end = std::end(grad);
+        // compute gradient norm
+        float grad2 = sdot(g_begin, g_end, g_begin, g_end);
+        // accumuate squared gradient (with exponential smoothing)
+        squaredGradAccum = momentum*squaredGradAccum + (1 - momentum)*grad2;
+        // compute updates (time step)
+        float grad_RMS = sqrt(squaredGradAccum + epsilon);
+        float delta_RMS = sqrt(squaredVarDelta + epsilon);
+        float eta = delta_RMS / grad_RMS;
+        // accumuate squared updates (with exponential smoothing)
+        squaredVarDelta = momentum*squaredVarDelta + (1-momentum)*grad2*eta*eta;
+        // apply updates
+        var = var - (eta * grad); // TODO: optimize like in deltaRule
+    }
+
+public:
+    AdaDelta(float momentum=0.95, float epsilon=1e-6)
+        : momentum(momentum), epsilon(epsilon) {}
+
+    // TODO: consider merging correctWeights and correctBias in ALearningPolicy
+    virtual void correctWeights(Array& weightSensitivity, Array &weights) {
+        adaDeltaRule(weights, weightSensitivity,
+                     squaredWeightsDelta, squaredGrad_w);
+    }
+
+    virtual void correctBias(Array& biasSensitivity, Array &bias) {
+        adaDeltaRule(bias, biasSensitivity,
+                     squaredBiasDelta, squaredGrad_b);
+    }
+
+    virtual std::unique_ptr<ALearningPolicy> clone() const {
+        float m = momentum;
+        float e = epsilon;
+        auto c = std::unique_ptr<ALearningPolicy>(new AdaDelta(m, e));
+        return c;
+    }
+};
+
+
 /** Input-output buffers can be shared between layers.
  *
  * SharedBuffers are allocated on-demand only when layers
@@ -815,6 +886,7 @@ public:
 };
 
 
+// TODO: get rid of superfluous encapsulation, but keep the rest hidden
 template<class LAYER>
 class GetShared : public LAYER {
 public:
@@ -916,7 +988,6 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
 }
 
 #endif /* ifdef NOTCH_USE_CBLAS */
-
 
 /** A fully connected layer of neurons with backpropagation. */
 class FullyConnectedLayer : public ABackpropLayer {
@@ -1304,10 +1375,8 @@ public:
  * References:
  *
  *  - https://en.wikipedia.org/wiki/Convolutional_neural_network#Loss_layer
- *  - Rosasco, Lorenzo, et al. "Are loss functions all the same?." Neural
- *    Computation 16.5 (2004): 1063-1076.
- *  - Langford, John. "Loss Function Semantics" (2007)
- *    Online: http://hunch.net/?p=269
+ *  - Rosasco, et al. (2004) Are loss functions all the same? In: Neural Computation
+ *  - Langford (2007) Loss Function Semantics. Online: http://hunch.net/?p=269
  */
 class EuclideanLoss : public ALossLayer {
 protected:
