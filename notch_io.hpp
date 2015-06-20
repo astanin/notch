@@ -319,14 +319,14 @@ public:
  */
 class IDXReader {
 protected:
-    std::istream *in = nullptr;
-    std::istream *labelsIn = nullptr;
+    std::istream *imagesInPtr = nullptr;
+    std::istream *labelsInPtr = nullptr;
 
-    const int maxDims = 4;
-    size_t dims = 0;
+    static const int maxDims = 4;
+    size_t imagesDims = 0;
     size_t labelsDims = 0;
-    size_t shape[4] = {0, 0, 0, 0};
-    size_t labelsShape[4] = {0, 0, 0, 0};
+    size_t imagesShape[IDXReader::maxDims] = {0, 0, 0, 0};
+    size_t labelsShape[IDXReader::maxDims] = {0, 0, 0, 0};
 
     Dataset readDataset(std::istream &in, size_t *dims, size_t shape[]) {
         Dataset dataset;
@@ -407,19 +407,19 @@ protected:
 public:
     /** Construct an IDXReader. */
     IDXReader() {}
-    /** Construct an IDXReader and associate two input streams. */
+    /** Construct an IDXReader and set its default input streams (images and labels). */
     IDXReader(std::istream &imagesIn, std::istream &labelsIn)
-        : in(&imagesIn), labelsIn(&labelsIn) {}
+        : imagesInPtr(&imagesIn), labelsInPtr(&labelsIn) {}
 
-    /** Read a `LabeledDataset` from two associated streams.  */
+    /** Read a `LabeledDataset` from default input streams.  */
     LabeledDataset read() {
-        if (!in || !labelsIn) {
+        if (!imagesInPtr || !labelsInPtr) {
             throw std::logic_error("IDXReader has no input stream");
         }
-        return read(*in, *labelsIn);
+        return read(*imagesInPtr, *labelsInPtr);
     }
 
-    /** Read a `LabeledDataset` from two files.  */
+    /** Read a `LabeledDataset` from two files (images and labels respectively). */
     LabeledDataset read(const std::string &imagesFilename,
                         const std::string &labelsFilename) {
         std::ifstream imagesfile(imagesFilename, std::ios_base::binary);
@@ -427,18 +427,18 @@ public:
         return read(imagesfile, labelsfile);
     }
 
-    /** Read a `LabeledDataset` from two streams. */
-    LabeledDataset read(std::istream &in, std::istream &labelsIn) {
+    /** Read a `LabeledDataset` from two streams (images and labels respectively). */
+    LabeledDataset read(std::istream &imagesIn, std::istream &labelsIn) {
         LabeledDataset dataset;
-        Dataset images = readDataset(in, &dims, shape);
+        Dataset images = readDataset(imagesIn, &imagesDims, imagesShape);
         Dataset labels = readDataset(labelsIn, &labelsDims, labelsShape);
         if (labelsDims != 1) {
             throw std::runtime_error("IDXReader: labels dataset is not 1D");
         }
-        if (shape[0] != labelsShape[0]) {
+        if (imagesShape[0] != labelsShape[0]) {
             throw std::runtime_error("IDXReader: # of images and labels don't match");
         }
-        size_t nSamples = shape[0];
+        size_t nSamples = imagesShape[0];
         for (size_t i = 0; i < nSamples; ++i) {
             dataset.append(images[i], labels[i]);
         }
@@ -618,7 +618,7 @@ struct NetSpec {
 /// See http://catb.org/~esr/writings/taoup/html/ch05s02.html#id2906931
 class PlainTextNetworkReader {
 private:
-    std::istream &in;
+    std::istream *inPtr = nullptr;
 
     const std::map<std::string, const Activation&>
          knownActivations = {{"tanh", defaultTanh},
@@ -627,14 +627,14 @@ private:
                              {"ReLU", ReLU},
                              {"leakyReLU", leakyReLU}};
 
-    std::string read_tag() {
+    std::string read_tag(std::istream &in) {
         std::string tag;
         in >> std::ws >> tag >> std::ws;
         return tag;
     }
 
     template<typename T> T
-    read_value(T &value) {
+    read_value(std::istream &in, T &value) {
        in >> std::ws >> value >> std::ws;
        return value;
     }
@@ -647,7 +647,7 @@ private:
     ///     b_1 w_10 w_11 w_12 ...
     ///     ...
     ///
-    void read_weights(Array &w, Array &bias) {
+    void read_weights(std::istream &in, Array &w, Array &bias) {
         size_t nInputs = w.size() / bias.size();
         size_t nOutputs = bias.size();
         for (size_t row = 0; row < nOutputs; ++row) {
@@ -659,17 +659,17 @@ private:
     }
 
     template<typename VALUE>
-    void read_tag_value(std::string const &tag, VALUE &val) {
-        std::string inTag = read_tag();
+    void read_tag_value(std::istream &in, std::string const &tag, VALUE &val) {
+        std::string inTag = read_tag(in);
         if (inTag != tag) {
             throw std::runtime_error("tag '" + tag + "' not found");
         }
-        read_value<VALUE>(val);
+        read_value<VALUE>(in, val);
     }
 
     /// read end-of-record sequence if there is any
     bool
-    consume_end_of_record() {
+    consume_end_of_record(std::istream &in) {
         bool isEOR = false;
         in >> std::ws;          // consume whitespace
         if (!in) {
@@ -693,47 +693,48 @@ private:
 
     /// Read network header block.
     /// @return the number of layers.
-    size_t read_header(MakeNet &mknet) {
+    size_t read_header(std::istream &in, MakeNet &mknet) {
         std::string netTag;
         float fmtVersion;
         size_t inputDim;
         size_t outputDim;
         size_t nLayers;
-        read_tag_value<std::string>("net:", netTag);
+        read_tag_value<std::string>(in, "net:", netTag);
         if (netTag != "Net") {
             throw std::runtime_error("unsupported network type: " + netTag);
         }
-        read_tag_value<float>("format:", fmtVersion);
+        read_tag_value<float>(in, "format:", fmtVersion);
         if (fmtVersion != 1.0) {
             throw std::runtime_error("unsupported version network format");
         }
-        read_tag_value<size_t>("inputs:", inputDim);
-        read_tag_value<size_t>("outputs:", outputDim); // ignore
-        read_tag_value<size_t>("layers:", nLayers);
-        consume_end_of_record();
+        read_tag_value<size_t>(in, "inputs:", inputDim);
+        read_tag_value<size_t>(in, "outputs:", outputDim); // ignore
+        read_tag_value<size_t>(in, "layers:", nLayers);
+        consume_end_of_record(in);
         mknet.setInputDim(inputDim);
         return nLayers;
     }
 
-    void read_layer_config(size_t &inputDim, size_t &outputDim,
+    void read_layer_config(std::istream &in,
+                           size_t &inputDim, size_t &outputDim,
                            std::string &activationTag,
                            Array &weights, Array &bias) {
         std::string tag;
         while (in && !in.eof()) {
-            tag = read_tag();
+            tag = read_tag(in);
             if (!in) { // trying to read past EOF or other errors
                 throw std::runtime_error("unexpected end of layer record");
             }
             if (tag == "inputs:") {
-                read_value<size_t>(inputDim);
+                read_value<size_t>(in, inputDim);
             } else if (tag == "outputs:") {
-                read_value<size_t>(outputDim);
+                read_value<size_t>(in, outputDim);
             } else if (tag == "activation:") {
-                read_value<std::string>(activationTag);
+                read_value<std::string>(in, activationTag);
             } else if (tag == "bias_and_weights:") {
                 weights.resize(inputDim * outputDim, 0.0);
                 bias.resize(outputDim, 0.0);
-                read_weights(weights, bias);
+                read_weights(in, weights, bias);
                 break; // this should be the last layer attribute
             } else {
                 throw std::runtime_error("unsupported layer attribute: " + tag);
@@ -741,15 +742,15 @@ private:
         };
     }
 
-    void read_layer(MakeNet &mknet) {
+    void read_layer(std::istream &in, MakeNet &mknet) {
         std::string tag;
         size_t inputDim = 0;
         size_t outputDim = 0;
         std::string activationTag = "";
         Array w(0);
         Array b(0);
-        read_tag_value<std::string>("layer:", tag);
-        read_layer_config(inputDim, outputDim, activationTag, w, b);
+        read_tag_value<std::string>(in, "layer:", tag);
+        read_layer_config(in, inputDim, outputDim, activationTag, w, b);
         if (tag == "FullyConnectedLayer") {
             auto af = knownActivations.find(activationTag);
             if (af != knownActivations.end()) {
@@ -775,26 +776,44 @@ private:
         }
     }
 
-    MakeNet &read_net(MakeNet &mknet) {
+    MakeNet &read_net(std::istream &in, MakeNet &mknet) {
         size_t nLayers;
-        nLayers = read_header(mknet);
-        consume_end_of_record();
+        nLayers = read_header(in, mknet);
+        consume_end_of_record(in);
         for (size_t i = 0; i < nLayers; ++i) {
-            read_layer(mknet);
-            consume_end_of_record();
+            read_layer(in, mknet);
+            consume_end_of_record(in);
         }
         return mknet;
     }
 
 public:
 
-    PlainTextNetworkReader(std::istream &in = std::cin) : in(in) {}
+    PlainTextNetworkReader() {}
+    /** Construct a PlainTextNetworkReader and set its default input stream. */
+    PlainTextNetworkReader(std::istream &in) : inPtr(&in) {}
 
+    /** Read a feed-forward `Net` from the default stream. */
     Net read() {
         MakeNet mknet;
-        return read_net(mknet).make();
+        if (!inPtr) {
+            throw std::logic_error("PlainTextNetworkReader has no input stream");
+        }
+        return read_net(*inPtr, mknet).make();
     }
 
+    /** Read a feed-forward `Net` from file. */
+    Net read(const std::string &netFilename) {
+        MakeNet mknet;
+        std::ifstream netfile(netFilename);
+        return read_net(netfile, mknet).make();
+    }
+
+    /** Read a feed-forward `Net` from stream. */
+    Net read(std::istream &in) {
+        MakeNet mknet;
+        return read_net(in, mknet).make();
+    }
 };
 
 
