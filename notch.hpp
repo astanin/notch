@@ -270,6 +270,15 @@ public:
             }
         }
     }
+
+    /// Keep only the first `newSize` samples. Discard everything else.
+    void truncate(size_t newSize) {
+        if (newSize < size()) {
+            inputs.resize(newSize);
+            outputs.resize(newSize);
+            nSamples = inputs.size();
+        }
+    }
 };
 
 
