@@ -367,23 +367,6 @@ protected:
     size_t shape[4] = {0, 0, 0, 0};
     size_t labelsShape[4] = {0, 0, 0, 0};
 
-    LabeledDataset read(std::istream &in, std::istream &labelsIn) {
-        LabeledDataset dataset;
-        Dataset images = readDataset(in, &dims, shape);
-        Dataset labels = readDataset(labelsIn, &labelsDims, labelsShape);
-        if (labelsDims != 1) {
-            throw std::runtime_error("IDXReader: labels dataset is not 1D");
-        }
-        if (shape[0] != labelsShape[0]) {
-            throw std::runtime_error("IDXReader: # of images and labels don't match");
-        }
-        size_t nSamples = shape[0];
-        for (size_t i = 0; i < nSamples; ++i) {
-            dataset.append(images[i], labels[i]);
-        }
-        return dataset;
-    }
-
     Dataset readDataset(std::istream &in, size_t *dims, size_t shape[]) {
         Dataset dataset;
         // read shape information
@@ -461,29 +444,46 @@ protected:
     }
 
 public:
+    /** Construct an IDXReader. */
     IDXReader() {}
+    /** Construct an IDXReader and associate two input streams. */
     IDXReader(std::istream &imagesIn, std::istream &labelsIn)
         : in(&imagesIn), labelsIn(&labelsIn) {}
 
-    /** Read a `LabeledDataset` from a file.  */
+    /** Read a `LabeledDataset` from two associated streams.  */
+    LabeledDataset read() {
+        if (!in || !labelsIn) {
+            throw std::logic_error("IDXReader has no input stream");
+        }
+        return read(*in, *labelsIn);
+    }
+
+    /** Read a `LabeledDataset` from two files.  */
     LabeledDataset read(const std::string &imagesFilename,
                         const std::string &labelsFilename) {
-        if (in) {
-            throw std::logic_error("IDXReader should read from another stream");
-        }
         std::ifstream imagesfile(imagesFilename, std::ios_base::binary);
         std::ifstream labelsfile(labelsFilename, std::ios_base::binary);
         return read(imagesfile, labelsfile);
     }
 
-    /** Read a `LabeledDataset` from a stream.  */
-    LabeledDataset read() {
-        if (!in || !labelsIn) {
-            throw std::logic_error("IDXReader cannot read if not initialized");
+    /** Read a `LabeledDataset` from two streams. */
+    LabeledDataset read(std::istream &in, std::istream &labelsIn) {
+        LabeledDataset dataset;
+        Dataset images = readDataset(in, &dims, shape);
+        Dataset labels = readDataset(labelsIn, &labelsDims, labelsShape);
+        if (labelsDims != 1) {
+            throw std::runtime_error("IDXReader: labels dataset is not 1D");
         }
-        return read(*in, *labelsIn);
+        if (shape[0] != labelsShape[0]) {
+            throw std::runtime_error("IDXReader: # of images and labels don't match");
+        }
+        size_t nSamples = shape[0];
+        for (size_t i = 0; i < nSamples; ++i) {
+            dataset.append(images[i], labels[i]);
+        }
+        return dataset;
     }
- };
+};
 
 /** A formatter to write a labeled dataset to CSV file. */
 class CSVWriter {
