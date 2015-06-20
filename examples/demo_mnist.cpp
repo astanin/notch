@@ -89,21 +89,27 @@ int main() {
         .init();
 
     IntClassifier metrics(net, onehot);
-    net.setLearningPolicy(FixedRate(1e-4, 0.9));
+    net.setLearningPolicy(FixedRate(1e-5, 0.9));
     SGD::train(net, mnist, 1 /* epochs */,
                noEpochCallback,
                IterationCallback { 1000, [&](int i) {
                    auto cm = metrics.test(mnistTest);
                    cout << "sample "
-                        << setw(6) << i << " "
-                        << "loss = "
-                        << setprecision(6) << setw(7)
+                        << i << ": "
+                        << "E = "
+                        << setprecision(6)
                         << meanLossEstimate(net, mnistTest) << " "
-                        << "accuracy = "
-                        << setprecision(6) << setw(7)
+                        << "PPV = "
+                        << setprecision(3)
+                        << cm.precision() << " "
+                        << "TPR = "
+                        << setprecision(3)
+                        << cm.recall() << " "
+                        << "ACC = "
+                        << setprecision(3)
                         << cm.accuracy() << " "
                         << "F1 = "
-                        << setprecision(6) << setw(7)
+                        << setprecision(3)
                         << cm.F1score() << endl;
                    return false;
                }});
