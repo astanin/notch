@@ -79,45 +79,6 @@ std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs) {
 #endif
 
 
-/* Dataset Input-output
- * --------------------
- */
-
-/** Load labeled datasets from FANN text file format.
- *
- * N_samples N_in N_out
- * X[0,0] X[0,1] ... X[0,N_in - 1]
- * Y[0,0] Y[0,1] ... Y[0,N_out - 1]
- * X[1,0] X[1,1] ... X[1,N_in - 1]
- * Y[1,0] Y[1,1] ... Y[1,N_out - 1]
- * ...
- * X[N_samples - 1,0] X[N_samples - 1,1] ... X[N_samples - 1,N_in - 1]
- * Y[N_samples - 1,0] Y[N_samples - 1,1] ... Y[N_samples - 1,N_out - 1]
- **/
-class FANNReader {
-public:
-    static LabeledDataset read(const std::string &path) {
-        std::ifstream in(path);
-        if (!in.is_open()) {
-            throw std::runtime_error("cannot open " + path);
-        }
-        return FANNReader::read(in);
-    }
-
-    static LabeledDataset read(std::istream &in) {
-        LabeledDataset ds;
-        size_t nSamples, inputDimension, outputDimension;
-        in >> nSamples >> inputDimension >> outputDimension;
-        for (size_t i = 0; i < nSamples; ++i) {
-            Input input(inputDimension);
-            Output output(outputDimension);
-            in >> input >> output;
-            ds.append(input, output);
-        }
-        return ds;
-    }
-};
-
 /** Load labeled datasets from CSV files.
  *
  * Numeric columns are converted to `float` numbers.

@@ -5,7 +5,7 @@ using namespace std;
 
 
 #include "notch.hpp"
-#include "notch_io.hpp"      // FANNReader
+#include "notch_io.hpp"      // CSVReader
 #include "notch_metrics.hpp" // AClassifier, ConfusionMatrix
 #include "notch_pre.hpp"     // SquareAugmented
 
@@ -32,8 +32,8 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 
 
 int main() {
-    auto trainset = FANNReader::read("../data/twospirals-train.fann");
-    auto testset = FANNReader::read("../data/twospirals-test.fann");
+    auto trainset = CSVReader<>::read("../data/twospirals-train.csv");
+    auto testset = CSVReader<>::read("../data/twospirals-test.csv");
     SquareAugmented SQUARE;
     trainset.apply(SQUARE);
     testset.apply(SQUARE);
