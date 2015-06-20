@@ -354,8 +354,6 @@ protected:
         for (size_t i = 1; i < *dims; ++i) {
             nSampleSize *= shape[i];
         }
-        std::cerr << "readDataset: nSamples = " << std::dec << nSamples << "\n";
-        std::cerr << "readDataset: nSampleSize = " << std::dec << nSampleSize << "\n";
         // read all samples
         dataset.reserve(nSamples);
         std::vector<uint8_t> buf(nSampleSize, 0);
@@ -379,7 +377,6 @@ protected:
         in.read(magic, 4);
         size_t n = in.gcount();
         for (size_t i = 0; i<4; ++i)
-            std::cerr << "readDims: magic[" << i << "] = 0x" << std::hex << int(magic[i]) << "\n";
         if (n != 4) {
             throw std::runtime_error("IDXReader cannot read magic");
         }
@@ -400,7 +397,6 @@ protected:
     void readShape(std::istream &in, size_t dims, size_t shape[]) {
         for (size_t i = 0; i < dims; ++i) {
             shape[i] = readBigEndian(in);
-            std::cerr << "readShape: shape[" << i << "] = 0x" << std::hex << shape[i] << "\n";
         }
     }
 
