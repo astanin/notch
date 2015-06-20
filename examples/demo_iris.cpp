@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
-    LabeledDataset irisData = CSVReader<>::read(f);
+    LabeledDataset irisData = CSVReader().read(f);
     OneHotEncoder labelEnc(irisData.getLabels());
     irisData.applyToLabels(labelEnc);
 

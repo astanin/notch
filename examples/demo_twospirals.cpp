@@ -32,8 +32,8 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 
 
 int main() {
-    auto trainset = CSVReader<>::read("../data/twospirals-train.csv");
-    auto testset = CSVReader<>::read("../data/twospirals-test.csv");
+    auto trainset = CSVReader().read("../data/twospirals-train.csv");
+    auto testset = CSVReader().read("../data/twospirals-test.csv");
     SquareAugmented SQUARE;
     trainset.apply(SQUARE);
     testset.apply(SQUARE);

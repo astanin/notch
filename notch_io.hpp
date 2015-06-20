@@ -88,9 +88,11 @@ std::ostream &operator<<(std::ostream &out, const std::valarray<double> &xs) {
  *
  * By default the last column is used as a label (`labelcols={-1}`).
  **/
-template<char delimiter=','>
 class CSVReader {
 private:
+    const char delimiter = ',';
+    std::istream *inPtr;
+
     enum class CellTag { Number, String };
 
     struct Cell {
@@ -112,43 +114,38 @@ private:
     };
 
     /// Parse a row of an Excel CSV file.
-    static std::vector<std::string>
-    readCSVRow(const std::string &row) {
+    std::vector<std::string> readCSVRow(const std::string &row) {
         CSVReaderState state = CSVReaderState::UnquotedField;
         std::vector<std::string> fields {""};
         size_t i = 0; // index of the current field
         for (char c : row) {
             switch (state) {
                 case CSVReaderState::UnquotedField:
-                    switch (c) {
-                        case delimiter: // end of field
-                                  fields.push_back(""); i++;
-                                  break;
-                        case '"': state = CSVReaderState::QuotedField;
-                                  break;
-                        default:  fields[i].push_back(c);
-                                  break; }
+                    if (c == delimiter) { // end of field
+                          fields.push_back(""); i++;
+                    } else if (c == '"') {
+                        state = CSVReaderState::QuotedField;
+                    } else {
+                        fields[i].push_back(c);
+                    }
                     break;
                 case CSVReaderState::QuotedField:
-                    switch (c) {
-                        case '"': state = CSVReaderState::QuotedQuote;
-                                  break;
-                        default:  fields[i].push_back(c);
-                                  break; }
+                    if (c == '"') {
+                        state = CSVReaderState::QuotedQuote;
+                    } else {
+                        fields[i].push_back(c);
+                    }
                     break;
                 case CSVReaderState::QuotedQuote:
-                    switch (c) {
-                        case delimiter: // , after closing quote
-                                  fields.push_back(""); i++;
-                                  state = CSVReaderState::UnquotedField;
-                                  break;
-                        case '"': // "" -> "
-                                  fields[i].push_back('"');
-                                  state = CSVReaderState::QuotedField;
-                                  break;
-                        default:  // end of quote
-                                  state = CSVReaderState::UnquotedField;
-                                  break; }
+                    if (c == delimiter) { // , after closing quote
+                          fields.push_back(""); i++;
+                          state = CSVReaderState::UnquotedField;
+                    } else if (c == '"') { // "" -> "
+                          fields[i].push_back('"');
+                          state = CSVReaderState::QuotedField;
+                    } else { // end of quote
+                          state = CSVReaderState::UnquotedField;
+                    }
                     break;
             }
         }
@@ -156,8 +153,7 @@ private:
     }
 
     /// Read Excel CSV file. Skip empty rows.
-    static TextTable
-    readCSV(std::istream &in, int skiprows=0, int skipcols=0) {
+    TextTable readCSV(std::istream &in, int skiprows=0, int skipcols=0) {
         TextTable table;
         std::string row;
         while (true) {
@@ -183,8 +179,7 @@ private:
         return table;
     }
 
-    static Cell
-    parseCell(const std::string &s) {
+    Cell parseCell(const std::string &s) {
         // float value = std::stof(s); // doesn't work on MinGW-32; BUG #52015
         const char *parseBegin = s.c_str();
         char *parseEnd = nullptr;
@@ -196,8 +191,7 @@ private:
         }
     }
 
-    static MixedTable
-    convertToMixed(const TextTable &table) {
+    MixedTable convertToMixed(const TextTable &table) {
        MixedTable cellTable(0);
        for (auto row : table) {
            MixedRow cellRow(0);
@@ -209,17 +203,16 @@ private:
        return cellTable;
     }
 
-    static bool
-    isColumnNumeric(const MixedTable &t, size_t column_idx) throw (std::out_of_range) {
+    bool
+    isColumnNumeric(const MixedTable &t, size_t column_idx) {
         return std::all_of(std::begin(t), std::end(t),
                 [column_idx](const MixedRow &r) {
                     return r.at(column_idx).tag == CellTag::Number;
                 });
     }
 
-    ///
-    static NumericTable
-    convertToNumeric(const MixedTable &t) throw (std::out_of_range) {
+    NumericTable
+    convertToNumeric(const MixedTable &t) {
         // analyze table
         size_t ncols = t.at(0).size();
         std::vector<bool> isNumeric(ncols);
@@ -252,6 +245,28 @@ private:
     }
 
 public:
+    /** Construct a CSVReader. */
+    CSVReader(const char delimiter=',')
+        : delimiter(delimiter) {}
+    /** Construct a CSVReader and set its default input stream. */
+    CSVReader(std::istream &in, const char delimiter=',')
+        : delimiter(delimiter), inPtr(&in) {}
+
+    /** Read a `LabeledDataset` from the default input stream.
+     *
+     * @param labelcols  indices of the columns to be used as labels;
+     *                   indices can be negative (-1 is the last column)
+     * @param skiprows   discard the first @skiprows lines
+     * @param skipcols   discard the first @skipcols columns
+     **/
+    LabeledDataset
+    read(std::vector<int> labelcols = {-1}, int skiprows=0, int skipcols=0) {
+        if (!inPtr) {
+            throw std::logic_error("CSVReader has no input stream");
+        }
+        return CSVReader::read(*inPtr, labelcols, skiprows, skipcols);
+    }
+
     /** Read a `LabeledDataset` from a CSV file.
      *
      * @param path       CSV file name
@@ -260,7 +275,7 @@ public:
      * @param skiprows   discard the first @skiprows lines
      * @param skipcols   discard the first @skipcols columns
      **/
-    static LabeledDataset
+    LabeledDataset
     read(const std::string &path, std::vector<int> labelcols = {-1},
          int skiprows=0, int skipcols=0) {
         std::ifstream in(path);
@@ -275,7 +290,7 @@ public:
      * @param skiprows   discard the first @skiprows lines
      * @param skipcols   discard the first @skipcols columns
      **/
-    static LabeledDataset
+    LabeledDataset
     read(std::istream &in, std::vector<int> labelcols = {-1},
          int skiprows=0, int skipcols=0) {
         LabeledDataset ds;
@@ -789,6 +804,7 @@ private:
 
 public:
 
+    /** Construct a PlainTextNetworkReader. */
     PlainTextNetworkReader() {}
     /** Construct a PlainTextNetworkReader and set its default input stream. */
     PlainTextNetworkReader(std::istream &in) : inPtr(&in) {}

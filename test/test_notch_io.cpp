@@ -27,7 +27,7 @@ TEST_CASE("Array plain-text I/O", "[io]") {
 
 TEST_CASE("Dataset CSV-format reader", "[io]") {
     stringstream csv("0.0,0.0,0.0\n0,1,1\n1,0,1\n1,1,0\n");
-    LabeledDataset d = CSVReader<','>::read(csv);
+    LabeledDataset d = CSVReader().read(csv);
     LabeledDataset expected {{{0,0},{0}}, {{0,1},{1}}, {{1,0},{1}}, {{1,1},{0}}};
     // compare two datasets
     CHECK(d.size() == expected.size());
@@ -48,7 +48,7 @@ TEST_CASE("Dataset CSV-format reader", "[io]") {
 
 TEST_CASE("Dataset CSV-format reader (skiprows)", "[io]") {
     stringstream csv("x,y,XOR\n0.0,0.0,0.0\n0,1,1\n1,0,1\n1,1,0\n");
-    LabeledDataset d = CSVReader<','>::read(csv, {2} /* last col */, 1 /* skiprows */);
+    LabeledDataset d = CSVReader().read(csv, {2} /* last col */, 1 /* skiprows */);
     LabeledDataset expected {{{0,0},{0}}, {{0,1},{1}}, {{1,0},{1}}, {{1,1},{0}}};
     // compare two datasets
     CHECK(d.size() == expected.size());
@@ -69,7 +69,7 @@ TEST_CASE("Dataset CSV-format reader (skiprows)", "[io]") {
 
 TEST_CASE("Dataset CSV-format reader (categorical labels and quotes)", "[io]") {
     stringstream csv("1,odd\n\"2\",even\n3,odd\n4,\"\"\"four\"\"\"\n");
-    LabeledDataset d = CSVReader<>::read(csv);
+    LabeledDataset d = CSVReader().read(csv);
     LabeledDataset expected {{{1},{0}}, {{2},{1}}, {{3},{0}}, {{4},{2}}};
     // compare two datasets
     CHECK(d.size() == expected.size());
