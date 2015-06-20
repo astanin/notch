@@ -50,8 +50,7 @@ int main() {
 
     SGD::train(net, trainset,
                10 /* epochs */,
-               /* callbackEvery */ 1,
-               /* callback */ [&](int i) {
+               EpochCallback { 1, [&](int i) {
                    auto cm = classifier.test(testset); // confusion matrix
                    cout << "epoch "
                         << setw(6) << i << " "
@@ -65,6 +64,6 @@ int main() {
                         << cm.accuracy()
                         << endl;
                    return false;
-               });
+               }});
 }
 

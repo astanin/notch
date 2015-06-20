@@ -1866,8 +1866,45 @@ private:
 // TODO: sliding window search for CNNs
 
 
-// return true from TrainCallback to stop training early
-using TrainCallback = std::function<bool(int epoch)>;
+/** EpochCallback structure wraps a function to be called every N-th epoch.
+ *
+ * If period is zero, then callback is disabled.
+ * If period is one, then the callback is called every epoch.
+ * To invoke the callback use operator().
+ * callback function may return true to stop training early. */
+struct EpochCallback {
+    int period;
+    std::function<bool(int epoch)> callback; //< return true to stop early
+    bool operator()(int currentEpoch, bool alwaysInvoke = false) const {
+        if (alwaysInvoke || (period > 0 && currentEpoch % period == 0)) {
+            return callback(currentEpoch);
+        } else {
+            return false;
+        }
+    }
+};
+
+/** IterationCallback structure wraps a function to be called every N-th iteration.
+ *
+ * If period is zero, then callback is disabled.
+ * If period is one, then the callback is called every iteration.
+ * To invoke the callback use operator().
+ * callback function may return true to stop training early. */
+struct IterationCallback {
+    int period;
+    std::function<bool(int iteration)> callback; //< return true to stop early
+    bool operator()(int currentIteration, bool alwaysInvoke = false) const {
+        if (alwaysInvoke || (period > 0 && currentIteration % period == 0)) {
+            return callback(currentIteration);
+        } else {
+            return false;
+        }
+    }
+};
+
+const EpochCallback noEpochCallback {0, [](int) { return false; }};
+
+const IterationCallback noIterationCallback {0, [](int) { return false; }};
 
 
 /** Stochastic gradient descent. */
@@ -1883,11 +1920,11 @@ public:
      * @param trainSet        Training set.
      * @param epochs          How many iterations (epochs) to run;
      *                        the entire training set is processed once per epoch.
-     * @param callbackPeriod  A period of callback invocation if not zero;
-     *                        The callback is also called before the first
-     *                        and after the last iteration.
-     * @param callback        A callback function to be invoked;
-     *                        the callback may return true to stop training early.
+     * @param epochCallback   A callback to invoke before every N-th epoch.
+     *                        The callback is also called after the last iteration.
+     *                        epochCallback.callback may return true to stop early.
+     * @param sampleCallback  A callback to invoke after every N-th sample.
+     *                        sampleCallback.callback may return true to stop early.
      *
      * See:
      *
@@ -1895,25 +1932,25 @@ public:
      *    http://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
      */
     static
-    void train(std::unique_ptr<RNG> &rng, Net &net, LabeledDataset &trainSet,
-            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr) {
+    void train(std::unique_ptr<RNG> &rng,
+            Net &net, LabeledDataset &trainSet, int epochs,
+            const EpochCallback &epochCallback = noEpochCallback,
+            const IterationCallback &sampleCallback = noIterationCallback) {
         for (int j = 0; j < epochs; ++j) {
-            if (callback && callbackPeriod > 0 && j % callbackPeriod == 0) {
-                bool shouldStop = callback(j);
-                if (shouldStop) {
-                    return;
-                }
+            if (epochCallback(j)) {
+                return;
             }
             trainSet.shuffle(rng);
+            int sampleCounter = 0;
             for (auto sample : trainSet) {
                 net.loss(sample.data, sample.label);
                 net.backprop();
                 net.update();
+                sampleCallback(sampleCounter);
+                ++sampleCounter;
             }
         }
-        if (callback && callbackPeriod > 0) {
-            callback(epochs);
-        }
+        epochCallback(epochs, true);
     }
 
     /** Train using stochastic gradient descent.
@@ -1922,10 +1959,12 @@ public:
      * a temporary random number generator. Otherwise this function is
      * identical to SGD::train which takes also an 'rng' parameter. */
     static
-    void train(Net &net, LabeledDataset &trainSet,
-            int epochs, int callbackPeriod=0, TrainCallback callback=nullptr) {
+    void train(
+            Net &net, LabeledDataset &trainSet, int epochs,
+            const EpochCallback &epochCallback = noEpochCallback,
+            const IterationCallback &sampleCallback = noIterationCallback) {
         std::unique_ptr<RNG> rng(Init::newRNG());
-        SGD::train(rng, net, trainSet, epochs, callbackPeriod, callback);
+        SGD::train(rng, net, trainSet, epochs, epochCallback, sampleCallback);
     }
 };
 

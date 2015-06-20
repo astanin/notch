@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
     net.setLearningPolicy(FixedRate(0.0001 /* rate */, 0.9 /* momentum */));
     SGD::train(rng, net, irisData, 64 /* epochs */,
-               /* callbackEvery */ 4,
+               EpochCallback {/* every */ 4 /* epochs */,
                /* callback */ [&](int i) {
                    cout << "epoch "
                         << setw(4) << i << " "
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
                         << meanLoss(net, irisData) << " ";
                    print_metrics(classifier, irisData);
                    return false;
-               });
+               }});
     cout << "\n";
 
     ofstream nnfile("demo_iris_network.txt");

@@ -51,14 +51,14 @@ int main(int, char *[]) {
     xorNet.setLearningPolicy(FixedRate(0.01 /* rate */, 0.9 /* momentum */));
     SGD::train(xorNet, dataset,
                500 /* epochs */,
-               100 /* callbackPeriod */,
-               [&](int i) { /* callback */
+               EpochCallback { /* every */ 100 /* epochs */,
+                /* callback */ [&](int i) {
                    float loss = meanLoss(xorNet, dataset);
                    cout << "epoch " << setw(3) << right << i
                         << " loss = " << setw(10) << left << loss
                         << endl;
                    return false; // don't terminate;
-               });
+               }});
     cout << "\n";
 
     print_net("final", xorNet, dataset);
