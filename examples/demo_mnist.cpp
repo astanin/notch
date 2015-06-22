@@ -69,6 +69,24 @@ float meanLossEstimate(Net &net, LabeledDataset &dataset, size_t maxcount=0) {
     return total / n;
 }
 
+void printStats(Net &net, LabeledDataset &testSet, IntClassifier &metrics) {
+    auto cm = metrics.test(testSet);
+    cout << "E = "
+        << setprecision(6)
+        << meanLossEstimate(net, testSet) << " "
+        << "PPV = "
+        << setprecision(3)
+        << cm.precision() << " "
+        << "TPR = "
+        << setprecision(3)
+        << cm.recall() << " "
+        << "ACC = "
+        << setprecision(3)
+        << cm.accuracy() << " "
+        << "F1 = "
+        << setprecision(3)
+        << cm.F1score() << endl;
+}
 
 int main() {
     LabeledDataset mnist = readMNIST(IMAGES_FILE, LABELS_FILE);
@@ -96,45 +114,13 @@ int main() {
     net.setLearningPolicy(AdaDelta());
     SGD::train(net, mnist, 3 /* epochs */,
                EpochCallback { 1, [&](int i) {
-                   auto cm = metrics.test(mnistTest);
-                   cout << "epoch "
-                        << i << ": "
-                        << "E = "
-                        << setprecision(6)
-                        << meanLossEstimate(net, mnistTest) << " "
-                        << "PPV = "
-                        << setprecision(3)
-                        << cm.precision() << " "
-                        << "TPR = "
-                        << setprecision(3)
-                        << cm.recall() << " "
-                        << "ACC = "
-                        << setprecision(3)
-                        << cm.accuracy() << " "
-                        << "F1 = "
-                        << setprecision(3)
-                        << cm.F1score() << endl;
+                   cout << "epoch " << i << ": ";
+                   printStats(net, mnistTest, metrics);
                    return false;
                }},
                IterationCallback { 1000, [&](int i) {
-                   auto cm = metrics.test(mnistMiniTest);
-                   cout << "sample "
-                        << i << ": "
-                        << "E = "
-                        << setprecision(6)
-                        << meanLossEstimate(net, mnistMiniTest) << " "
-                        << "PPV = "
-                        << setprecision(3)
-                        << cm.precision() << " "
-                        << "TPR = "
-                        << setprecision(3)
-                        << cm.recall() << " "
-                        << "ACC = "
-                        << setprecision(3)
-                        << cm.accuracy() << " "
-                        << "F1 = "
-                        << setprecision(3)
-                        << cm.F1score() << endl;
+                   cout << "sample " << i << ": ";
+                   printStats(net, mnistMiniTest, metrics);
                    return false;
                }});
 
