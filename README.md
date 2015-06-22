@@ -47,6 +47,32 @@ How to use
 See `examples/`.
 
 
+Conditional Compilation
+-----------------------
+
+Set this compilation flags _before_ including "notch.hpp" and other Notch headers:
+
+    #define NOTCH_USE_CBLAS
+
+if you're linking your program with a CBLAS library and want to use efficient
+implemtation of the linear algebra.
+
+    #define NOTCH_USE_OPENMP
+
+to parallelize Notch computations using OpenMP (to be implemented).
+If you use OpenMP and BLAS together, make sure that your BLAS library is
+compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).
+
+    #define NOTCH_ONLY_DECLARATIONS
+
+if you include Notch headers in more than one compilation unit (source file),
+to suppress multiple definitions in all but one of them.
+
+    #define NOTCH_NO_HAND_OPTIMIZATIONS
+
+to disable hand-written optimizations (if you suspect there is a bug).
+
+
 Bibliography
 ------------
 
