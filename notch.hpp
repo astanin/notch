@@ -2048,7 +2048,9 @@ public:
                 net.loss(sample.data, sample.label);
                 net.backprop();
                 net.update();
-                sampleCallback(sampleCounter);
+                if (sampleCallback(sampleCounter)) {
+                    return;
+                }
                 ++sampleCounter;
             }
         }
