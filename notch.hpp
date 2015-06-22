@@ -664,8 +664,8 @@ const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
  * parameters. Output is written to weighs and bias parameters. */
 class ALearningPolicy {
 public:
-    virtual void correctWeights(Array& weightSensitivy, Array &weights) = 0;
-    virtual void correctBias(Array& biasSensitivity, Array &bias) = 0;
+    virtual void update(Array &weights, Array &bias,
+                        Array &weightSensitivity, Array &biasSensitivity) = 0;
     virtual std::unique_ptr<ALearningPolicy> clone() const = 0;
 };
 
@@ -775,18 +775,13 @@ public:
           momentum(momentum),
           weightDecay(weightDecay) {}
 
-    virtual void correctWeights(Array& weightSensitivity, Array &weights) {
+    virtual void update(Array &weights, Array &bias,
+                        Array &weightSensitivity, Array &biasSensitivity) {
         if (momentum == 0.0) {
             deltaRule(weights, weightSensitivity);
-        } else {
-            deltaRuleWithMomentum(weights, lastDeltaW, weightSensitivity);
-        }
-    }
-
-    virtual void correctBias(Array& biasSensitivity, Array &bias) {
-        if (momentum == 0.0) {
             deltaRule(bias, biasSensitivity);
         } else {
+            deltaRuleWithMomentum(weights, lastDeltaW, weightSensitivity);
             deltaRuleWithMomentum(bias, lastDeltaB, biasSensitivity);
         }
     }
@@ -866,13 +861,10 @@ public:
     AdaDelta(float momentum=0.95, float epsilon=1e-6)
         : momentum(momentum), epsilon(epsilon) {}
 
-    // TODO: consider merging correctWeights and correctBias in ALearningPolicy
-    virtual void correctWeights(Array& weightSensitivity, Array &weights) {
+    virtual void update(Array &weights, Array &bias,
+                        Array &weightSensitivity, Array &biasSensitivity) {
         adaDeltaRule(weights, weightSensitivity,
                      squaredWeightsDelta, squaredGrad_w);
-    }
-
-    virtual void correctBias(Array& biasSensitivity, Array &bias) {
         adaDeltaRule(bias, biasSensitivity,
                      squaredBiasDelta, squaredGrad_b);
     }
@@ -1314,8 +1306,7 @@ public:
         if (!policy) {
             throw std::logic_error("learning policy is not defined");
         }
-        policy->correctWeights(weightSensitivity, weights);
-        policy->correctBias(biasSensitivity, bias);
+        policy->update(weights, bias, weightSensitivity, biasSensitivity);
     }
     /* end ABackpropLayer interface */
 };
