@@ -839,7 +839,7 @@ protected:
         // compute gradient norm
         float grad2 = dot(g_begin, g_end, g_begin, g_end);
         // accumuate squared gradient (with exponential smoothing)
-        squaredGradAccum = momentum*squaredGradAccum + (1 - momentum)*grad2;
+        squaredGradAccum = momentum*squaredGradAccum + (1-momentum)*grad2;
         // compute updates (time step)
         float grad_RMS = sqrt(squaredGradAccum + epsilon);
         float delta_RMS = sqrt(squaredVarDelta + epsilon);
@@ -847,7 +847,19 @@ protected:
         // accumuate squared updates (with exponential smoothing)
         squaredVarDelta = momentum*squaredVarDelta + (1-momentum)*grad2*eta*eta;
         // apply updates
-        var = var - (eta * grad); // TODO: optimize like in deltaRule
+#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
+        var = var - (eta * grad);
+#else /* optimized version */
+        size_t n = var.size();
+        auto grad_ptr = std::begin(grad);
+        auto var_ptr = std::begin(var);
+        for (size_t i = 0; i < n; ++i) {
+            float grad_i = (*grad_ptr);
+            float delta_i = - eta * grad_i;
+            (*var_ptr) += delta_i;
+            ++grad_ptr; ++var_ptr;
+        }
+#endif
     }
 
 public:
