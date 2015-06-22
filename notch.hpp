@@ -282,6 +282,123 @@ public:
 };
 
 
+/* Linear Algebra
+ * ==============
+ */
+
+#ifdef NOTCH_USE_CBLAS
+
+/** Matrix-vector product using CBLAS.
+ * Calculate $M*x + b$ and save result to $b$.
+ *
+ * Note: CBLAS requires pointers to data.
+ * The type of std::begin(std::valarray&) is not specified by the standard,
+ * but GNU and Clang implementations return a plain pointer.
+ * We can enable interoperation with CBLAS only for compilers like GNU. */
+template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
+typename std::enable_if<std::is_pointer<Matrix_Iter>::value &&
+                        std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorB_Iter>::value, void>::type
+gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
+     VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorB_Iter b_begin, VectorB_Iter b_end) {
+    size_t cols = std::distance(x_begin, x_end);
+    size_t rows = std::distance(b_begin, b_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        std::ostringstream what;
+        what << "blas_gemv: incompatible matrix and vector shapes:\n"
+            << " matrix size = " << n
+            << " vector size = " << cols
+            << " result size = " << rows;
+        throw std::invalid_argument(what.str());
+    }
+    cblas_sgemv(CblasRowMajor, CblasNoTrans,
+                rows, cols,
+                1.0 /* M multiplier */,
+                m_begin, cols /* leading dimension of M */,
+                x_begin, 1,
+                1.0 /* b multiplier */,
+                b_begin, 1);
+}
+
+/** Vector-vector dot product using CBLAS.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_Iter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_Iter>::value,
+float>::type
+dot(VectorX_Iter x_begin, VectorX_Iter x_end,
+    VectorY_Iter y_begin, VectorY_Iter y_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "blas_dot: vector sizes don't match:\n"
+            << " x size = " << x_size
+            << " y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+    return cblas_sdot(x_size, x_begin, 1, y_begin, 1);
+}
+
+#else /* NOTCH_USE_CBLAS is not defined */
+
+/** Matrix-vector product on STL iterators, similar to BLAS _gemv function.
+ * Calculate $M x + b$ and saves result in $b$. */
+template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
+void
+gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
+     VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorB_Iter b_begin, VectorB_Iter b_end) {
+    size_t cols = std::distance(x_begin, x_end);
+    size_t rows = std::distance(b_begin, b_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        std::ostringstream what;
+        what << "stl_gemv: incompatible matrix and vector shapes:\n"
+            << " matrix size = " << n
+            << " vector size = " << cols
+            << " result size = " << rows;
+        throw std::invalid_argument(what.str());
+    }
+    size_t r = 0; // current row number
+    for (auto b = b_begin; b != b_end; ++b, ++r) {
+        auto row_begin = m_begin + r * cols;
+        auto row_end = row_begin + cols;
+        *b = std::inner_product(row_begin, row_end, x_begin, *b);
+    }
+}
+
+/** Vector-vector dot product on STL iterators, similar to BLAS _dot function.
+ */
+template <class VectorX_Iter, class VectorY_Iter>
+float
+dot(VectorX_Iter x_begin, VectorX_Iter x_end,
+    VectorY_Iter y_begin, VectorY_Iter y_end) {
+    double dotProduct = 0.0;
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "stl_dot: vector sizes don't match:\n"
+            << " x size = " << x_size
+            << " y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+    auto x = x_begin;
+    auto y = y_begin;
+    for (; x != x_end; ++x, ++y) {
+        dotProduct += (*x) * (*y);
+    }
+    return static_cast<float>(dotProduct);
+}
+
+#endif /* ifdef NOTCH_USE_CBLAS */
+
+
+
 /* Neurons and Neural Networks
  * ===========================
  */
@@ -683,29 +800,6 @@ public:
     }
 };
 
-// TODO: move all linalg functions together
-// TODO: use cblas_sdot if NOTCH_USE_CBLAS
-template <class VectorX_Iter, class VectorY_Iter>
-float
-sdot(VectorX_Iter x_begin, VectorX_Iter x_end,
-     VectorY_Iter y_begin, VectorY_Iter y_end) {
-    double dotProduct = 0.0;
-    size_t x_size = std::distance(x_begin, x_end);
-    size_t y_size = std::distance(y_begin, y_end);
-    if (x_size != y_size) {
-        std::ostringstream what;
-        what << "stl_sdot: vector sizes don't match:\n"
-            << " x size = " << x_size
-            << " y size = " << y_size;
-        throw std::invalid_argument(what.str());
-    }
-    auto x = x_begin;
-    auto y = y_begin;
-    for (; x != x_end; ++x, ++y) {
-        dotProduct += (*x) * (*y);
-    }
-    return static_cast<float>(dotProduct);
-}
 
 
 /** ADADELTA, an adaptive learning rate method.
@@ -743,7 +837,7 @@ protected:
         auto g_begin = std::begin(grad);
         auto g_end = std::end(grad);
         // compute gradient norm
-        float grad2 = sdot(g_begin, g_end, g_begin, g_end);
+        float grad2 = dot(g_begin, g_end, g_begin, g_end);
         // accumuate squared gradient (with exponential smoothing)
         squaredGradAccum = momentum*squaredGradAccum + (1 - momentum)*grad2;
         // compute updates (time step)
@@ -923,71 +1017,6 @@ void connect(PREV_LAYER &prevLayer, NEXT_LAYER &nextLayer) {
     GetShared<NEXT_LAYER>::ref(nextLayer).inputBuffer = prevLayer.getOutputBuffer();
 }
 
-#ifdef NOTCH_USE_CBLAS
-
-/** Matrix-vector product using CBLAS.
- * Calculate $M*x + b$ and save result to $b$.
- *
- * Note: CBLAS requires pointers to data.
- * The type of std::begin(std::valarray&) is not specified by the standard,
- * but GNU and Clang implementations return a plain pointer.
- * We can enable interoperation with CBLAS only for compilers like GNU. */
-template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
-typename std::enable_if<std::is_pointer<Matrix_Iter>::value &&
-                        std::is_pointer<VectorX_Iter>::value &&
-                        std::is_pointer<VectorB_Iter>::value, void>::type
-gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
-     VectorX_Iter x_begin, VectorX_Iter x_end,
-     VectorB_Iter b_begin, VectorB_Iter b_end) {
-    size_t cols = std::distance(x_begin, x_end);
-    size_t rows = std::distance(b_begin, b_end);
-    size_t n = std::distance(m_begin, m_end);
-    if (n != rows * cols) {
-        std::ostringstream what;
-        what << "blas_gemv: incompatible matrix and vector shapes:\n"
-            << " matrix size = " << n
-            << " vector size = " << cols
-            << " result size = " << rows;
-        throw std::invalid_argument(what.str());
-    }
-    cblas_sgemv(CblasRowMajor, CblasNoTrans,
-                rows, cols,
-                1.0 /* M multiplier */,
-                m_begin, cols /* leading dimension of M */,
-                x_begin, 1,
-                1.0 /* b multiplier */,
-                b_begin, 1);
-}
-
-#else /* NOTCH_USE_CBLAS is not defined */
-
-/** Matrix-vector product on STL iterators, similar to BLAS _gemv function.
- * Calculate $M x + b$ and saves result in $b$. */
-template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
-void
-gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
-     VectorX_Iter x_begin, VectorX_Iter x_end,
-     VectorB_Iter b_begin, VectorB_Iter b_end) {
-    size_t cols = std::distance(x_begin, x_end);
-    size_t rows = std::distance(b_begin, b_end);
-    size_t n = std::distance(m_begin, m_end);
-    if (n != rows * cols) {
-        std::ostringstream what;
-        what << "stl_gemv: incompatible matrix and vector shapes:\n"
-            << " matrix size = " << n
-            << " vector size = " << cols
-            << " result size = " << rows;
-        throw std::invalid_argument(what.str());
-    }
-    size_t r = 0; // current row number
-    for (auto b = b_begin; b != b_end; ++b, ++r) {
-        auto row_begin = m_begin + r * cols;
-        auto row_end = row_begin + cols;
-        *b = std::inner_product(row_begin, row_end, x_begin, *b);
-    }
-}
-
-#endif /* ifdef NOTCH_USE_CBLAS */
 
 /** A fully connected layer of neurons with backpropagation. */
 class FullyConnectedLayer : public ABackpropLayer {

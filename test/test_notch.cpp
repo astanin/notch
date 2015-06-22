@@ -315,12 +315,12 @@ TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     CHECK(b[2] == -1); // unchanged
 }
 
-TEST_CASE("sdot: vector-vector dot product", "[core][math]") {
+TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     float x[3] = {1, 2, 3};
     float y[3] = {100, 10, 1};
     float longY[4] = {100, 10, 1, 0.1};
-    CHECK_THROWS(sdot(begin(x), end(x), begin(longY), end(longY)));
-    float p = sdot(begin(x), end(x), begin(y), end(y));
+    CHECK_THROWS(dot(begin(x), end(x), begin(longY), end(longY)));
+    float p = dot(begin(x), end(x), begin(y), end(y));
     CHECK(p == 123);
 }
 
