@@ -15,8 +15,8 @@ private:
 	Net &net;
 public:
 	IntClassifier(Net &net) : net(net) {}
-	virtual int aslabel(const Output &out) { return out[0]; }
-	virtual int classify(const Input &in) { return net.output(in)[0]; }
+	virtual int aslabel(const Output &out) { return out[0] > 0; }
+	virtual int classify(const Input &in) { return net.output(in)[0] > 0; }
 };
 
 
@@ -34,36 +34,51 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 int main() {
     auto trainset = CSVReader().read("../data/twospirals-train.csv");
     auto testset = CSVReader().read("../data/twospirals-test.csv");
+
+    // with SQUARE: accuracy = 99.5% (130000 epochs on 4-80-20-1 NN, ~5 min)
+    // without:     accuracy = 99.5% (50000 epochs on 2-50-50-50-50-10-1 NN, ~7 min)
     SquareAugmented SQUARE;
     trainset.apply(SQUARE);
     testset.apply(SQUARE);
 
-    Net net = MakeNet(2 * 2) // SQUARE augmentation
-        .addFC(200, scaledTanh)
+    Net net = MakeNet(trainset.inputDim())
+        .addFC(80, scaledTanh)
+        .addFC(20, scaledTanh)
         .addFC(1, scaledTanh)
         .addL2Loss()
         .init();
 
-    net.setLearningPolicy(FixedRate(1e-3, 0.9, 1e-4));
+    net.setLearningPolicy(AdaDelta());
 
     auto classifier = IntClassifier(net);
 
     SGD::train(net, trainset,
-               10 /* epochs */,
-               EpochCallback { 1, [&](int i) {
+               130000 /* epochs */,
+               EpochCallback { 10000, [&](int i) {
                    auto cm = classifier.test(testset); // confusion matrix
                    cout << "epoch "
                         << setw(6) << i << " "
                         << " train loss = "
-                        << setprecision(5) << setw(8)
+                        << setprecision(3) << setw(5) << showpoint
                         << meanLoss(net, trainset)
                         << " test loss = "
-                        << setprecision(5) << setw(8)
+                        << setprecision(3) << setw(5) << showpoint
                         << meanLoss(net, testset)
-                        << " test accuracy = "
+                        << " accuracy = "
+                        << setprecision(3) << setw(5) << showpoint
                         << cm.accuracy()
+                        << " F1 = "
+                        << setprecision(3) << setw(5) << showpoint
+                        << cm.F1score()
                         << endl;
                    return false;
                }});
+
+    string dumpfile = "demo_twospirals_network.txt";
+    ofstream nnfile(dumpfile);
+    if (nnfile.is_open()) {
+        PlainTextNetworkWriter(nnfile) << net << "\n";
+        cout << "wrote " << dumpfile << "\n";
+    }
 }
 
