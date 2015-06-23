@@ -20,7 +20,7 @@ TEST_CASE("OneHotEncoder single-column encoding-decoding", "[pre]") {
                       {0, 0, 1, 0, 0},
                       {0, 1, 0, 0, 0}};
     for (size_t i = 0; i < fiveEncoded.size(); ++i) {
-        CHECK(fiveEncoded[i].size() == 5);
+        CHECK(fiveEncoded[i].size() == 5u);
         float sum = 0;
         for(size_t j = 0; j < fiveEncoded[i].size(); ++j) {
             sum += fiveEncoded[i][j];
@@ -123,10 +123,10 @@ TEST_CASE("SquareAugmented apply and unapply", "[pre]") {
 
 TEST_CASE("Dataset inputDim() changes after transform", "[pre]") {
     LabeledDataset d {{{1, 2}, {1, 2, 3}}}; // 2 in, 3 out
-    CHECK(d.inputDim() == 2);
-    CHECK(d.outputDim() == 3);
+    CHECK(d.inputDim() == 2u);
+    CHECK(d.outputDim() == 3u);
     SquareAugmented square;
     d.apply(square);
-    CHECK(d.inputDim() == 2*2);
-    CHECK(d.outputDim() == 3);
+    CHECK(d.inputDim() == 2*2u);
+    CHECK(d.outputDim() == 3u);
 }

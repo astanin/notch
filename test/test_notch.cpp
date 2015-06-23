@@ -78,7 +78,7 @@ TEST_CASE("FC construction from weights matrix (copy)", "[core][fc]") {
     const Array bias = {2.5, 5.0}; // bias
     FullyConnectedLayer fc(w, bias, linearActivation);
     auto &out = fc.output({1,1,1});
-    CHECK(out.size() == 2);
+    CHECK(out.size() == 2u);
     CHECK(out[0] == Approx(111 + 2.5));
     CHECK(out[1] == Approx(0.111 + 5.0));
 }
@@ -265,7 +265,7 @@ TEST_CASE("SoftmaxWithLoss output", "[core][loss][math]") {
     float e = 0.0001;
     CHECK(loss == Approx(0.0486).epsilon(e));
     Array lossGrad = layer.backprop();
-    REQUIRE(lossGrad.size() == 2);
+    REQUIRE(lossGrad.size() == 2u);
     CHECK(lossGrad[0] == Approx(-0.0474).epsilon(e));
     CHECK(lossGrad[1] == Approx( 0.0474).epsilon(e));
 }
