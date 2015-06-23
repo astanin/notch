@@ -57,7 +57,7 @@ public:
 };
 
 float meanLossEstimate(Net &net, LabeledDataset &dataset, size_t maxcount=0) {
-    float total;
+    float total = 0.0;
     size_t n = 0;
     for (auto sample : dataset) {
         total += net.loss(sample.data, sample.label);

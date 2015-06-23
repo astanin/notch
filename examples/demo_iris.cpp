@@ -43,7 +43,7 @@ public:
 };
 
 float meanLoss(Net &net, LabeledDataset &dataset) {
-    float total;
+    float total = 0.0;
     size_t n = 0;
     for (auto sample : dataset) {
         total += net.loss(sample.data, sample.label);
