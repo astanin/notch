@@ -1421,7 +1421,7 @@ public:
     virtual std::string tag() const { return "EuclideanLoss"; }
 
     virtual float output(const Array &actual, const Array &expected) {
-        float lossSquared;
+        float lossSquared = 0.0;
         assert (nSize == actual.size());
         assert (nSize == expected.size());
         for (size_t i = 0; i < nSize; ++i) {
@@ -1493,7 +1493,7 @@ protected:
             }
         }
         // calculate exponents
-        float expTotal;
+        float expTotal = 0.0;
         for (size_t i = 0; i < nSize; ++i) { // calculate exponents
             softmaxOutput[i] = std::exp(input[i] - maxInput);
             expTotal += softmaxOutput[i];
