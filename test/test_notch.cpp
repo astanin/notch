@@ -384,21 +384,18 @@ TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
 TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
     float eta = 0.5;
     FixedRate policy(eta);
-    // weight updates
-    Array dEdw { 10, 20, 40 };
+    Array dEdw { 10, 20, 40 }; // weight updates
+    Array dEdb { -20, -10 }; // bias updates
     Array weights { 100, 200, 400 };
     Array oldWeights = weights;
-    policy.correctWeights(dEdw, weights);
+    Array bias { 100, 200 };
+    Array oldBias = bias;
+    policy.update(weights, bias, dEdw, dEdb);
     for (size_t i = 0; i < weights.size(); ++i) {
         CHECK(weights[i] == oldWeights[i] - eta*dEdw[i]);
     }
-    // bias updates
-    Array dBdw { -20, -10 };
-    Array bias { 100, 200 };
-    Array oldBias = bias;
-    policy.correctBias(dBdw, bias);
     for (size_t i = 0; i < bias.size(); ++i) {
-        CHECK(bias[i] == oldBias[i] - eta*dBdw[i]);
+        CHECK(bias[i] == oldBias[i] - eta*dEdb[i]);
     }
 }
 
@@ -410,28 +407,26 @@ TEST_CASE("FixedRate with momentum: generalized delta rule policy", "[core][trai
     Array bias { 100, 200 };
     Array oldWeights = weights;
     Array oldBias = bias;
-    // weight updates
+    // weight and bias updates
     Array dEdw { 10, 20, 40 };
-    Array dBdw { -20, -10 };
+    Array dEdb { -20, -10 };
     // first update, no momentum yet
-    policy.correctWeights(dEdw, weights);
-    policy.correctBias(dBdw, bias);
+    policy.update(weights, bias, dEdw, dEdb);
     for (size_t i = 0; i < weights.size(); ++i) {
         CHECK(weights[i] == oldWeights[i] - eta*dEdw[i]);
     }
     for (size_t i = 0; i < bias.size(); ++i) {
-        CHECK(bias[i] == oldBias[i] - eta*dBdw[i]);
+        CHECK(bias[i] == oldBias[i] - eta*dEdb[i]);
     }
     // second update, momentum is starting to take effect
     oldWeights = weights;
     oldBias = bias;
-    policy.correctWeights(dEdw, weights);
-    policy.correctBias(dBdw, bias);
+    policy.update(weights, bias, dEdw, dEdb);
     for (size_t i = 0; i < weights.size(); ++i) {
         CHECK(weights[i] == oldWeights[i] - (momentum+1)*eta*dEdw[i]);
     }
     for (size_t i = 0; i < bias.size(); ++i) {
-        CHECK(bias[i] == oldBias[i] - (momentum+1)*eta*dBdw[i]);
+        CHECK(bias[i] == oldBias[i] - (momentum+1)*eta*dEdb[i]);
     }
 }
 
@@ -445,28 +440,26 @@ TEST_CASE("FixedRate with weight-decay", "[core][train]") {
     Array oldBias = bias;
     // weight updates
     Array dEdw { 10, 20 };
-    Array dBdw { -10, -10 };
+    Array dEdb { -10, -10 };
     // apply policy without momentum
     FixedRate policy(eta, momentum, decay);
-    policy.correctWeights(dEdw, weights);
-    policy.correctBias(dBdw, bias);
+    policy.update(weights, bias, dEdw, dEdb);
     for (size_t i = 0; i < weights.size(); ++i) {
         CHECK(weights[i] == oldWeights[i] - eta*(dEdw[i] + 2*decay*oldWeights[i]));
     }
     for (size_t i = 0; i < bias.size(); ++i) {
-        CHECK(bias[i] == oldBias[i] - eta*(dBdw[i] + 2*decay*oldBias[i]));
+        CHECK(bias[i] == oldBias[i] - eta*(dEdb[i] + 2*decay*oldBias[i]));
     }
     // apply policy with momentum
     FixedRate policy2(eta, 0.9, decay);
     weights = oldWeights;
     bias = oldBias;
-    policy2.correctWeights(dEdw, weights);
-    policy2.correctBias(dBdw, bias);
+    policy2.update(weights, bias, dEdw, dEdb);
     for (size_t i = 0; i < weights.size(); ++i) {
         CHECK(weights[i] == oldWeights[i] - eta*(dEdw[i] + 2*decay*oldWeights[i]));
     }
     for (size_t i = 0; i < bias.size(); ++i) {
-        CHECK(bias[i] == oldBias[i] - eta*(dBdw[i] + 2*decay*oldBias[i]));
+        CHECK(bias[i] == oldBias[i] - eta*(dEdb[i] + 2*decay*oldBias[i]));
     }
 }
 
