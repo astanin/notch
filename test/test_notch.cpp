@@ -167,7 +167,6 @@ TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
     }
 }
 
-#if 0
 TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     const Array w = {0.01, 0.1, -0.1, -0.01};
     const Array b = {0.25, -0.25};
@@ -184,7 +183,7 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     const Array input = {2, 4};
     const Array &fclOut = fcTanh.output(input);
     const Array &netOut = net.output(input);
-    CHECK(fclOut.size() == 2);
+    CHECK(fclOut.size() == 2u);
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fclOut[i] == Approx(netOut[i]));
     }
@@ -209,7 +208,6 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
         CHECK(fcl_dEdB[i] == net_dEdB[i]);
     }
 }
-#endif
 
 TEST_CASE("AL cloning", "[core][activation]") {
     FullyConnectedLayer fc1(1, 2, linearActivation);
@@ -326,7 +324,6 @@ TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     CHECK(p == 123);
 }
 
-#if 0
 /* This test is based on the backpropagation example by Dan Ventura
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
 TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
@@ -354,9 +351,7 @@ TEST_CASE("backprop example with precomputed errors", "[core][math][fc][mlp]") {
         CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
     }
 }
-#endif
 
-#if 0
 TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
     // initialize network weights as in the example
     FullyConnectedLayer_Test layer1({0.23, -0.79, 0.1, 0.21}, {0, 0}, logisticActivation);
@@ -379,7 +374,6 @@ TEST_CASE("backprop example with LossLayer", "[core][math][fc][loss][mlp]") {
         CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
     }
 }
-#endif
 
 TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
     float eta = 0.5;
