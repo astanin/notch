@@ -2,7 +2,6 @@
 #define NOTCH_H
 
 // TODO: doxygen-compatible comments
-// TODO: optional OpenMP implementation
 // TODO: benchmarks
 
 /// @file notch.hpp The main header file of the Notch neural networks library
@@ -54,6 +53,10 @@ THE SOFTWARE.
 
 #ifdef NOTCH_USE_CBLAS
 #include <cblas.h>
+#endif
+
+#ifdef NOTCH_USE_OPENMP
+#include <omp.h>
 #endif
 
 /* Library Framework
@@ -814,6 +817,9 @@ public:
  *    the progress continues even when gradient and recent weight updates
  *    tend to zero.
  *
+ * The difference with respect to (Zeiler, 2012): the rate of weight
+ * and bias updates can be different.
+ *
  * References:
  *
  *  - Zeiler (2012) ADADELTA: An Adaptive Learning Rate Method
@@ -825,7 +831,8 @@ protected:
     float squaredWeightsDelta = 0.0;
     float squaredBiasDelta = 0.0;
     float squaredGrad_w = 0.0;
-    float squaredGrad_b = 0.0; // TODO: use only one squaredGrad as in (Zeiler, 2012)
+    float squaredGrad_b = 0.0;
+    // TODO: check if using the same rate for weight and bias (Zeiler, 2012) is better
 
     void adaDeltaRule(Array &var, const Array &grad,
                      float &squaredVarDelta, float &squaredGradAccum) {
@@ -848,11 +855,14 @@ protected:
         size_t n = var.size();
         auto grad_ptr = std::begin(grad);
         auto var_ptr = std::begin(var);
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(var_ptr, grad_ptr)
+#endif
         for (size_t i = 0; i < n; ++i) {
-            float grad_i = (*grad_ptr);
+            float grad_i = (*(grad_ptr + i));
             float delta_i = - eta * grad_i;
-            (*var_ptr) += delta_i;
-            ++grad_ptr; ++var_ptr;
+            float &var_i = (*(var_ptr + i));
+            var_i += delta_i;
         }
 #endif
     }
