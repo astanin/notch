@@ -50,3 +50,11 @@ If CBLAS is installed in non-standard location, you may need to put it
 in the CMAKE_PREFIX_PATH. For example, if you use Windows and installed
 OpenBLAS to `C:\opt\OpenBLAS`, then you have to additionally pass
 `-DCMAKE_PREFIX_PATH=c:/opt/OpenBLAS` to cmake.
+
+### Using OpenMP
+
+To build examples with OpenMP support (parallel computation),
+pass `-DUSE_OPENMP=YES` to cmake.
+
+If you use OpenMP and BLAS together, make sure that your BLAS library is
+compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).

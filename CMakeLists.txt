@@ -42,6 +42,22 @@ IF(USE_CBLAS)
     ENDIF(CBLAS_LIBRARY)
 ENDIF(USE_CBLAS)
 
+IF(USE_OPENMP)
+    FIND_PACKAGE(OpenMP)
+    IF(OPENMP_FOUND)
+        message(STATUS "OpenMP_CXX_FLAGS: " ${OpenMP_CXX_FLAGS})
+        add_compile_options(${OpenMP_CXX_FLAGS})
+        add_definitions(-DNOTCH_USE_OPENMP)
+        message(STATUS "Found OpenMP")
+    ENDIF(OPENMP_FOUND)
+ENDIF(USE_OPENMP)
+
+FUNCTION(openmp_enable _target)
+    target_compile_options(${_target} PRIVATE ${OpenMP_CXX_FLAGS})
+    set_property(TARGET ${_target} APPEND PROPERTY LINK_FLAGS ${OpenMP_CXX_FLAGS})
+    message(STATUS "Enabled OpenMP for " "${_target}")
+ENDFUNCTION()
+
 set(SOURCE_FILES
     notch.hpp
     notch_io.hpp
@@ -81,3 +97,12 @@ IF(CBLAS_FOUND)
 ELSE(CBLAS_FOUND)
     message(STATUS "Not using CBLAS")
 ENDIF(CBLAS_FOUND)
+
+IF(OPENMP_FOUND)
+    openmp_enable(test_notch)
+    openmp_enable(demo_xor)
+    openmp_enable(demo_iris)
+    openmp_enable(demo_mnist)
+    openmp_enable(demo_twospirals)
+    openmp_enable(demo_io)
+ENDIF(OPENMP_FOUND)

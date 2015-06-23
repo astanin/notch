@@ -54,19 +54,20 @@ Set this compilation flags _before_ including "notch.hpp" and other Notch header
 
     #define NOTCH_USE_CBLAS
 
-if you're linking your program with a CBLAS library and want to use efficient
+if you're linking your program with a CBLAS library and want to use an efficient
 implemtation of the linear algebra.
 
     #define NOTCH_USE_OPENMP
 
-to parallelize Notch computations using OpenMP (to be implemented).
+to parallelize Notch computations using OpenMP.
 If you use OpenMP and BLAS together, make sure that your BLAS library is
 compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).
 
     #define NOTCH_ONLY_DECLARATIONS
 
-if you include Notch headers in more than one compilation unit (source file),
-to suppress multiple definitions in all but one of them.
+If you include Notch headers in more than one compilation unit (source file),
+then, to suppress multiple definitions, `#define NOTCH_ONLY_DECLARATIONS`
+before Notch includes in all but one of the source files.
 
     #define NOTCH_NO_HAND_OPTIMIZATIONS
 
