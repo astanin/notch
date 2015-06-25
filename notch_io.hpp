@@ -520,12 +520,15 @@ struct LayerSpec {
         this->tag = tag;
         this->inputDim = layer.inputDim();
         this->outputDim = layer.outputDim();
-        if (tag == "FullyConnectedLayer") {
+        // TODO: implement LayerSpec for layers with only weights or bias
+        bool hasParameters = layer.getWeights() && layer.getBias();
+        bool hasActivation = tag == "ActivationLayer";
+        if (hasParameters) {
             auto &af = layer.getActivation();
             activation = std::make_shared<std::string>(af.tag());
             weights = std::make_shared<Array>(*layer.getWeights());
             bias = std::make_shared<Array>(*layer.getBias());
-        } else if (tag == "ActivationLayer") {
+        } else if (hasActivation) {
             auto &af = layer.getActivation();
             activation = std::make_shared<std::string>(af.tag());
         } else {
