@@ -400,6 +400,61 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
 
 #endif /* ifdef NOTCH_USE_CBLAS */
 
+/** Outer product between two vectors. Calculate $\mathbf{M} = \alpha x y^T$. */
+template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
+void
+outer(float alpha,
+      VectorX_Iter x_begin, VectorX_Iter x_end,
+      VectorY_Iter y_begin, VectorY_Iter y_end,
+      Matrix_OutIter m_begin, Matrix_OutIter m_end) {
+    size_t rows = std::distance(x_begin, x_end);
+    size_t cols = std::distance(y_begin, y_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        std::ostringstream what;
+        what << "stl_outer: incompatible shapes:\n"
+            << " vector X size = " << rows
+            << " vector Y size = " << cols
+            << " result size = " << n;
+        throw std::invalid_argument(what.str());
+    }
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(m_begin, x_begin, y_begin, rows, cols, alpha)
+#endif
+    for (size_t r = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c) {
+            float &m_rc = *(m_begin + r*cols + c);
+            float x_r = *(x_begin + r);
+            float y_c = *(y_begin + c);
+            m_rc = alpha * x_r * y_c;
+        }
+    }
+}
+
+/** Multiply vector by a scalar: Calculate $y = \alpha x$. */
+template <class VectorX_Iter, class VectorY_OutIter>
+void
+scale(float alpha,
+      VectorX_Iter x_begin, VectorX_Iter x_end,
+      VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "stl_scale: incompatible shapes:\n"
+            << " vector X size = " << x_size
+            << " vector Y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
+#endif
+    for (size_t i = 0; i < x_size; ++i) {
+        float x_i = *(x_begin + i);
+        float &y_i = *(y_begin + i);
+        y_i = alpha * x_i;
+    }
+}
 
 
 /* Neurons and Neural Networks

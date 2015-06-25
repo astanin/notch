@@ -327,6 +327,31 @@ TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     CHECK(p == 123);
 }
 
+TEST_CASE("outer: outer vector-vector product", "[core][math]") {
+    float alpha = 0.5;
+    float x[2] = {10, 100};
+    float y[3] = {2, 4, 8};
+    float M[7] = {0, 0, 0, 0, 0, 0}; // with an extra element at the end
+    float expectedM[6] = {20*alpha, 40*alpha, 80*alpha, 200*alpha, 400*alpha, 800*alpha};
+    CHECK_THROWS(outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), end(M)));
+    outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), begin(M) + 6);
+    for (size_t i =0; i < 6; ++i) {
+        CHECK(M[i] == expectedM[i]);
+    }
+}
+
+TEST_CASE("scale: multiply vector by a scalar", "[core][math]") {
+    float alpha = 10.0;
+    float x[2] = {2, 4};
+    float y[3] = {0, 0, 0}; // with an extra element at the end
+    float expectedY[2] = {20, 40};
+    CHECK_THROWS(scale(alpha, begin(x), end(x), begin(y), end(y)));
+    scale(alpha, begin(x), end(x), begin(y), begin(y)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(y[i] == expectedY[i]);
+    }
+}
+
 /* This test is based on the backpropagation example by Dan Ventura
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
 TEST_CASE("backprop example", "[core][math][fc][mlp]") {
