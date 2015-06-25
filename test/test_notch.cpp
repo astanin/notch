@@ -327,6 +327,13 @@ TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     CHECK(p == 123);
 }
 
+TEST_CASE("dot: vector-vector dot product with strides", "[core][math]") {
+    float x[4] = {1, 2, 3, 4};
+    float y[3] = {1, 10, 100};
+    float p = dot(2, x, 2, y+1, 1);
+    CHECK(p == 1*10 + 3*100);
+}
+
 TEST_CASE("outer: outer vector-vector product", "[core][math]") {
     float alpha = 0.5;
     float x[2] = {10, 100};

@@ -399,6 +399,23 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
 
 #endif /* ifdef NOTCH_USE_CBLAS */
 
+/** Vector-vector dot product, similar to BLAS _dot function. */
+template <class VectorX_Iter, class VectorY_Iter>
+float
+dot(const size_t n,
+    VectorX_Iter x_begin, const size_t xStride,
+    VectorY_Iter y_begin, const size_t yStride) {
+    double dotProduct = 0.0;
+    auto x = x_begin;
+    auto y = y_begin;
+    for (size_t i = 0; i < n; ++i) {
+        dotProduct += (*x) * (*y);
+        x += xStride;
+        y += yStride;
+    }
+    return static_cast<float>(dotProduct);
+}
+
 /** Outer product between two vectors. Calculate $\mathbf{M} = \alpha x y^T$. */
 template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
 void
