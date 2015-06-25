@@ -659,8 +659,6 @@ const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
  * ----------------------
  */
 
-// TODO: AdaptiveRate $\eta ~ 1/\sqrt{n_{in}}$ (NNLM3, page 150; (LeCun, 1993))
-
 /** A base class for the rule to correct weights and bias given sensitivity factors.
  *
  * Concrete implementations may overwrite weightSensitivity and biasSensitivity
@@ -1343,7 +1341,6 @@ public:
         return *shared.outputBuffer;
     }
 
-    // TODO: optimize and don't copy inputs or errors if layers are connected
     virtual const Array &backprop(const Array &errors) {
         shared.allocate(nInputs, nOutputs); // just in case user didn't init()
         backpropInplace(errors);
@@ -1388,7 +1385,6 @@ protected:
         if (outputs.size() != nSize) {
             outputs.resize(nSize);
         }
-        // TODO: copy inputs only if it is not the same object
         *shared.inputBuffer = inputs;
         auto &activation = (*activationFunction);
         std::transform(
