@@ -946,9 +946,21 @@ public:
     /// Randomly initialize layer parameters.
     virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) = 0;
 
-    /// Share output buffers with the nextLayer.
-    virtual std::shared_ptr<Array> &getInputBuffer() = 0;
-    virtual std::shared_ptr<Array> &getOutputBuffer() = 0;
+    /// Get a pointer to the last input buffer which can be shared with other layers.
+    virtual std::shared_ptr<Array> getInputBuffer() = 0;
+    /// Get a pointer to the last output buffer which can be shared with other layers.
+    virtual std::shared_ptr<Array> getOutputBuffer() = 0;
+
+    /// Get a pointer to weight parameters. It can be nullptr if the layer has no parameters.
+    virtual std::shared_ptr<const Array> getWeights() { return nullptr; }
+    /// Get a pointer to bias parameters. It can be nullptr if the layer has no parameters.
+    virtual std::shared_ptr<const Array> getBias() { return nullptr; }
+    /// Get a pointer to last calculated weight sensitivity (gradient of the network loss
+    /// with respect to the layer weight parameters). It can be nullptr.
+    virtual std::shared_ptr<const Array> getWeightSensitivity() { return nullptr; }
+    /// Get a pointer to last calculated bias sensitivity (gradient of the network loss
+    /// with respect to the layer bias parameters). It can be nullptr.
+    virtual std::shared_ptr<const Array> getBiasSensitivity() { return nullptr; }
 
     /// Create a copy of the layer with its own detached buffers.
     virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
@@ -994,7 +1006,6 @@ public:
 };
 
 
-// TODO: get rid of superfluous encapsulation, but keep the rest hidden
 template<class LAYER>
 class GetShared : public LAYER {
 public:
@@ -1278,11 +1289,11 @@ public:
         init(rng, bias, nInputs, nOutputs);
     }
 
-    virtual std::shared_ptr<Array> &getInputBuffer() {
+    virtual std::shared_ptr<Array> getInputBuffer() {
         return shared.inputBuffer;
     }
 
-    virtual std::shared_ptr<Array> &getOutputBuffer() {
+    virtual std::shared_ptr<Array> getOutputBuffer() {
         return shared.outputBuffer;
     }
 
@@ -1377,8 +1388,8 @@ public:
 
     // this layer doesn't have parameters, nothing to initialize
     virtual void init(std::unique_ptr<RNG> &, WeightInit) {}
-    virtual std::shared_ptr<Array> &getInputBuffer() { return shared.inputBuffer; }
-    virtual std::shared_ptr<Array> &getOutputBuffer() { return shared.outputBuffer; }
+    virtual std::shared_ptr<Array> getInputBuffer() { return shared.inputBuffer; }
+    virtual std::shared_ptr<Array> getOutputBuffer() { return shared.outputBuffer; }
     virtual std::shared_ptr<ABackpropLayer> clone() const { return makeClone(); }
     virtual size_t inputDim() const { return nSize; }
     virtual size_t outputDim() const { return nSize; }

@@ -27,19 +27,15 @@ public:
                              const Activation &af)
         : FullyConnectedLayer(weights, bias, af) {}
 
-    Array &getWeights() { return weights; }
-    Array &getBias() { return bias; }
     Array &getInducedLocalField() { return inducedLocalField; }
     Array &getActivationGrad() { return activationGrad; }
     Array &getLocalGrad() { return localGrad; }
     shared_ptr<ALearningPolicy> getPolicy() { return policy->clone(); }
-    Array &getWeightSensitivity() { return weightSensitivity; }
-    Array &getBiasSensitivity() { return biasSensitivity; }
     bool getBuffersReadyFlag() { return shared.ready(); };
 };
 
 #define CHECK_ARRAY_IS_INITIALIZED(name, arr_expr, expected_size) do { \
-    Array &(name) = arr_expr; \
+    const Array &(name) = arr_expr; \
     auto is_zero = [](float x) { return x == Approx(0.0); }; \
     CHECK( (name).size() == (expected_size) ); \
     CHECK( all_of(begin(name), end(name), is_zero) ); \
@@ -51,8 +47,8 @@ TEST_CASE("FC construction from shape", "[core][fc]") {
     FullyConnectedLayer_Test fc(n_in, n_out, linearActivation);
 
     // initialization on construction:
-    CHECK_ARRAY_IS_INITIALIZED(weights, fc.getWeights(), n_in*n_out);
-    CHECK_ARRAY_IS_INITIALIZED(bias, fc.getBias(), n_out);
+    CHECK_ARRAY_IS_INITIALIZED(weights, *fc.getWeights(), n_in*n_out);
+    CHECK_ARRAY_IS_INITIALIZED(bias, *fc.getBias(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(inducedLocalField, fc.getInducedLocalField(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(activationGrad, fc.getActivationGrad(), n_out);
     CHECK_ARRAY_IS_INITIALIZED(localGrad, fc.getLocalGrad(), n_out);
@@ -110,38 +106,45 @@ TEST_CASE("FC cloning", "[core][fc]") {
     FullyConnectedLayer fc1(w, bias, linearActivation);
     FullyConnectedLayer fc2(w, bias, linearActivation);
     connect(fc1, fc2);
-    // initially:
-    auto weights1 = GetWeights<FullyConnectedLayer>::ref(fc1);
-    auto weights2 = GetWeights<FullyConnectedLayer>::ref(fc2);
-    auto bias1 = GetBias<FullyConnectedLayer>::ref(fc1);
-    auto bias2 = GetBias<FullyConnectedLayer>::ref(fc2);
-    CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
-    CHECK(fc1.getOutputBuffer() == fc2.getInputBuffer()); // buffers are shared
-    CHECK(weights1[0] == weights2[0]); // parameters are the same
-    CHECK(weights1[1] == weights2[1]); // parameters are the same
-    CHECK(weights1[2] == weights2[2]); // parameters are the same
-    CHECK(weights1[3] == weights2[3]); // parameters are the same
-    CHECK(bias1[0] == bias2[0]); // parameters are the same
-    CHECK(bias1[1] == bias2[1]); // parameters are the same
-    // clone is detached:
-    shared_ptr<ABackpropLayer> fc1clone = fc1.clone();
-    shared_ptr<Array> out1 = fc1.getOutputBuffer();
-    shared_ptr<Array> out1clone = fc1clone->getOutputBuffer();
-    CHECK_FALSE(out1 == out1clone); // not shared
-    // clone updates don't affect the original:
-    auto rng = Init::newRNG();
-    fc1clone->init(rng, Init::uniformXavier);
-    auto &cloneRef = (FullyConnectedLayer&) *fc1clone;
-    auto cloneWeights = GetWeights<FullyConnectedLayer>::ref(cloneRef);
-    auto cloneBias = GetBias<FullyConnectedLayer>::ref(cloneRef);
-    CHECK_FALSE(cloneWeights[0] == weights1[0]);
-    CHECK_FALSE(cloneWeights[1] == weights1[1]);
-    CHECK_FALSE(cloneWeights[2] == weights1[2]);
-    CHECK_FALSE(cloneWeights[3] == weights1[3]);
-    CHECK_FALSE(cloneBias[0] == bias1[0]);
-    CHECK_FALSE(cloneBias[1] == bias1[1]);
-    // clone buffers are disconnected
-    CHECK_FALSE(fc1clone->getOutputBuffer().get() == fc1.getOutputBuffer().get());
+    SECTION("before cloning") {
+        // initially:
+        auto &weights1 = *fc1.getWeights();
+        auto &weights2 = *fc2.getWeights();
+        auto &bias1 = *fc1.getBias();
+        auto &bias2 = *fc2.getBias();
+        auto out1 = fc1.getOutputBuffer();
+        auto in1 = fc2.getInputBuffer();
+        CHECK(out1 == in1); // buffers are shared
+        CHECK(weights1[0] == weights2[0]); // parameters are the same
+        CHECK(weights1[1] == weights2[1]); // parameters are the same
+        CHECK(weights1[2] == weights2[2]); // parameters are the same
+        CHECK(weights1[3] == weights2[3]); // parameters are the same
+        CHECK(bias1[0] == bias2[0]); // parameters are the same
+        CHECK(bias1[1] == bias2[1]); // parameters are the same
+    }
+    SECTION("after cloning") {
+        auto &weights1 = *fc1.getWeights();
+        auto &bias1 = *fc1.getBias();
+        // clone is detached:
+        shared_ptr<ABackpropLayer> fc1clone = fc1.clone();
+        auto out1 = fc1.getOutputBuffer();
+        auto out1clone = fc1clone->getOutputBuffer();
+        CHECK_FALSE(out1 == out1clone); // not shared
+        // clone updates don't affect the original:
+        auto rng = Init::newRNG();
+        fc1clone->init(rng, Init::uniformXavier);
+        auto &cloneRef = (FullyConnectedLayer&) *fc1clone;
+        auto &cloneWeights = *cloneRef.getWeights();
+        auto &cloneBias = *cloneRef.getBias();
+        CHECK_FALSE(cloneWeights[0] == weights1[0]);
+        CHECK_FALSE(cloneWeights[1] == weights1[1]);
+        CHECK_FALSE(cloneWeights[2] == weights1[2]);
+        CHECK_FALSE(cloneWeights[3] == weights1[3]);
+        CHECK_FALSE(cloneBias[0] == bias1[0]);
+        CHECK_FALSE(cloneBias[1] == bias1[1]);
+        // clone buffers are disconnected
+        CHECK_FALSE(fc1clone->getOutputBuffer().get() == fc1.getOutputBuffer().get());
+    }
 }
 
 TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
@@ -195,14 +198,14 @@ TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
     for (size_t i = 0; i < 2; ++i) {
         CHECK(fcl_bpErrors[i] == Approx(net_bpErrors[i]));
     }
-    auto fcl_dEdW = fcTanh->getWeightSensitivity();
-    auto net_dEdW = fcLinear->getWeightSensitivity();
+    auto fcl_dEdW = *fcTanh->getWeightSensitivity();
+    auto net_dEdW = *fcLinear->getWeightSensitivity();
     CHECK(fcl_dEdW.size() == net_dEdW.size());
     for (size_t i = 0; i < fcl_dEdW.size(); ++i) {
         CHECK(fcl_dEdW[i] == net_dEdW[i]);
     }
-    auto fcl_dEdB = fcTanh->getBiasSensitivity();
-    auto net_dEdB = fcLinear->getBiasSensitivity();
+    auto fcl_dEdB = *fcTanh->getBiasSensitivity();
+    auto net_dEdB = *fcLinear->getBiasSensitivity();
     CHECK(fcl_dEdB.size() == net_dEdB.size());
     for (size_t i = 0; i < fcl_dEdB.size(); ++i) {
         CHECK(fcl_dEdB[i] == net_dEdB[i]);
@@ -351,8 +354,8 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
         auto error = expected - actual_out;
         auto &bpError = mlp.backprop(error);
         // check calculated weight sensitivity at the bottom layer:
-        Array &actual_dEdw = layer1->getWeightSensitivity();
-        Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+        const Array &actual_dEdw = *layer1->getWeightSensitivity();
+        const Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
         for (size_t i = 0; i < 4; ++i) {
             CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
         }
@@ -364,8 +367,8 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
         // backpropagation
         mlp.backprop(); // magic! (EuclideanLoss does all the work)
         // check calculated weight sensitivity at the bottom layer:
-        Array &actual_dEdw = layer1->getWeightSensitivity();
-        Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+        const Array &actual_dEdw = *layer1->getWeightSensitivity();
+        const Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
         for (size_t i = 0; i < 4; ++i) {
             CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
         }
