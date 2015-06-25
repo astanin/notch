@@ -952,15 +952,17 @@ public:
     virtual std::shared_ptr<Array> getOutputBuffer() = 0;
 
     /// Get a pointer to weight parameters. It can be nullptr if the layer has no parameters.
-    virtual std::shared_ptr<const Array> getWeights() { return nullptr; }
+    virtual std::shared_ptr<const Array> getWeights() const { return nullptr; }
     /// Get a pointer to bias parameters. It can be nullptr if the layer has no parameters.
-    virtual std::shared_ptr<const Array> getBias() { return nullptr; }
+    virtual std::shared_ptr<const Array> getBias() const { return nullptr; }
     /// Get a pointer to last calculated weight sensitivity (gradient of the network loss
     /// with respect to the layer weight parameters). It can be nullptr.
-    virtual std::shared_ptr<const Array> getWeightSensitivity() { return nullptr; }
+    virtual std::shared_ptr<const Array> getWeightSensitivity() const { return nullptr; }
     /// Get a pointer to last calculated bias sensitivity (gradient of the network loss
     /// with respect to the layer bias parameters). It can be nullptr.
-    virtual std::shared_ptr<const Array> getBiasSensitivity() { return nullptr; }
+    virtual std::shared_ptr<const Array> getBiasSensitivity() const { return nullptr; }
+    /// Get layer activation function.
+    virtual const Activation &getActivation() const { return linearActivation; }
 
     /// Create a copy of the layer with its own detached buffers.
     virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
@@ -1306,6 +1308,22 @@ public:
 
     virtual std::shared_ptr<Array> getOutputBuffer() {
         return shared.outputBuffer;
+    }
+
+    virtual std::shared_ptr<const Array> getWeights() const {
+        return weights;
+    }
+    virtual std::shared_ptr<const Array> getBias() const {
+        return bias;
+    }
+    virtual std::shared_ptr<const Array> getWeightSensitivity() const {
+        return weightSensitivity;
+    }
+    virtual std::shared_ptr<const Array> getBiasSensitivity() const {
+        return biasSensitivity;
+    }
+    virtual const Activation &getActivation() const {
+        return *activationFunction;
     }
 
     virtual std::shared_ptr<ABackpropLayer> clone() const {
