@@ -1050,15 +1050,15 @@ class FullyConnectedLayer : public ABackpropLayer {
 protected:
     size_t nInputs;
     size_t nOutputs; //< the number of neurons in the layer
-    Array weights; //< weights matrix $w_ji$ for the entire layer, row-major order
-    Array bias;    //< bias values $b_j$ for the entire layer, one per neuron
+    std::shared_ptr<Array> weights; //< weights matrix $w_ji$ for the entire layer, row-major order
+    std::shared_ptr<Array> bias;    //< bias values $b_j$ for the entire layer, one per neuron
     const Activation *activationFunction;
 
     Array inducedLocalField;  //< $v_j = \sum_i w_ji x_i + b_j$
     Array activationGrad;     //< $\partial y/\partial v_j = \phi^\prime (v_j)$
     Array localGrad;          //< $\delta_j = \partial E/\partial v_j = \phi^\prime(v_j) e_j$
-    Array weightSensitivity;  //< $\partial E/\partial w_{ji}$
-    Array biasSensitivity;    //< $\partial E/\partial b_{j}$
+    std::shared_ptr<Array> weightSensitivity;  //< $\partial E/\partial w_{ji}$
+    std::shared_ptr<Array> biasSensitivity;    //< $\partial E/\partial b_{j}$
     Array propagatedErrors; //< backpropagation result
 
     std::shared_ptr<ALearningPolicy> policy;
@@ -1069,6 +1069,8 @@ protected:
             throw std::runtime_error("cannot clone layer");
         }
         p->shared = shared.clone();
+        p->weights = std::make_shared<Array>(*weights);
+        p->bias = std::make_shared<Array>(*bias);
         if (policy) {
             p->policy = policy->clone();
         }
@@ -1081,8 +1083,8 @@ protected:
 
     /** Linear response of the layer $v_j = w_{ji} x_i$. */
     void calcInducedLocalField(const Array &inputs) {
-        inducedLocalField = bias; // will be added and overwritten
-        gemv(std::begin(weights), std::end(weights), std::begin(inputs),
+        inducedLocalField = *bias; // will be added and overwritten
+        gemv(std::begin(*weights), std::end(*weights), std::begin(inputs),
              std::end(inputs), std::begin(inducedLocalField),
              std::end(inducedLocalField));
     }
@@ -1147,25 +1149,27 @@ protected:
      *
      * $$dE/dw_ji = - \delta_j y_i$$ */
     void calcSensitivityFactors() {
-        assert(weightSensitivity.size() == weights.size());
-        assert(biasSensitivity.size() == bias.size());
+        assert(weightSensitivity->size() == weights->size());
+        assert(biasSensitivity->size() == bias->size());
         assert(localGrad.size() == nOutputs);
         Array &input = *shared.inputBuffer;
         assert(input.size() == nInputs);
 #ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
+        auto &dEdw = *weightSensitivity;
+        auto &dEdb = *biasSensitivity;
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
                 float y_i = input[i];
-                weightSensitivity[j*nInputs + i] = (-1.0 * localGrad[j] * y_i);
+                dEdw[j*nInputs + i] = (-1.0 * localGrad[j] * y_i);
             }
-            biasSensitivity[j] = (-1.0 * localGrad[j]);
+            dEdb[j] = (-1.0 * localGrad[j]);
         }
 #else /* optimized version (fewer operator[] calls); 3-5x faster in seq. code */
         // iterate over weightSensitivity in row-major order (grad_w_ptr)
-        auto grad_w_ptr = std::begin(weightSensitivity); // dE/dw_ji
-        auto grad_w_end = std::end(weightSensitivity);
+        auto grad_w_ptr = std::begin(*weightSensitivity); // dE/dw_ji
+        auto grad_w_end = std::end(*weightSensitivity);
         // iterate over biasSensitivity and localGrad simultaneously
-        auto grad_b_ptr = std::begin(biasSensitivity); // dE/db_j
+        auto grad_b_ptr = std::begin(*biasSensitivity); // dE/db_j
         auto grad_v_ptr = std::begin(localGrad); // dE/dv_j
         // an iterator over input columns
         auto y_ptr_begin = std::begin(input);
@@ -1202,10 +1206,11 @@ protected:
             propagatedErrors.resize(nInputs);
         }
 #ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
+        Array &w = *weights;
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float e_j = 0.0;
             for (size_t k = 0; k < nOutputs; ++k) { // for all neurons
-                e_j += localGrad[k] * weights[k*nInputs + j];
+                e_j += localGrad[k] * w[k*nInputs + j];
             }
             propagatedErrors[j] = e_j;
         }
@@ -1213,8 +1218,8 @@ protected:
         // reset propagatedErrors to zero and use as an accumulator
         propagatedErrors = 0.0;
         // iterate over weights in row-major order (w_ptr)
-        auto w_ptr = std::begin(weights); // w_ji
-        auto w_end = std::end(weights);
+        auto w_ptr = std::begin(*weights); // w_ji
+        auto w_end = std::end(*weights);
         // iterate over localGrad simultaneously (grad_v_ptr)
         auto grad_v_ptr = std::begin(localGrad);
         // iterate over propagatedErrors simultaneously (e_ptr)
@@ -1257,27 +1262,33 @@ public:
     FullyConnectedLayer(size_t nInputs = 0, size_t nOutputs = 0,
                         const Activation &af = linearActivation)
         : nInputs(nInputs), nOutputs(nOutputs),
-          weights(nInputs * nOutputs), bias(nOutputs), activationFunction(&af),
-          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
-          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
+          weights(new Array(nInputs * nOutputs)), bias(new Array(nOutputs)),
+          activationFunction(&af), inducedLocalField(nOutputs),
+          activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(new Array(nInputs * nOutputs)),
+          biasSensitivity(new Array(nOutputs)),
           propagatedErrors(nInputs) {}
 
     /// Create a layer from a weights matrix.
     FullyConnectedLayer(Array &&weights, Array &&bias,
                         const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
-          weights(weights), bias(bias), activationFunction(&af),
-          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
-          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
+          weights(new Array(weights)), bias(new Array(bias)),
+          activationFunction(&af), inducedLocalField(nOutputs),
+          activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(new Array(nInputs * nOutputs)),
+          biasSensitivity(new Array(nOutputs)),
           propagatedErrors(nInputs) {}
 
     /// Create a layer from a copy of a weights matrix.
     FullyConnectedLayer(const Array &weights, const Array &bias,
                         const Activation &af)
         : nInputs(weights.size()/bias.size()), nOutputs(bias.size()),
-          weights(weights), bias(bias), activationFunction(&af),
-          inducedLocalField(nOutputs), activationGrad(nOutputs), localGrad(nOutputs),
-          weightSensitivity(nInputs * nOutputs), biasSensitivity(nOutputs),
+          weights(new Array(weights)), bias(new Array(bias)),
+          activationFunction(&af), inducedLocalField(nOutputs),
+          activationGrad(nOutputs), localGrad(nOutputs),
+          weightSensitivity(new Array(nInputs * nOutputs)),
+          biasSensitivity(new Array(nOutputs)),
           propagatedErrors(nInputs) {}
 
     /* begin ABackpropLayer interface */
@@ -1285,8 +1296,8 @@ public:
 
     /// Initialize synaptic weights.
     virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) {
-        init(rng, weights, nInputs, nOutputs);
-        init(rng, bias, nInputs, nOutputs);
+        init(rng, *weights, nInputs, nOutputs);
+        init(rng, *bias, nInputs, nOutputs);
     }
 
     virtual std::shared_ptr<Array> getInputBuffer() {
@@ -1329,7 +1340,7 @@ public:
         if (!policy) {
             throw std::logic_error("learning policy is not defined");
         }
-        policy->update(weights, bias, weightSensitivity, biasSensitivity);
+        policy->update(*weights, *bias, *weightSensitivity, *biasSensitivity);
     }
     /* end ABackpropLayer interface */
 };

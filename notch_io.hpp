@@ -512,14 +512,14 @@ template<class LAYER>
 class GetWeights : public LAYER {
 public:
     /// Get a reference to protected 'weights' member of a LAYER class.
-    static Array& ref(LAYER &l) {
+    static const Array& ref(LAYER &l) {
         auto &access = static_cast<GetWeights<LAYER>&>(l);
-        return access.weights;
+        return *access.weights;
     }
     /// Get a reference to protected 'weights' member of a LAYER class.
     static const Array& ref(const LAYER &l) {
         auto &access = static_cast<const GetWeights<LAYER>&>(l);
-        return access.weights;
+        return *access.weights;
     }
 };
 
@@ -530,12 +530,12 @@ public:
      /// Get a reference to protected 'bias' member of a LAYER class.
     static Array& ref(LAYER &l) {
         auto &access = static_cast<GetBias<LAYER>&>(l);
-        return access.bias;
+        return *access.bias;
     }
     /// Get a reference to protected 'bias' member of a LAYER class.
     static const Array& ref(const LAYER &l) {
         auto &access = static_cast<const GetBias<LAYER>&>(l);
-        return access.bias;
+        return *access.bias;
     }
 };
 
