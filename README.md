@@ -75,6 +75,36 @@ See how Notch is used in `test/` source file to see an example.
 to disable hand-written optimizations (if you suspect there is a bug).
 
 
+Naming Conventions
+------------------
+
+Different neural network libraries name the same things differently.
+This library sticks to terminology of NNLM3.
+
+For neurons with activation potential $v_j = W_{ji} y_i + b_j$,
+activation function $\phi(v_j)$, and the network loss $E$, the naming
+convention is summarized in the following table:
+
+    | CONCEPT                      | NOTCH                 | TORCH7 NN           | CAFFE          |
+
+    | network layer                | ABackpropLayer        | Module              | Layer          |
+    | loss E calculator            | ALossLayer            | Criterion           | LossLayer      |
+    | entire network               | Net                   | Sequential          | Net            |
+    | network initializer          | Init                  | ???                 | Filler         |
+    | network optimizer            | SGD                   | StochasticGradient  | SGDSolver      |
+
+    | forward propagation step     | .output()             | :forward()          | .Forward()     |
+    | back propagation step        | .backprop()           | :backward()         | .Backward()    |
+    | update weights               | .update()             | :updateParameters() | .Update()      |
+    | read weights W_{ji}          | .getWeights()         | .weight             | .layer_param() |
+    | read bias    b_j             | .getBias()            | .bias               | .layer_param() |
+
+    | \partial E / \partial W_{ji} | weight sensitivity    | .gradWeight         | ???            |
+    | \partial E / \partial b_j    | bias sensitivity      | .gradBias           | ???            |
+    | \partial E / \partial y_i    | error signals, errors | .gradInput          | ???            |
+    | \partial E / \partial v_j    | local gradient        | .gradOutput         | ???            |
+
+
 Bibliography
 ------------
 
