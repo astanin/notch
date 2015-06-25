@@ -68,6 +68,7 @@ compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).
 If you include Notch headers in more than one compilation unit (source file),
 then, to suppress multiple definitions, `#define NOTCH_ONLY_DECLARATIONS`
 before Notch includes in all but one of the source files.
+See how Notch is used in `test/` source file to see an example.
 
     #define NOTCH_DISABLE_OPTIMIZATIONS
 
