@@ -740,7 +740,7 @@ private:
         if (lastDelta.size() != n) {
             lastDelta.resize(n, 0.0);
         }
-#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
         for (size_t i = 0; i < n; ++i) {
             float &lastDelta_i = lastDelta[i];
             float &var_i = var[i];
@@ -849,7 +849,7 @@ protected:
         // accumuate squared updates (with exponential smoothing)
         squaredVarDelta = momentum*squaredVarDelta + (1-momentum)*grad2*eta*eta;
         // apply updates
-#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
         var = var - (eta * grad);
 #else /* optimized version */
         size_t n = var.size();
@@ -1141,7 +1141,7 @@ protected:
         assert(localGrad.size() == nOutputs);
         Array &input = *shared.inputBuffer;
         assert(input.size() == nInputs);
-#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
         for (size_t j = 0; j < nOutputs; ++j) { // for all neurons (rows)
             for (size_t i = 0; i < nInputs; ++i) { // for all inputs (columns)
                 float y_i = input[i];
@@ -1190,7 +1190,7 @@ protected:
         if (propagatedErrors.size() != nInputs) {
             propagatedErrors.resize(nInputs);
         }
-#ifdef NOTCH_NO_HAND_OPTIMIZATIONS /* original version */
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float e_j = 0.0;
             for (size_t k = 0; k < nOutputs; ++k) { // for all neurons

@@ -69,7 +69,7 @@ If you include Notch headers in more than one compilation unit (source file),
 then, to suppress multiple definitions, `#define NOTCH_ONLY_DECLARATIONS`
 before Notch includes in all but one of the source files.
 
-    #define NOTCH_NO_HAND_OPTIMIZATIONS
+    #define NOTCH_DISABLE_OPTIMIZATIONS
 
 to disable hand-written optimizations (if you suspect there is a bug).
 
