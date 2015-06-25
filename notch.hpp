@@ -1020,11 +1020,13 @@ void connect(PREV_LAYER &prevLayer, NEXT_LAYER &nextLayer) {
     size_t prevIn = prevLayer.inputDim();
     size_t prevOut = prevLayer.outputDim();
     size_t nextIn = nextLayer.inputDim();
+    size_t nextOut = nextLayer.outputDim();
     if (prevOut != nextIn) {
         std::ostringstream ss;
-        ss << "can't connect a layer with shape "
-           << prevIn << "->" << prevOut
-           << " to " << nextIn << "->...";
+        ss << "can't connect " << prevLayer.tag() << " "
+           << prevIn << " in/" << prevOut << " out"
+           << " to " << nextLayer.tag() << " "
+           << nextIn << " in/" << nextOut << " out";
         throw std::invalid_argument(ss.str());
     }
     GetShared<PREV_LAYER>::ref(prevLayer).allocate(prevIn, prevOut);
