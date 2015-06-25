@@ -291,8 +291,8 @@ public:
 
 #ifdef NOTCH_USE_CBLAS
 
-/** Matrix-vector product using CBLAS.
- * Calculate $M*x + b$ and save result to $b$.
+/** Matrix-vector product, similar to BLAS _gemv function.
+ * Calculate $b = \mathbf{M}*x + b$.
  *
  * Note: CBLAS requires pointers to data.
  * The type of std::begin(std::valarray&) is not specified by the standard,
@@ -325,7 +325,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
                 b_begin, 1);
 }
 
-/** Vector-vector dot product using CBLAS.
+/** Vector-vector dot product, similar to BLAS _dot function.
  *
  * See gemv notes. */
 template <class VectorX_Iter, class VectorY_Iter>
@@ -348,8 +348,8 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
 
 #else /* NOTCH_USE_CBLAS is not defined */
 
-/** Matrix-vector product on STL iterators, similar to BLAS _gemv function.
- * Calculate $M x + b$ and saves result in $b$. */
+/** Matrix-vector product, similar to BLAS _gemv function.
+ * Calculate $b = \mathbf{M}*x + b$. */
 template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
 void
 gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
@@ -374,8 +374,7 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
     }
 }
 
-/** Vector-vector dot product on STL iterators, similar to BLAS _dot function.
- */
+/** Vector-vector dot product, similar to BLAS _dot function. */
 template <class VectorX_Iter, class VectorY_Iter>
 float
 dot(VectorX_Iter x_begin, VectorX_Iter x_end,
