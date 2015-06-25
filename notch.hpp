@@ -346,6 +346,71 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
     return cblas_sdot(x_size, x_begin, 1, y_begin, 1);
 }
 
+/** Vector-vector dot product with strides, similar to BLAS _dot function.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_Iter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_Iter>::value,
+float>::type
+dot(const size_t n,
+    VectorX_Iter x_begin, const size_t x_stride,
+    VectorY_Iter y_begin, const size_t y_stride) {
+    return cblas_sdot(n, x_begin, x_stride, y_begin, y_stride);
+}
+
+/** Outer product between two vectors. Calculate $\mathbf{M} = \alpha x y^T$.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_Iter>::value &&
+                        std::is_pointer<Matrix_OutIter>::value, void>::type
+outer(float alpha,
+      VectorX_Iter x_begin, VectorX_Iter x_end,
+      VectorY_Iter y_begin, VectorY_Iter y_end,
+      Matrix_OutIter m_begin, Matrix_OutIter m_end) {
+    size_t rows = std::distance(x_begin, x_end);
+    size_t cols = std::distance(y_begin, y_end);
+    size_t n = std::distance(m_begin, m_end);
+    if (n != rows * cols) {
+        std::ostringstream what;
+        what << "cblas_outer: incompatible shapes:\n"
+            << " vector X size = " << rows
+            << " vector Y size = " << cols
+            << " result size = " << n;
+        throw std::invalid_argument(what.str());
+    }
+    std::fill(m_begin, m_end, 0.0);
+    cblas_sger(CblasRowMajor, rows, cols,
+               alpha, x_begin, 1,
+               y_begin, 1,
+               m_begin, cols /* leading dimension of M */);
+}
+
+/** Multiply vector by a scalar: Calculate $y = \alpha x$.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_OutIter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_OutIter>::value,
+void>::type
+scale(float alpha,
+      VectorX_Iter x_begin, VectorX_Iter x_end,
+      VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "cblas_scale: incompatible shapes:\n"
+            << " vector X size = " << x_size
+            << " vector Y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+    std::fill(y_begin, y_end, 0.0);
+    cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
+}
+
 #else /* NOTCH_USE_CBLAS is not defined */
 
 /** Matrix-vector product, similar to BLAS _gemv function.
@@ -397,21 +462,19 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
     return static_cast<float>(dotProduct);
 }
 
-#endif /* ifdef NOTCH_USE_CBLAS */
-
-/** Vector-vector dot product, similar to BLAS _dot function. */
+/** Vector-vector dot product with strides, similar to BLAS _dot function. */
 template <class VectorX_Iter, class VectorY_Iter>
 float
 dot(const size_t n,
-    VectorX_Iter x_begin, const size_t xStride,
-    VectorY_Iter y_begin, const size_t yStride) {
+    VectorX_Iter x_begin, const size_t x_stride,
+    VectorY_Iter y_begin, const size_t y_stride) {
     double dotProduct = 0.0;
     auto x = x_begin;
     auto y = y_begin;
     for (size_t i = 0; i < n; ++i) {
         dotProduct += (*x) * (*y);
-        x += xStride;
-        y += yStride;
+        x += x_stride;
+        y += y_stride;
     }
     return static_cast<float>(dotProduct);
 }
@@ -471,6 +534,9 @@ scale(float alpha,
         y_i = alpha * x_i;
     }
 }
+
+#endif /* ifdef NOTCH_USE_CBLAS */
+
 
 
 /* Neurons and Neural Networks
