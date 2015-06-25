@@ -506,52 +506,6 @@ public:
  * ----------------------------
  */
 
-
-/// Access protected weights member of LAYER classes.
-template<class LAYER>
-class GetWeights : public LAYER {
-public:
-    /// Get a reference to protected 'weights' member of a LAYER class.
-    static const Array& ref(LAYER &l) {
-        auto &access = static_cast<GetWeights<LAYER>&>(l);
-        return *access.weights;
-    }
-    /// Get a reference to protected 'weights' member of a LAYER class.
-    static const Array& ref(const LAYER &l) {
-        auto &access = static_cast<const GetWeights<LAYER>&>(l);
-        return *access.weights;
-    }
-};
-
-/// Access protected bias member of LAYER classes.
-template<class LAYER>
-class GetBias : public LAYER {
-public:
-     /// Get a reference to protected 'bias' member of a LAYER class.
-    static Array& ref(LAYER &l) {
-        auto &access = static_cast<GetBias<LAYER>&>(l);
-        return *access.bias;
-    }
-    /// Get a reference to protected 'bias' member of a LAYER class.
-    static const Array& ref(const LAYER &l) {
-        auto &access = static_cast<const GetBias<LAYER>&>(l);
-        return *access.bias;
-    }
-};
-
-
-/// Access protected activation function of LAYER classes.
-template<class LAYER>
-class GetActivation : public LAYER {
-public:
-   /// Get a reference to protected 'bias' member of a LAYER class.
-    static const Activation& ref(const LAYER &l) {
-        auto &access = static_cast<const GetActivation<LAYER>&>(l);
-        return *access.activationFunction;
-    }
-};
-
-
 /** Type-agnostic layer specification for serialization. */
 struct LayerSpec {
     std::string tag; //< layer type name
@@ -567,18 +521,12 @@ struct LayerSpec {
         this->inputDim = layer.inputDim();
         this->outputDim = layer.outputDim();
         if (tag == "FullyConnectedLayer") {
-            using LT = FullyConnectedLayer;
-            auto &l = dynamic_cast<const LT&>(layer);
-            auto &af = GetActivation<LT>::ref(l);
-            auto &ws = GetWeights<LT>::ref(l);
-            auto &bs = GetBias<LT>::ref(l);
+            auto &af = layer.getActivation();
             activation = std::make_shared<std::string>(af.tag());
-            weights = std::make_shared<Array>(ws);
-            bias = std::make_shared<Array>(bs);
+            weights = std::make_shared<Array>(*layer.getWeights());
+            bias = std::make_shared<Array>(*layer.getBias());
         } else if (tag == "ActivationLayer") {
-            using LT = FullyConnectedLayer;
-            auto &l = dynamic_cast<const LT&>(layer);
-            auto &af = GetActivation<LT>::ref(l);
+            auto &af = layer.getActivation();
             activation = std::make_shared<std::string>(af.tag());
         } else {
             throw std::invalid_argument("unsupported layer type: " + tag);
