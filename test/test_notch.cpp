@@ -339,7 +339,7 @@ TEST_CASE("outer: outer vector-vector product", "[core][math]") {
     float alpha = 0.5;
     float x[2] = {10, 100};
     float y[3] = {2, 4, 8};
-    float M[7] = {0, 0, 0, 0, 0, 42}; // with an extra element at the end
+    float M[7] = {0, 0, 0, 0, 0, 0, 42}; // with an extra element at the end
     float expectedM[6] = {20*alpha, 40*alpha, 80*alpha, 200*alpha, 400*alpha, 800*alpha};
     CHECK_THROWS(internal::outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), end(M)));
     internal::outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), begin(M) + 6);
