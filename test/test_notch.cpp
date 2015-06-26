@@ -319,6 +319,18 @@ TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     CHECK(b[2] == 42); // memory is not modified beyond the end
 }
 
+TEST_CASE("emul: element-by-element product between vectors", "[core][math]") {
+    float x[3] = {1, 2, 3};
+    float y[3] = {10, 100, 1000};
+    float z[3] = {0.5, 0.5, 0.5};
+    float expectedZ[3] = {10, 200, 3000};
+    CHECK_THROWS(internal::emul(begin(x), end(x), begin(y), end(y), begin(z), begin(z)+2));
+    internal::emul(begin(x), end(x), begin(y), end(y), begin(z), end(z));
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK(z[i] == expectedZ[i]);
+    }
+}
+
 TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     float x[3] = {1, 2, 3};
     float y[4] = {100, 10, 1, 42};

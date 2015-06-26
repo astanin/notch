@@ -327,6 +327,37 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
                 b_begin, 1);
 }
 
+/** Element by element product between two vectors.
+ * Calculate $z_i = x_i y_i$ for all $i$.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_Iter, class VectorZ_OutIter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_Iter>::value &&
+                        std::is_pointer<VectorZ_OutIter>::value, void>::type
+emul(VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorY_Iter y_begin, VectorY_Iter y_end,
+     VectorZ_OutIter z_begin, VectorZ_OutIter z_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    size_t z_size = std::distance(z_begin, z_end);
+    if (x_size != y_size || x_size != z_size) {
+        std::ostringstream what;
+        what << "blas_emul: vector sizes don't match:\n"
+            << " x size = " << x_size
+            << " y size = " << y_size
+            << " z size = " << z_size;
+        throw std::invalid_argument(what.str());
+    }
+    cblas_sscal(z_size, 0.0, z_begin, 1); // std::fill(z_begin, z_end, 0.0);
+    // http://stackoverflow.com/a/13433038/25450
+    cblas_ssbmv(CblasRowMajor, CblasUpper,
+            x_size, 0 /* just the diagonal */,
+            1.0, x_begin, 1 /* leading dimension */,
+            y_begin, 1,
+            1.0, z_begin, 1);
+}
+
 /** Vector-vector dot product, similar to BLAS _dot function.
  *
  * See gemv notes. */
@@ -461,6 +492,35 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
         auto row_begin = m_begin + r * cols;
         auto row_end = row_begin + cols;
         *b = std::inner_product(row_begin, row_end, x_begin, *b);
+    }
+}
+
+/** Element by element product between two vectors.
+ * Calculate $z_i = x_i y_i$ for all $i$. */
+template <class VectorX_Iter, class VectorY_Iter, class VectorZ_OutIter>
+void
+emul(VectorX_Iter x_begin, VectorX_Iter x_end,
+     VectorY_Iter y_begin, VectorY_Iter y_end,
+     VectorZ_OutIter z_begin, VectorZ_OutIter z_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    size_t z_size = std::distance(z_begin, z_end);
+    if (x_size != y_size || x_size != z_size) {
+        std::ostringstream what;
+        what << "stl_emul: vector sizes don't match:\n"
+            << " x size = " << x_size
+            << " y size = " << y_size
+            << " z size = " << z_size;
+        throw std::invalid_argument(what.str());
+    }
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(x_begin, y_begin, z_begin, x_size)
+#endif
+    for (size_t i = 0; i < x_size; ++i) {
+        float x_i = *(x_begin + i);
+        float y_i = *(y_begin + i);
+        float &z_i = *(z_begin + i);
+        z_i = x_i * y_i;
     }
 }
 
@@ -1298,7 +1358,13 @@ protected:
     void calcLocalGrad(const Array &errors) {
         assert(activationGrad.size() == errors.size());
         assert(localGrad.size() == errors.size());
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS
         localGrad = activationGrad * errors;
+#else /* optimized version */
+        internal::emul(std::begin(activationGrad), std::end(activationGrad),
+                       std::begin(errors), std::end(errors),
+                       std::begin(localGrad), std::end(localGrad));
+#endif
     }
 
     /** Calculate sensitivity factors $\\partial E/\\partial w_{ji}$ and
@@ -1523,7 +1589,13 @@ protected:
             std::begin(inputs), std::end(inputs),
             std::begin(activationGrad),
             [&](float y) { return activation.derivative(y); });
+#ifdef NOTCH_DISABLE_OPTIMIZATIONS
         propagatedErrors = activationGrad * errors;
+#else /* optimized version */
+        internal::emul(std::begin(activationGrad), std::end(activationGrad),
+                       std::begin(errors), std::end(errors),
+                       std::begin(propagatedErrors), std::end(propagatedErrors));
+#endif
     }
 
 public:
