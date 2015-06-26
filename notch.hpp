@@ -390,7 +390,7 @@ outer(float alpha,
                m_begin, cols /* leading dimension of M */);
 }
 
-/** Multiply vector by a scalar: Calculate $y = \alpha x$.
+/** Multiply a vector by a scalar: Calculate $y = \alpha x$.
  *
  * See gemv notes. */
 template <class VectorX_Iter, class VectorY_OutIter>
@@ -410,6 +410,29 @@ scale(float alpha,
         throw std::invalid_argument(what.str());
     }
     std::fill(y_begin, y_end, 0.0);
+    cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
+}
+
+/** Multiply a vector by a scalar and add to another vector,
+ * similar to BLAS _axpy function. Calculate $y = \alpha x + y$.
+ *
+ * See gemv notes. */
+template <class VectorX_Iter, class VectorY_OutIter>
+typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
+                        std::is_pointer<VectorY_OutIter>::value,
+void>::type
+scaleAdd(float alpha,
+         VectorX_Iter x_begin, VectorX_Iter x_end,
+         VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "cblas_scaleAdd: incompatible shapes:\n"
+            << " vector X size = " << x_size
+            << " vector Y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
     cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
 }
 
@@ -534,6 +557,32 @@ scale(float alpha,
         float x_i = *(x_begin + i);
         float &y_i = *(y_begin + i);
         y_i = alpha * x_i;
+    }
+}
+
+/** Multiply a vector by a scalar and add to another vector,
+ * similar to BLAS _axpy function.  Calculate $y = \alpha x + y$. */
+template <class VectorX_Iter, class VectorY_OutIter>
+void
+scaleAdd(float alpha,
+         VectorX_Iter x_begin, VectorX_Iter x_end,
+         VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+    size_t x_size = std::distance(x_begin, x_end);
+    size_t y_size = std::distance(y_begin, y_end);
+    if (x_size != y_size) {
+        std::ostringstream what;
+        what << "stl_scaleAdd: incompatible shapes:\n"
+            << " vector X size = " << x_size
+            << " vector Y size = " << y_size;
+        throw std::invalid_argument(what.str());
+    }
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
+#endif
+    for (size_t i = 0; i < x_size; ++i) {
+        float x_i = *(x_begin + i);
+        float &y_i = *(y_begin + i);
+        y_i += alpha * x_i;
     }
 }
 
