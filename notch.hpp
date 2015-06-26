@@ -383,7 +383,7 @@ outer(float alpha,
             << " result size = " << n;
         throw std::invalid_argument(what.str());
     }
-    std::fill(m_begin, m_end, 0.0);
+    cblas_sscal(n, 0.0, m_begin, 1); // std::fill(m_begin, m_end, 0.0);
     cblas_sger(CblasRowMajor, rows, cols,
                alpha, x_begin, 1,
                y_begin, 1,
@@ -409,7 +409,7 @@ scale(float alpha,
             << " vector Y size = " << y_size;
         throw std::invalid_argument(what.str());
     }
-    std::fill(y_begin, y_end, 0.0);
+    cblas_sscal(x_size, 0.0, y_begin, 1); // std::fill(y_begin, y_end, 0.0);
     cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
 }
 
