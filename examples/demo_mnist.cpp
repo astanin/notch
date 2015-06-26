@@ -10,6 +10,7 @@
 
 
 using namespace std;
+using namespace notch;
 
 
 const string IMAGES_FILE = "../data/train-images-idx3-ubyte";

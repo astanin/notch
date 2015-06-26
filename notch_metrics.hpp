@@ -46,6 +46,7 @@ THE SOFTWARE.
 
 #include "notch.hpp"
 
+namespace notch {
 
 /** A multi-class confusion matrix for class labels of type C. */
 template<typename C, C default_class = C()>
@@ -189,5 +190,7 @@ public:
 		return cm;
 	}
 };
+
+} // end of namespace notch
 
 #endif /* NOTCH_METRICS_H */

@@ -6,7 +6,10 @@
 #include "notch.hpp"
 #include "notch_io.hpp"
 
+
 using namespace std;
+using namespace notch;
+
 
 int main() {
 

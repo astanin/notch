@@ -56,6 +56,8 @@ namespace std {
 }
 #endif /* ENABLE_GCC49_CYGWIN_MSYS2_WORKAROUND */
 
+namespace notch {
+
 /** Encode categorical features as vectors.
  *
  * N distinct categorical features are mapped to N-dimensional vectors,
@@ -332,5 +334,6 @@ public:
     }
 };
 
+} // end of namespace notch
 
 #endif /* NOTCH_PRE_H */

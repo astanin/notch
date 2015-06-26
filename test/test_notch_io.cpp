@@ -1,12 +1,15 @@
 #include "catch.hpp"
 #include <sstream>
 #include <iterator>
-using namespace std;
 
 
 #define NOTCH_ONLY_DECLARATIONS
 #include "notch.hpp"
 #include "notch_io.hpp"
+
+
+using namespace std;
+using namespace notch;
 
 
 TEST_CASE("Array plain-text I/O", "[io]") {

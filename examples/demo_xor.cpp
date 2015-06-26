@@ -10,6 +10,7 @@
 
 
 using namespace std;
+using namespace notch;
 
 
 void print_net(string tag, Net &xorNet, LabeledDataset dataset) {

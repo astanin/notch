@@ -31,6 +31,7 @@ THE SOFTWARE.
 
 #include <algorithm>  // find_if
 #include <fstream>    // ifstream
+#include <iomanip>    // setw, setprecision
 #include <istream>
 #include <map>
 #include <ostream>
@@ -39,6 +40,7 @@ THE SOFTWARE.
 
 #include "notch.hpp"
 
+namespace notch {
 
 /* Vectors Input-Output
  * --------------------
@@ -863,5 +865,7 @@ public:
         return *this;
     }
 };
+
+} // end of namespace notch
 
 #endif

@@ -7,6 +7,7 @@
 
 
 using namespace std;
+using namespace notch;
 
 
 TEST_CASE("OneHotEncoder single-column encoding-decoding", "[pre]") {

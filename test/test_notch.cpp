@@ -11,6 +11,7 @@
 #include "notch_io.hpp"
 
 using namespace std;
+using namespace notch;
 
 // Abbreviations:
 // FC  = FullyConnectedLayer
@@ -310,27 +311,27 @@ TEST_CASE("HingeLoss output", "[core][loss][math]") {
 TEST_CASE("gemv: matrix-vector product b = M*x + b", "[core][math]") {
     float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
     float x[3] = {100, 10, 1};
-    float b[3] = {1, 2, -1}; // with an extra element at the end
-    CHECK_THROWS(gemv(begin(M), end(M), begin(x), end(x), begin(b), end(b)));
-    gemv(begin(M), end(M), begin(x), end(x), begin(b), begin(b)+2);
+    float b[3] = {1, 2, 42}; // with an extra element at the end
+    CHECK_THROWS(internal::gemv(begin(M), end(M), begin(x), end(x), begin(b), end(b)));
+    internal::gemv(begin(M), end(M), begin(x), end(x), begin(b), begin(b)+2);
     CHECK(b[0] == Approx(100*1 + 10*2 + 1*3 + 1));
     CHECK(b[1] == Approx(100*4 + 10*5 + 1*6 + 2));
-    CHECK(b[2] == -1); // unchanged
+    CHECK(b[2] == 42); // memory is not modified beyond the end
 }
 
 TEST_CASE("dot: vector-vector dot product", "[core][math]") {
     float x[3] = {1, 2, 3};
-    float y[3] = {100, 10, 1};
-    float longY[4] = {100, 10, 1, 0.1};
-    CHECK_THROWS(dot(begin(x), end(x), begin(longY), end(longY)));
-    float p = dot(begin(x), end(x), begin(y), end(y));
+    float y[4] = {100, 10, 1, 42};
+    CHECK_THROWS(internal::dot(begin(x), end(x), begin(y), end(y)));
+    float p = internal::dot(begin(x), end(x), begin(y), begin(y)+3);
     CHECK(p == 123);
+    CHECK(y[3] == 42); // memory is not modified beyond the end
 }
 
 TEST_CASE("dot: vector-vector dot product with strides", "[core][math]") {
     float x[4] = {1, 2, 3, 4};
     float y[3] = {1, 10, 100};
-    float p = dot(2, x, 2, y+1, 1);
+    float p = internal::dot(2, x, 2, y+1, 1);
     CHECK(p == 1*10 + 3*100);
 }
 
@@ -338,25 +339,40 @@ TEST_CASE("outer: outer vector-vector product", "[core][math]") {
     float alpha = 0.5;
     float x[2] = {10, 100};
     float y[3] = {2, 4, 8};
-    float M[7] = {0, 0, 0, 0, 0, 0}; // with an extra element at the end
+    float M[7] = {0, 0, 0, 0, 0, 42}; // with an extra element at the end
     float expectedM[6] = {20*alpha, 40*alpha, 80*alpha, 200*alpha, 400*alpha, 800*alpha};
-    CHECK_THROWS(outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), end(M)));
-    outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), begin(M) + 6);
+    CHECK_THROWS(internal::outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), end(M)));
+    internal::outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), begin(M) + 6);
     for (size_t i =0; i < 6; ++i) {
         CHECK(M[i] == expectedM[i]);
     }
+    CHECK(M[6] == 42); // memory is not modified beyond the end
 }
 
 TEST_CASE("scale: multiply vector by a scalar", "[core][math]") {
     float alpha = 10.0;
     float x[2] = {2, 4};
-    float y[3] = {0, 0, 0}; // with an extra element at the end
+    float y[3] = {0, 0, 42}; // with an extra element at the end
     float expectedY[2] = {20, 40};
-    CHECK_THROWS(scale(alpha, begin(x), end(x), begin(y), end(y)));
-    scale(alpha, begin(x), end(x), begin(y), begin(y)+2);
+    CHECK_THROWS(internal::scale(alpha, begin(x), end(x), begin(y), end(y)));
+    internal::scale(alpha, begin(x), end(x), begin(y), begin(y)+2);
     for (size_t i =0; i < 2; ++i) {
         CHECK(y[i] == expectedY[i]);
     }
+    CHECK(y[2] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("scaleAdd: multiply vector by a scalar and add to another vector", "[core][math]") {
+    float alpha = 10.0;
+    float x[2] = {2, 4};
+    float y[3] = {1, 1, 42}; // with an extra element at the end
+    float expectedY[2] = {20+1, 40+1};
+    CHECK_THROWS(internal::scaleAdd(alpha, begin(x), end(x), begin(y), end(y)));
+    internal::scaleAdd(alpha, begin(x), end(x), begin(y), begin(y)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(y[i] == expectedY[i]);
+    }
+    CHECK(y[2] == 42); // memory is not modified beyond the end
 }
 
 /* This test is based on the backpropagation example by Dan Ventura

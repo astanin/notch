@@ -16,6 +16,7 @@
 
 
 using namespace std;
+using namespace notch;
 
 
 ostream &operator<<(ostream &out, const Dataset &d) {

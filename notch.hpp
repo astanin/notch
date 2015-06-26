@@ -37,11 +37,9 @@ THE SOFTWARE.
 #include <cmath>      // sqrt, exp
 #include <functional> // ref, function<>
 #include <initializer_list>
-#include <iomanip>    // setw, setprecision
 #include <iterator>   // begin, end
 #include <memory>     // unique_ptr, make_unique
 #include <numeric>    // inner_product
-#include <ostream>    // ostream
 #include <random>
 #include <string>
 #include <sstream>    // ostringstream
@@ -58,6 +56,12 @@ THE SOFTWARE.
 #ifdef NOTCH_USE_OPENMP
 #include <omp.h>
 #endif
+
+
+#include "notch_debug.hpp"  // TODO: remove from release
+
+
+namespace notch {
 
 /* Library Framework
  * =================
@@ -86,10 +90,6 @@ using RNG = std::mt19937;
 using Array = std::valarray<float>;
 using Input = Array;
 using Output = Array;
-
-#include "notch_debug.hpp"  // TODO: remove from release
-
-// TODO: NDArray, mostly compatible with Array; like struct { shape; data; };
 
 /** Unlabeled dataset is a collection or `Input`s or `Output`s. */
 using Dataset = std::vector<Array>;
@@ -284,6 +284,8 @@ public:
     }
 };
 
+
+namespace internal {
 
 /* Linear Algebra
  * ==============
@@ -537,7 +539,7 @@ scale(float alpha,
 
 #endif /* ifdef NOTCH_USE_CBLAS */
 
-
+} // end of namespace notch::internal
 
 /* Neurons and Neural Networks
  * ===========================
@@ -974,7 +976,7 @@ protected:
         auto g_begin = std::begin(grad);
         auto g_end = std::end(grad);
         // compute gradient norm
-        float grad2 = dot(g_begin, g_end, g_begin, g_end);
+        float grad2 = internal::dot(g_begin, g_end, g_begin, g_end);
         // accumuate squared gradient (with exponential smoothing)
         squaredGradAccum = momentum*squaredGradAccum + (1-momentum)*grad2;
         // compute updates (time step)
@@ -988,6 +990,7 @@ protected:
         var = var - (eta * grad);
 #else /* optimized version */
         size_t n = var.size();
+        // TODO: internal::scaleAdd(-eta, n, std::begin(grad), std::begin(var));
         auto grad_ptr = std::begin(grad);
         auto var_ptr = std::begin(var);
 #ifdef NOTCH_USE_OPENMP
@@ -1221,7 +1224,8 @@ protected:
     /** Linear response of the layer $v_j = w_{ji} x_i$. */
     void calcInducedLocalField(const Array &inputs) {
         inducedLocalField = *bias; // will be added and overwritten
-        gemv(std::begin(*weights), std::end(*weights), std::begin(inputs),
+        internal::gemv(
+             std::begin(*weights), std::end(*weights), std::begin(inputs),
              std::end(inputs), std::begin(inducedLocalField),
              std::end(inducedLocalField));
     }
@@ -1293,11 +1297,11 @@ protected:
         assert(input.size() == nInputs);
         auto &dEdw = *weightSensitivity;
         auto &dEdb = *biasSensitivity;
-        outer(-1.0,                                       // -
+        internal::outer(-1.0,                             // -
               std::begin(localGrad), std::end(localGrad), // \delta_j
               std::begin(input), std::end(input),         // y_i
               std::begin(dEdw), std::end(dEdw));          // =: dE/dw_{ji}
-        scale(-1.0,                                       // -
+        internal::scale(-1.0,                             // -
               std::begin(localGrad), std::end(localGrad), // \delta_j
               std::begin(dEdb), std::end(dEdb));          // =: dE/db_j
     }
@@ -1322,7 +1326,7 @@ protected:
         auto delta_begin = std::begin(localGrad);    // points to delta_0
         for (size_t j = 0; j < nInputs; ++j) { // for all inputs
             float &e_j = *(e_begin + j);
-            e_j = dot(nOutputs, w_begin + j, nInputs, delta_begin, 1);
+            e_j = internal::dot(nOutputs, w_begin + j, nInputs, delta_begin, 1);
         }
     }
 
@@ -2235,5 +2239,7 @@ public:
         SGD::train(rng, net, trainSet, epochs, epochCallback, sampleCallback);
     }
 };
+
+} // end of namespace notch
 
 #endif /* NOTCH_H */

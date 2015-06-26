@@ -1,13 +1,14 @@
 #include <iostream>
 
 
-using namespace std;
-
-
 #include "notch.hpp"
 #include "notch_io.hpp"      // CSVReader
 #include "notch_metrics.hpp" // AClassifier, ConfusionMatrix
 #include "notch_pre.hpp"     // SquareAugmented
+
+
+using namespace std;
+using namespace notch;
 
 
 class IntClassifier : public AClassifier < int, 0 > {
