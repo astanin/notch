@@ -1034,24 +1034,10 @@ protected:
         float eta = delta_RMS / grad_RMS;
         // accumuate squared updates (with exponential smoothing)
         squaredVarDelta = momentum*squaredVarDelta + (1-momentum)*grad2*eta*eta;
-        // apply updates
-#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
-        var = var - (eta * grad);
-#else /* optimized version */
-        size_t n = var.size();
-        // TODO: internal::scaleAdd(-eta, n, std::begin(grad), std::begin(var));
-        auto grad_ptr = std::begin(grad);
-        auto var_ptr = std::begin(var);
-#ifdef NOTCH_USE_OPENMP
-#pragma omp parallel for shared(var_ptr, grad_ptr)
-#endif
-        for (size_t i = 0; i < n; ++i) {
-            float grad_i = (*(grad_ptr + i));
-            float delta_i = - eta * grad_i;
-            float &var_i = (*(var_ptr + i));
-            var_i += delta_i;
-        }
-#endif
+        // apply updates: var = var - eta * grad
+        internal::scaleAdd(-eta,                      // - eta
+                std::begin(grad), std::end(grad),     // * grad
+                std::begin(var), std::end(var));      // + var =: var
     }
 
 public:
