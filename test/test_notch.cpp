@@ -60,8 +60,8 @@ TEST_CASE("FC construction from shape", "[core][fc]") {
 
 TEST_CASE("FC construction from weights matrix (no-copy)", "[core][fc]") {
     /// three in, two out
-    FullyConnectedLayer fc({1, 10, 100, 0.1, 0.01, 0.001}, // weights, row-major
-                           {2.5, 5.0}, // bias
+    FullyConnectedLayer fc({1.0f, 10.0f, 100.0f, 0.1f, 0.01f, 0.001f}, // weights, row-major
+                           {2.5f, 5.0f}, // bias
                            defaultTanh);
     auto &out = fc.output({1,1,1});
     CHECK(out.size() == 2u);
@@ -71,8 +71,8 @@ TEST_CASE("FC construction from weights matrix (no-copy)", "[core][fc]") {
 
 TEST_CASE("FC construction from weights matrix (copy)", "[core][fc]") {
     /// three in, two out
-    const Array w = {1, 10, 100, 0.1, 0.01, 0.001}; // weights, row-major
-    const Array bias = {2.5, 5.0}; // bias
+    const Array w = {1.0f, 10.0f, 100.0f, 0.1f, 0.01f, 0.001f}; // weights, row-major
+    const Array bias = {2.5f, 5.0f}; // bias
     FullyConnectedLayer fc(w, bias, linearActivation);
     auto &out = fc.output({1,1,1});
     CHECK(out.size() == 2u);
@@ -172,8 +172,8 @@ TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
 }
 
 TEST_CASE("FC(linear) + AL(tanh) ~ FC(tanh)", "[core][activation]") {
-    const Array w = {0.01, 0.1, -0.1, -0.01};
-    const Array b = {0.25, -0.25};
+    const Array w = {0.01f, 0.1f, -0.1f, -0.01f};
+    const Array b = {0.25f, -0.25f};
     // compare this:
     auto fcTanh = make_shared<FullyConnectedLayer_Test>(w, b, scaledTanh);
     // vs a net of
@@ -264,7 +264,7 @@ TEST_CASE("SoftmaxWithLoss output", "[core][loss][math]") {
     Array target {0, 1};
     Array y {1, 4};
     float loss = layer.output(y, target);
-    float e = 0.0001;
+    float e = 0.0001f;
     CHECK(loss == Approx(0.0486).epsilon(e));
     Array lossGrad = layer.backprop();
     REQUIRE(lossGrad.size() == 2u);
@@ -391,9 +391,9 @@ TEST_CASE("scaleAdd: multiply vector by a scalar and add to another vector", "[c
  * http://axon.cs.byu.edu/Dan/478/misc/BP.example.pdf */
 TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     // initialize network weights as in the example
-    Array weights1 {0.23, -0.79, 0.1, 0.21};
+    Array weights1 {0.23f, -0.79f, 0.1f, 0.21f};
     Array bias1 {0, 0};
-    Array weights2 {-0.12, -0.88};
+    Array weights2 {-0.12f, -0.88f};
     Array bias2 {0};
     auto layer1 = make_shared<FullyConnectedLayer_Test>(weights1, bias1, logisticActivation);
     auto layer2 = make_shared<FullyConnectedLayer_Test>(weights2, bias2, logisticActivation);
@@ -402,20 +402,20 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
     mlp.append(layer2);
     mlp.append(make_shared<EuclideanLoss>(1));
     // training example: (0.3, 0.7) -> 0.0
-    Array in {0.3, 0.7};
-    Array expected {0.0};
+    Array in {0.3f, 0.7f};
+    Array expected {0.0f};
 
     SECTION("precomputed errors") {
         // forward propagation
-        auto &actual_out = mlp.output({0.3, 0.7});
-        float expected_out = 0.37178;
+        auto &actual_out = mlp.output(in);
+        float expected_out = 0.37178f;
         CHECK(actual_out[0] == Approx(expected_out).epsilon(0.0002));
         // backpropagation
         auto error = expected - actual_out;
         auto &bpError = mlp.backprop(error);
         // check calculated weight sensitivity at the bottom layer:
         const Array &actual_dEdw = *layer1->getWeightSensitivity();
-        const Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+        const Array expected_dEdw {-7.3745e-4f, -1.7207e-3f, -5.6863e-3f, -1.3268e-2f};
         for (size_t i = 0; i < 4; ++i) {
             CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
         }
@@ -428,7 +428,7 @@ TEST_CASE("backprop example", "[core][math][fc][mlp]") {
         mlp.backprop(); // magic! (EuclideanLoss does all the work)
         // check calculated weight sensitivity at the bottom layer:
         const Array &actual_dEdw = *layer1->getWeightSensitivity();
-        const Array expected_dEdw {-7.3745e-4, -1.7207e-3, -5.6863e-3, -1.3268e-2};
+        const Array expected_dEdw {-7.3745e-4f, -1.7207e-3f, -5.6863e-3f, -1.3268e-2f};
         for (size_t i = 0; i < 4; ++i) {
             CHECK(actual_dEdw[i] == Approx(expected_dEdw[i]).epsilon(0.0002));
         }
@@ -454,8 +454,8 @@ TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
 }
 
 TEST_CASE("FixedRate with momentum: generalized delta rule policy", "[core][train]") {
-    float eta = 0.1;
-    float momentum = 0.9;
+    float eta = 0.1f;
+    float momentum = 0.9f;
     FixedRate policy(eta, momentum);
     Array weights { 100, 200, 400 };
     Array bias { 100, 200 };
@@ -485,9 +485,9 @@ TEST_CASE("FixedRate with momentum: generalized delta rule policy", "[core][trai
 }
 
 TEST_CASE("FixedRate with weight-decay", "[core][train]") {
-    float eta = 0.1;
+    float eta = 0.1f;
     float momentum = 0.0;
-    float decay = 0.1;
+    float decay = 0.1f;
     Array weights { 100, 200 };
     Array bias { 20, 10 };
     Array oldWeights = weights;
@@ -505,7 +505,7 @@ TEST_CASE("FixedRate with weight-decay", "[core][train]") {
         CHECK(bias[i] == oldBias[i] - eta*(dEdb[i] + 2*decay*oldBias[i]));
     }
     // apply policy with momentum
-    FixedRate policy2(eta, 0.9, decay);
+    FixedRate policy2(eta, 0.9f, decay);
     weights = oldWeights;
     bias = oldBias;
     policy2.update(weights, bias, dEdw, dEdb);

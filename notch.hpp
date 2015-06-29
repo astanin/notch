@@ -695,8 +695,8 @@ public:
     void uniformNguyenWidrow(std::unique_ptr<RNG> &rng,
                              Array &weights, int nIn, int nOut) {
         std::uniform_real_distribution<float> U(-1, +1);
-        float overlap = 0.7; // "to have the intervals overlap slightly"
-        float beta = overlap * pow(nOut, 1.0 / nIn); // target row norm
+        float overlap = 0.7f; // "to have the intervals overlap slightly"
+        float beta = overlap * pow(nOut, 1.0f / nIn); // target row norm
         if (weights.size() == static_cast<size_t>(nIn*nOut)) {
             // we're initializing weights
             float w_row_norm = sqrt(nIn / 3.0); // for nIn elems in U([-1,1])
@@ -889,9 +889,9 @@ public:
 
 
 /// Default hyperbolic tangent activation.
-const TanhActivation defaultTanh(1.0, 1.0, "tanh");
+const TanhActivation defaultTanh(1.0f, 1.0f, "tanh");
 /// Hyperbolic tangent activation with LeCun parameters.
-const TanhActivation scaledTanh(1.7159, 0.6667, "scaledTanh");
+const TanhActivation scaledTanh(1.7159f, 0.6667f, "scaledTanh");
 /// Logistic function activation (output values between 0 and 1).
 const LogisticActivation logisticActivation(1.0f);
 /// Rectified Linear Unit: $\phi(v) = \max(0, v)$.

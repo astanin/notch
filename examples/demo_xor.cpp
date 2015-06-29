@@ -49,7 +49,7 @@ int main(int, char *[]) {
     cout << "\n";
     print_net("initial", xorNet, dataset);
 
-    xorNet.setLearningPolicy(FixedRate(0.01 /* rate */, 0.9 /* momentum */));
+    xorNet.setLearningPolicy(FixedRate(0.01f /* rate */, 0.9f /* momentum */));
     SGD::train(xorNet, dataset,
                500 /* epochs */,
                EpochCallback { /* every */ 100 /* epochs */,
