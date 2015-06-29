@@ -342,8 +342,15 @@ protected:
     static const int maxDims = 4;
     size_t imagesDims = 0;
     size_t labelsDims = 0;
-    size_t imagesShape[IDXReader::maxDims] = {0, 0, 0, 0};
-    size_t labelsShape[IDXReader::maxDims] = {0, 0, 0, 0};
+    size_t imagesShape[IDXReader::maxDims];
+    size_t labelsShape[IDXReader::maxDims];
+
+    void init() { // workaround for C2536 on MSVC 2013
+        for (size_t i = 0; i < IDXReader::maxDims; ++i) {
+            imagesShape[i] = 0;
+            labelsShape[i] = 0;
+        }
+    }
 
     Dataset readDataset(std::istream &in, size_t *dims, size_t shape[]) {
         Dataset dataset;
@@ -419,10 +426,12 @@ protected:
 
 public:
     /** Construct an IDXReader. */
-    IDXReader() {}
+    IDXReader() { init();  }
     /** Construct an IDXReader and set its default input streams (images and labels). */
     IDXReader(std::istream &imagesIn, std::istream &labelsIn)
-        : imagesInPtr(&imagesIn), labelsInPtr(&labelsIn) {}
+        : imagesInPtr(&imagesIn), labelsInPtr(&labelsIn) {
+        init();
+    }
 
     /** Read a `LabeledDataset` from default input streams.  */
     LabeledDataset read() {
