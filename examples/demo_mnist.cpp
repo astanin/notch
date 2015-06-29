@@ -9,28 +9,37 @@
 #include "notch_metrics.hpp" // AClassifier
 
 
+#ifdef _MSC_VER
+#define PATH_TO_DATA "..\\..\\data\\"
+// because MSVC builds put binaries to build/Debug by default
+#else
+#define PATH_TO_DATA "../data"
+// because GCC/Clang and make put binaries in the build directory by default
+#endif
+
+
 using namespace std;
 using namespace notch;
 
 
-const string IMAGES_FILE = "../data/train-images-idx3-ubyte";
-const string LABELS_FILE = "../data/train-labels-idx1-ubyte";
-const string IMAGES_TEST_FILE = "../data/t10k-images-idx3-ubyte";
-const string LABELS_TEST_FILE = "../data/t10k-labels-idx1-ubyte";
-const string SAVE_NETWORK_SNAPSHOT = "demo_mnist_network.txt";
+const string IMAGES_FILE = PATH_TO_DATA "train-images-idx3-ubyte";
+const string LABELS_FILE = PATH_TO_DATA "train-labels-idx1-ubyte";
+const string IMAGES_TEST_FILE = PATH_TO_DATA "t10k-images-idx3-ubyte";
+const string LABELS_TEST_FILE = PATH_TO_DATA "t10k-labels-idx1-ubyte";
+const string SAVE_NETWORK_SNAPSHOT = PATH_TO_DATA "demo_mnist_network.txt";
 
 
 LabeledDataset readMNIST(const string &imagesFile, const string labelsFile) {
     ifstream trainImages(imagesFile, ios_base::binary);
     if (!trainImages.is_open()) {
         cerr << "Can't open file " << imagesFile << "\n"
-             << "Run getmnist.py in ../data/ to download data\n";
+             << "Run getmnist.py in " << PATH_TO_DATA << " to download data\n";
         exit(0);
     }
     ifstream trainLabels(labelsFile, ios_base::binary);
     if (!trainLabels.is_open()) {
         cerr << "Can't open file " << labelsFile << "\n"
-             << "Run getmnist.py in ../data/ to download data\n";
+            << "Run getmnist.py in " << PATH_TO_DATA << " to download data\n";
         exit(0);
     }
     cout << "reading MNIST images from " << imagesFile << "\n";

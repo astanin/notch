@@ -7,6 +7,14 @@
 #include "notch_pre.hpp"     // SquareAugmented
 
 
+#ifdef _MSC_VER
+#define PATH_TO_DATA "..\\..\\data\\"
+// because MSVC puts binaries in build/Debug/ or build/Release/ by default
+#else
+#define PATH_TO_DATA "../data"
+// because GCC/Clang and make put binaries in the build directory by default
+#endif
+
 using namespace std;
 using namespace notch;
 
@@ -33,8 +41,8 @@ float meanLoss(Net &net, LabeledDataset &dataset) {
 
 
 int main() {
-    auto trainset = CSVReader().read("../data/twospirals-train.csv");
-    auto testset = CSVReader().read("../data/twospirals-test.csv");
+    auto trainset = CSVReader().read(PATH_TO_DATA "twospirals-train.csv");
+    auto testset = CSVReader().read(PATH_TO_DATA "twospirals-test.csv");
 
     // with SQUARE: accuracy = 99.5% (130000 epochs on 4-80-20-1 NN, ~5 min)
     // without:     accuracy = 99.5% (50000 epochs on 2-50-50-50-50-10-1 NN, ~7 min)
