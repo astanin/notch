@@ -54,7 +54,10 @@ ENDIF(USE_OPENMP)
 
 FUNCTION(openmp_enable _target)
     target_compile_options(${_target} PRIVATE ${OpenMP_CXX_FLAGS})
-    set_property(TARGET ${_target} APPEND PROPERTY LINK_FLAGS ${OpenMP_CXX_FLAGS})
+    IF(NOT MSVC)
+        # GCC, Clang and, supposedly, ICC require also a linker flag
+        set_property(TARGET ${_target} APPEND PROPERTY LINK_FLAGS ${OpenMP_CXX_FLAGS})
+    ENDIF(NOT MSVC)
     message(STATUS "Enabled OpenMP for " "${_target}")
 ENDFUNCTION()
 
