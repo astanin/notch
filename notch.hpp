@@ -516,7 +516,7 @@ emul(VectorX_Iter x_begin, VectorX_Iter x_end,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, z_begin, x_size)
 #endif
-    for (size_t i = 0; i < x_size; ++i) {
+    for (int_fast64_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float y_i = *(y_begin + i);
         float &z_i = *(z_begin + i);
@@ -585,7 +585,7 @@ outer(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(m_begin, x_begin, y_begin, rows, cols, alpha)
 #endif
-    for (size_t r = 0; r < rows; ++r) {
+    for (int_fast64_t r = 0; r < rows; ++r) {
         for (size_t c = 0; c < cols; ++c) {
             float &m_rc = *(m_begin + r*cols + c);
             float x_r = *(x_begin + r);
@@ -613,7 +613,7 @@ scale(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
 #endif
-    for (size_t i = 0; i < x_size; ++i) {
+    for (int_fast64_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float &y_i = *(y_begin + i);
         y_i = alpha * x_i;
@@ -639,7 +639,7 @@ scaleAdd(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
 #endif
-    for (size_t i = 0; i < x_size; ++i) {
+    for (int_fast64_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float &y_i = *(y_begin + i);
         y_i += alpha * x_i;
