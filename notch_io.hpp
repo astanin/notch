@@ -593,12 +593,22 @@ class PlainTextNetworkReader {
 private:
     std::istream *inPtr = nullptr;
 
-    const std::map<std::string, const Activation&>
-         knownActivations = {{"tanh", defaultTanh},
-                             {"scaledTanh", scaledTanh},
-                             {"linear", linearActivation},
-                             {"ReLU", ReLU},
-                             {"leakyReLU", leakyReLU}};
+    // workaround for C2797 on MSVC 2013
+    const Activation *getActivation(const std::string &tag) {
+        if (tag == "tanh") {
+            return &defaultTanh;
+        } else if (tag == "scaledTanh") {
+            return &scaledTanh;
+        } else if (tag == "linear") {
+            return &linearActivation;
+        } else if (tag == "ReLU") {
+            return &ReLU;
+        } else if (tag == "leakyReLU") {
+            return &leakyReLU;
+        }  else {
+            return nullptr;
+        }
+    }
 
     std::string read_tag(std::istream &in) {
         std::string tag;
@@ -725,16 +735,16 @@ private:
         read_tag_value<std::string>(in, "layer:", tag);
         read_layer_config(in, inputDim, outputDim, activationTag, w, b);
         if (tag == "FullyConnectedLayer") {
-            auto af = knownActivations.find(activationTag);
-            if (af != knownActivations.end()) {
-                mknet.addFC(w, b, af->second);
+            auto afptr = getActivation(activationTag);
+            if (afptr) {
+                mknet.addFC(w, b, *afptr);
             } else {
                 throw std::runtime_error("unsupported activation: " +activationTag);
             }
         } else if (tag == "ActivationLayer") {
-            auto af = knownActivations.find(activationTag);
-            if (af != knownActivations.end()) {
-                mknet.addActivation(af->second);
+            auto afptr = getActivation(activationTag);
+            if (afptr) {
+                mknet.addActivation(*afptr);
             } else {
                 throw std::runtime_error("unsupported activation: " +activationTag);
             }
