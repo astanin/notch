@@ -648,6 +648,51 @@ scaleAdd(float alpha,
 
 #endif /* ifdef NOTCH_USE_CBLAS */
 
+/// Unrolled loop over kernel points for a 3x3 kernel.
+template<class Iter, size_t kernelSize=3>
+inline float
+conv2dAt(Iter imagePos, const size_t imageWidth, Iter kernel) {
+    Iter row1 = imagePos - imageWidth - 1;
+    Iter row2 = imagePos - 1;
+    Iter row3 = imagePos + imageWidth - 1;
+    Iter krow1 = kernel;
+    Iter krow2 = kernel + kernelSize;
+    Iter krow3 = kernel + 2 * kernelSize;
+    return (*(row1    )) * (*(krow3 + 2)) +
+           (*(row1 + 1)) * (*(krow3 + 1)) +
+           (*(row1 + 2)) * (*(krow3    )) +
+           (*(row2    )) * (*(krow2 + 2)) +
+           (*(row2 + 1)) * (*(krow2 + 1)) +
+           (*(row2 + 2)) * (*(krow2 + 0)) +
+           (*(row3    )) * (*(krow1 + 2)) +
+           (*(row3 + 1)) * (*(krow1 + 1)) +
+           (*(row3 + 2)) * (*(krow1    ));
+}
+
+/** Calculate a convolution of a two-dimensional image stored in row-major order,
+ * and a square kernel. Save result in row-major order.
+ *
+ * This function does _not_ pad image data. */
+template<class Iter, class OutIter, size_t kernelSize=3>
+void
+conv2d(Iter image, const size_t imageWidth, const size_t imageHeight,
+       Iter kernel, OutIter result) {
+    size_t pad = kernelSize/2;
+    Iter image_topleft = image + pad*imageWidth + pad;
+    size_t resultWidth = imageWidth - kernelSize + 1;
+    size_t resultHeight = imageHeight - kernelSize + 1;
+#ifdef NOTCH_USE_OPENMP
+#pragma omp parallel for shared(image_topleft, kernel, resultWidth, resultHeight)
+#endif
+    for (int_fast64_t r = 0; r < resultHeight; ++r) {
+        for (size_t c = 0; c < resultWidth; ++c) {
+            Iter image_rc = image_topleft + r*imageWidth + c;
+            OutIter result_rc = result + r*resultWidth + c;
+            *result_rc = conv2dAt<Iter, kernelSize>(image_rc, imageWidth, kernel);
+        }
+    }
+}
+
 } // end of namespace notch::internal
 
 /* Neurons and Neural Networks
