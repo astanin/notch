@@ -24,21 +24,24 @@ development.
 Motivation
 ----------
 
+This library was born out of frustration.
+
  * Most of the neural network frameworks are notoriously difficult to
-   install and deploy.
-
-   Some of them work only on a particular operating system flavor,
-   or have very specific hardware requirements.
-
-   Notch is supposed to lower the barrier to entry and be a tool which
-   works anywhere where a modern C++ compiler is available.
-   Just copy a header file. No need to install anything.
+   install and deploy. Some of them work only on a particular operating
+   system flavor, or have very specific hardware requirements.
 
  * Many neural network frameworks are designed to _train_ neural
-   networks. Few care about _using_ them and integrating with end-user
-   software.
+   networks. Few care about _using_ them and integrating neural networks
+   into the end-user software.
 
-   Notch is designed to be embedded into other software.
+Notch is supposed to lower the barrier to entry and be a tool which
+works anywhere where a modern C++ compiler is available.
+Just copy a header file. No need to install anything.
+(_but if you can throw in also a BLAS library, that helps_)
+
+Notch is also designed to be embedded into other software.
+Standalone executable size starts from approx. 100 KiB,
+without extra dependencies to bundle.
 
 
 How to use
@@ -50,29 +53,25 @@ See `examples/`.
 Conditional Compilation
 -----------------------
 
-Set this compilation flags _before_ including "notch.hpp" and other Notch headers:
+Set these compilation flags _before_ including "notch.hpp" and other Notch headers:
 
-    #define NOTCH_USE_CBLAS
+ * `#define NOTCH_USE_CBLAS`
 
-if you're linking your program with a CBLAS library and want to use an efficient
-implemtation of the linear algebra.
+    if you're linking your program with a CBLAS library and want to use an efficient
+    implemtation of the linear algebra.
 
-    #define NOTCH_USE_OPENMP
+ * `#define NOTCH_USE_OPENMP`
 
-to parallelize Notch computations using OpenMP.
-If you use OpenMP and BLAS together, make sure that your BLAS library is
-compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).
+    to parallelize Notch computations using OpenMP.
+    If you use OpenMP and BLAS together, make sure that the BLAS library is
+    compatible with OpenMP (OpenBLAS should be compiled with OpenMP support).
 
-    #define NOTCH_ONLY_DECLARATIONS
+ * `#define NOTCH_ONLY_DECLARATIONS`
 
-If you include Notch headers in more than one compilation unit (source file),
-then, to suppress multiple definitions, `#define NOTCH_ONLY_DECLARATIONS`
-before Notch includes in all but one of the source files.
-See how Notch is used in `test/` source file to see an example.
-
-    #define NOTCH_DISABLE_OPTIMIZATIONS
-
-to disable hand-written optimizations (if you suspect there is a bug).
+    If you include Notch headers in more than one compilation unit (source file),
+    then, to suppress multiple definitions, `#define NOTCH_ONLY_DECLARATIONS`
+    before Notch includes in all but one of the source files.
+    To see an example, look how Notch is used in `test/` source files.
 
 
 Naming Conventions
