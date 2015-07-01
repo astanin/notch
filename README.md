@@ -13,7 +13,7 @@ This is (supposed to be)
 
  * cross-platform (Linux and Windows)
 
- * reasonably fast (for a CPU-only implementations, HOPEFULLY)
+ * reasonably fast (for a CPU-only implementations, see `benchmarks/`)
 
  * but not at the cost of algorithms' readability and portability
 
