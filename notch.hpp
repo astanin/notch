@@ -1038,36 +1038,28 @@ private:
     void deltaRuleWithMomentum(Array &var, Array &lastDelta, const Array &grad) {
         size_t n = var.size();
         if (lastDelta.size() != n) {
-            lastDelta.resize(n, 0.0);
+            lastDelta.resize(n, 0.0f);
         }
-#ifdef NOTCH_DISABLE_OPTIMIZATIONS /* original version */
-        for (size_t i = 0; i < n; ++i) {
-            float &lastDelta_i = lastDelta[i];
-            float &var_i = var[i];
-            float grad_i = grad[i];
-            float delta_i = momentum * lastDelta_i - learningRate * grad_i;
-            if (weightDecay != 0.0) {
-                delta_i -= learningRate * 2.0 * weightDecay * var_i;
-            }
-            lastDelta_i = delta_i;
-            var_i += delta_i;
+        // calculate updates: delta = momentum * delta - eta * grad
+        //   lastDelta = momentum * lastDelta
+        internal::scale(momentum,
+                std::begin(lastDelta), std::end(lastDelta),
+                std::begin(lastDelta), std::end(lastDelta));
+        //   lastDelta = lastDelta - eta * grad
+        internal::scaleAdd(-learningRate,
+                std::begin(grad), std::end(grad),
+                std::begin(lastDelta), std::end(lastDelta));
+        // add weight decay: var = var - 2 * eta * lambda * var
+        //   lastDelta = lastDelta - 2 * eta * lambda * var
+        if (weightDecay != 0) {
+            internal::scaleAdd(- 2 * learningRate * weightDecay,
+                std::begin(var), std::end(var),
+                std::begin(lastDelta), std::end(lastDelta));
         }
-#else /* optimized version (fewer operator[] calls) */
-        auto last_delta_ptr = std::begin(lastDelta);
-        auto grad_ptr = std::begin(grad);
-        auto var_ptr = std::begin(var);
-        for (size_t i = 0; i < n; ++i) {
-            float last_delta_i = (*last_delta_ptr);
-            float grad_i = (*grad_ptr);
-            float delta_i = momentum * last_delta_i - learningRate * grad_i;
-            if (weightDecay != 0.0) {
-                delta_i -= learningRate * 2.0 * weightDecay * (*var_ptr);
-            }
-            (*last_delta_ptr) = delta_i;
-            (*var_ptr) += delta_i;
-            ++last_delta_ptr; ++grad_ptr; ++var_ptr;
-        }
-#endif
+        // update weights
+        internal::scaleAdd(1.0,
+                std::begin(lastDelta), std::end(lastDelta),
+                std::begin(var), std::end(var));
     }
 
 public:
