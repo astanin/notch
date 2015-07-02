@@ -375,6 +375,17 @@ TEST_CASE("scale: multiply vector by a scalar", "[core][math]") {
     CHECK(y[2] == 42); // memory is not modified beyond the end
 }
 
+TEST_CASE("scale: save output to the same vector", "[core][math]") {
+    float alpha = 2;
+    float x[3] = {1, 3, 42};
+    float expected[2] = {2, 6};
+    internal::scale(alpha, begin(x), begin(x)+2, begin(x), begin(x)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(x[i] == expected[i]);
+    }
+    CHECK(x[2] == 42); // memory is not modified beyond the end
+}
+
 TEST_CASE("scaleAdd: multiply vector by a scalar and add to another vector", "[core][math]") {
     float alpha = 10.0;
     float x[2] = {2, 4};

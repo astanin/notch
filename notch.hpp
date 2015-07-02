@@ -424,13 +424,11 @@ outer(float alpha,
 /** Multiply a vector by a scalar: Calculate $y = \alpha x$.
  *
  * See gemv notes. */
-template <class VectorX_Iter, class VectorY_OutIter>
-typename std::enable_if<std::is_pointer<VectorX_Iter>::value &&
-                        std::is_pointer<VectorY_OutIter>::value,
-void>::type
+template <class Vector_Iter>
+typename std::enable_if<std::is_pointer<Vector_Iter>::value, void>::type
 scale(float alpha,
-      VectorX_Iter x_begin, VectorX_Iter x_end,
-      VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+      Vector_Iter x_begin, Vector_Iter x_end,
+      Vector_Iter y_begin, Vector_Iter y_end) {
     size_t x_size = std::distance(x_begin, x_end);
     size_t y_size = std::distance(y_begin, y_end);
     if (x_size != y_size) {
@@ -440,8 +438,12 @@ scale(float alpha,
             << " vector Y size = " << y_size;
         throw std::invalid_argument(what.str());
     }
-    cblas_sscal(x_size, 0.0, y_begin, 1); // std::fill(y_begin, y_end, 0.0);
-    cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
+    if (x_begin == y_begin) { // if saving output to the same vector
+        cblas_sscal(x_size, alpha, y_begin, 1);
+    } else {
+        cblas_sscal(x_size, 0.0, y_begin, 1); // std::fill(y_begin, y_end, 0.0);
+        cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
+    }
 }
 
 /** Multiply a vector by a scalar and add to another vector,
@@ -596,11 +598,11 @@ outer(float alpha,
 }
 
 /** Multiply vector by a scalar: Calculate $y = \alpha x$. */
-template <class VectorX_Iter, class VectorY_OutIter>
-void
+template <class Vector_Iter>
+typename std::enable_if<std::is_pointer<Vector_Iter>::value, void>::type
 scale(float alpha,
-      VectorX_Iter x_begin, VectorX_Iter x_end,
-      VectorY_OutIter y_begin, VectorY_OutIter y_end) {
+      Vector_Iter x_begin, Vector_Iter x_end,
+      Vector_Iter y_begin, Vector_Iter y_end) {
     size_t x_size = std::distance(x_begin, x_end);
     size_t y_size = std::distance(y_begin, y_end);
     if (x_size != y_size) {
