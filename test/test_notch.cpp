@@ -503,7 +503,7 @@ TEST_CASE("FixedRate: delta rule policy", "[core][train]") {
 
 TEST_CASE("FixedRate with momentum: generalized delta rule policy", "[core][train]") {
     float eta = 0.1f;
-    float momentum = 0.9f;
+    float momentum = 0.5f;
     FixedRate policy(eta, momentum);
     Array weights { 100, 200, 400 };
     Array bias { 100, 200 };
