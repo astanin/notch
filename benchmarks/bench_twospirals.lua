@@ -11,6 +11,8 @@
 require 'torch'
 require 'nn'
 
+nIters = tonumber(arg[1])
+
 -- create dataset compatible with torch7
 function loadDataset(diskfile)
     -- use csv2t7.sh to convert CSV files to torch native data format:
@@ -59,6 +61,6 @@ loss = nn.MSECriterion()
 -- in torch; I stick to plain fixed rate SGD in this script;
 trainer = nn.StochasticGradient(net, loss)
 trainer.learningRate = 1e-3
-trainer.maxIteration = 1000
+trainer.maxIteration = nIters
 trainer:train(trainset)
 

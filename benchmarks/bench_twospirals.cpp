@@ -34,7 +34,12 @@ int main(int argc, char *argv[]) {
         .addL2Loss()
         .init();
 
-    if (argc == 2 && string("--adadelta") == argv[1]) {
+    size_t nIters = 0;
+    if (argc >= 2) {
+        nIters = atoi(argv[1]);
+    }
+
+    if (argc == 3 && string("--adadelta") == argv[2]) {
         cout << "# using ADADELTA\n";
         net.setLearningPolicy(AdaDelta());
     } else {
@@ -43,7 +48,7 @@ int main(int argc, char *argv[]) {
     }
 
     SGD::train(net, trainset,
-               1000 /* epochs */,
+               nIters /* epochs */,
                EpochCallback { 1 /* print every epoch */, [&](int i) {
                    cout << "# current error = "
                         << meanLoss(net, trainset) << "\n";
