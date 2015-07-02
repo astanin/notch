@@ -1015,13 +1015,20 @@ private:
     /// update @param var using a classic delta rule
     void deltaRule(Array& var, const Array &grad) {
         size_t n = var.size();
-        for (size_t i = 0; i < n; ++i) {
-            float &var_i = var[i];
-            float delta_i = - learningRate * grad[i];
-            if (weightDecay != 0.0) {
-                delta_i -= learningRate * 2.0 * weightDecay * var_i;
-            }
-            var_i += delta_i;
+        static Array oldvar;
+        if (weightDecay != 0) {
+            oldvar.resize(n);
+            oldvar = var;
+        }
+        // apply updates: var = var - eta * grad
+        internal::scaleAdd(-learningRate,             // - eta
+                std::begin(grad), std::end(grad),     // * grad
+                std::begin(var), std::end(var));      // + var =: var
+        // apply weight decay: var = var - 2 * eta * lambda * var
+        if (weightDecay != 0) {
+            internal::scaleAdd(- 2 * learningRate * weightDecay,
+                std::begin(oldvar), std::end(oldvar),
+                std::begin(var), std::end(var));
         }
     }
 
