@@ -48,7 +48,10 @@ THE SOFTWARE.
 
 namespace notch {
 
-/** A multi-class confusion matrix for class labels of type C. */
+/** A multi-class confusion matrix for class labels of type C.
+ *
+ * The confusion matrix allows to calculate classifier precision,
+ * recall and other metrics. */
 template<typename C, C default_class = C()>
 class ConfusionMatrix {
 protected:
@@ -78,6 +81,7 @@ protected:
 
 public:
 
+    /// Add another label-prediction pair.
     void add(C actual, C predicted) {
         std::pair<C, C> key = std::make_pair(actual, predicted);
         cm[key]++;
@@ -166,7 +170,13 @@ public:
     /** Calculate the average F1-score across all classes.
      *
      * As in (Sokolova, 2009), Table 3, the average F-score is
-     * calculated as a combination of the average precision and recall. */
+     * calculated as a combination of the average precision and recall.
+     *
+     * References:
+     *
+     * - A systematic analysis of performance measures for classification tasks
+     *   (2009) Sokolova and Lapalme
+     */
     double F1score() {
         double p = precision();
         double r = recall();
@@ -174,7 +184,8 @@ public:
     }
 };
 
-/** A classifier assigns class labels of type C to input vetors. */
+/** A classifier to assign class labels of type C to input samples
+ * and calculate a generalized ConfusionMatrix on a given test set. */
 template<class C, C default_class = C()>
 class AClassifier {
 public:

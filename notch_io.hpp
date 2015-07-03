@@ -519,13 +519,14 @@ public:
 
 /** Type-agnostic layer specification for serialization. */
 struct LayerSpec {
-    std::string tag; //< layer type name
-    size_t inputDim = 0; //< the number of layer inputs
-    size_t outputDim = 0; //< the number of layer outputs (the number of nodes)
-    std::shared_ptr<std::string> activation = nullptr;
-    std::shared_ptr<Array> weights = nullptr;
-    std::shared_ptr<Array> bias = nullptr;
+    std::string tag; ///< layer type name
+    size_t inputDim = 0; ///< the number of layer inputs
+    size_t outputDim = 0; ///< the number of layer outputs (the number of nodes)
+    std::shared_ptr<std::string> activation = nullptr; ///< name of the activation function
+    std::shared_ptr<Array> weights = nullptr; ///< layer weight parameters
+    std::shared_ptr<Array> bias = nullptr; ///< layer bias parameters
 
+    /// Create a new layer specification for a backpropagation layer.
     LayerSpec(const ABackpropLayer &layer) {
         std::string tag = layer.tag();
         this->tag = tag;
@@ -547,6 +548,7 @@ struct LayerSpec {
         }
     }
 
+    /// Create a new layer specification for a loss layer.
     LayerSpec(const ALossLayer &layer) {
         std::string tag = layer.tag();
         this->tag = tag;
@@ -558,12 +560,13 @@ struct LayerSpec {
 
 /** Type-agnostic specification of the neural network for serialization. */
 struct NetSpec {
-    std::string tag; //< network type name
-    size_t inputDim = 0; //< the number of inputs of the first layer
-    size_t outputDim = 0; //< the number of outputs of the last layer
-    std::vector<LayerSpec> layers; //< all layers, loss including
-    bool hasLoss = false; //< true if there's a loss layer
+    std::string tag; ///< network type name
+    size_t inputDim = 0; ///< the number of inputs of the first layer
+    size_t outputDim = 0; ///< the number of outputs of the last layer
+    std::vector<LayerSpec> layers; ///< all layers, loss including
+    bool hasLoss = false; ///< true if there's a loss layer
 
+    /// Create a new network specification for a feed forward network.
     NetSpec(const Net &net) {
         this->tag = "Net";
         for (size_t i = 0; i < net.size(); ++i) {
@@ -822,8 +825,10 @@ private:
     }
 
 public:
+    /// Create a new PlainTextNetworkWriter and redirect output to the out stream.
     PlainTextNetworkWriter(std::ostream &out) : out(out) {}
 
+    /// Serialize a LayerSpec.
     void save(LayerSpec &spec) {
         out << "layer: " << spec.tag << "\n";
         if (spec.inputDim) {
@@ -841,12 +846,14 @@ public:
         }
     }
 
+    /// Serialize a LAYER.
     template<class LAYER>
     void save(const LAYER &layer) {
         auto spec = LayerSpec(layer);
         save(spec);
     }
 
+    /// Serialize an entire Net.
     void save(const Net &net) {
         auto netSpec = NetSpec(net);
         size_t n = netSpec.layers.size();
@@ -864,21 +871,25 @@ public:
         }
     }
 
+    /// Print a string to the output stream.
     PlainTextNetworkWriter &operator<<(const std::string &s) {
         out << s;
         return *this;
     }
 
+    /// Serialize ABackpropLayer to the output stream.
     PlainTextNetworkWriter &operator<<(const ABackpropLayer &layer) {
         save<ABackpropLayer>(layer);
         return *this;
     }
 
+    /// Serialize ALossLayer to the output stream.
     PlainTextNetworkWriter &operator<<(const ALossLayer &layer) {
         save<ALossLayer>(layer);
         return *this;
     }
 
+    /// Serialize an entire Net.
     PlainTextNetworkWriter &operator<<(const Net &net) {
         save(net);
         return *this;

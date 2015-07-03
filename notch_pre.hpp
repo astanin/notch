@@ -114,6 +114,7 @@ public:
         fit(data);
     }
 
+    /** Construct an appropriate OneHot encoder from a given Dataset. */
     ADatasetTransformer &fit(const Dataset &d) {
         if (d.empty()) {
             return *this;

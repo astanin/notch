@@ -100,9 +100,13 @@ using Dataset = std::vector<Array>;
  *  Transformations are supposed to be invertable. */
 class ADatasetTransformer {
 public:
+    /// Transform the entire Dataset.
     virtual Dataset apply(const Dataset &) = 0;
+    /// Transform a single input sample.
     virtual Array apply(const Array &) = 0;
+    /// Apply an inverse transform for the entire Dataset.
     virtual Dataset unapply(const Dataset &) = 0;
+    /// Apply an inverse transform to a single input sample.
     virtual Array unapply(const Array &) = 0;
 };
 
@@ -112,14 +116,14 @@ public:
  * Supervised learning requires labeled data.
  * A label is a vector of numeric values. */
 struct LabeledData {
-    Input const &data;
-    Output const &label;
+    Array const &data; ///< unlabeled data sample
+    Array const &label; ///< data label
 };
 
 
-/** Multiple `LabeledData` samples.
+/** A set of LabeledData samples.
  *
- * `LabeledDataset`s can be used like training or testing sets. */
+ * LabeledDatasets can be used as training or testing sets. */
 class LabeledDataset {
 private:
     size_t nSamples;
@@ -185,22 +189,29 @@ public:
         }
     }
 
+    /// Get an iterator pointing to the first element
+    /// (LabeledData) of the dataset.
     DatasetIterator begin() const {
         return DatasetIterator(
                 inputs.begin(), inputs.end(),
                 outputs.begin(), outputs.end());
     }
 
+    /// Get an iterator pointing at the end of the dataset.
     DatasetIterator end() const {
         return DatasetIterator(
                 inputs.end(), inputs.end(),
                 outputs.end(), outputs.end());
     }
 
+    /// Get the number of samples in the dataset.
     size_t size() const { return nSamples; }
+    /// Get the number of variables in a data sample.
     size_t inputDim() const { return inputDimension; }
+    /// Get the number of variables in a label.
     size_t outputDim() const { return outputDimension; }
 
+    /// Add another data-label pair to the dataset.
     LabeledDataset &append(Input &input, Output &output) {
         if (nSamples != 0) {
             assert(inputDimension == input.size());
@@ -215,6 +226,7 @@ public:
         return *this;
     }
 
+    /// Add another data-label pair to the dataset.
     LabeledDataset &append(const Input &input, const Output &output) {
         if (nSamples != 0) {
             assert(inputDimension == input.size());
@@ -231,19 +243,23 @@ public:
         return *this;
     }
 
+    /// Add a LabeledData `sample` to the dataset.
     LabeledDataset &append(LabeledData &sample) {
         return append(sample.data, sample.label);
     }
 
+    /// Add a LabeledData `sample` to the dataset.
     LabeledDataset &append(const LabeledData &sample) {
         return append(sample.data, sample.label);
     }
 
+    /// Get only unlabeled data samples.
     const Dataset &getData() { return inputs; }
 
+    /// Get only labels.
     const Dataset &getLabels() { return outputs; }
 
-    /// Preprocess `Input` data
+    /// Preprocess input data
     void apply(ADatasetTransformer &t) {
         inputs = t.apply(inputs);
         if (!inputs.empty()) {
@@ -251,7 +267,7 @@ public:
         }
     }
 
-    /// Preprocess `Output` labels
+    /// Preprocess labels (output)
     void applyToLabels(ADatasetTransformer &t) {
         outputs = t.apply(outputs);
         if (!outputs.empty()) {
@@ -259,7 +275,7 @@ public:
         }
     }
 
-    /// Randomly shuffle `LabeledData`.
+    /// Randomly shuffle LabeledData samples.
     void shuffle(std::unique_ptr<RNG> &rng) {
         // Modern version of Fischer-Yates shuffle.
         // The same random permutation should be applied to both
@@ -816,13 +832,16 @@ public:
  * --------------------
  */
 
- /** Activation functions are applied to neuron's output to introduce
+ /** Activation functions $\\phi(v)$$ are applied to neuron's output to introduce
  * non-linearity and map output to specific range. Backpropagation algorithm
  * requires differentiable activation functions. */
 class Activation {
 public:
+    /// Get the name of the activation function. Required for serialization.
     virtual std::string tag() const = 0;
+    /// Calculate activation function value $\\phi(v)$.
     virtual float operator()(float v) const = 0;
+    /// Calculate activation function derivative $d \\phi(v)/d v$.
     virtual float derivative(float v) const = 0;
 };
 
@@ -840,6 +859,7 @@ private:
     float slope = 1.0;
 
 public:
+    /// Create a new logistic activation function.
     LogisticActivation(float slope) : slope(slope) {};
 
     virtual float operator()(float v) const {
@@ -884,6 +904,7 @@ private:
     std::string name;
 
 public:
+    /// Create a hyperbolic tangent activation function.
     TanhActivation(float a, float b, std::string name = "tanh")
         : a(a), b(b), name(name) {}
 
@@ -911,6 +932,8 @@ private:
     std::string name;
 
 public:
+    /// Create a piecewise linear activation function
+    /// (a rectified linear unit by default).
     PiecewiseLinearActivation(float negativeSlope = 0.0,
                               float positiveSlope = 1.0,
                               std::string name = "ReLU")
@@ -1175,8 +1198,11 @@ public:
  * the same buffer twice. */
 class SharedBuffers {
 public:
+    /// The buffer to keep the cache of the last layer inputs.
     std::shared_ptr<Array> inputBuffer;
+    /// The layer to keep the cache of the last layer outputs.
     std::shared_ptr<Array> outputBuffer;
+    /// return true if the shared buffers are already allocated
     bool ready() const {
         return inputBuffer && outputBuffer;
     }
@@ -1206,7 +1232,7 @@ public:
 };
 
 
-/** An intermediate layer of the network with back-propagation capability. */
+/** An intermediate layer of the network with backpropagation capability. */
 class ABackpropLayer {
 protected:
     // Forward and backpropagation results can be shared between layers.
@@ -1215,7 +1241,7 @@ protected:
     SharedBuffers shared;
 
 public:
-    /// A name to identify layer type.
+    /// Get the name of the layer type. Required for serialization.
     virtual std::string tag() const = 0;
 
     /// Get the number of input variables.
@@ -1247,11 +1273,11 @@ public:
     /// Create a copy of the layer with its own detached buffers.
     virtual std::shared_ptr<ABackpropLayer> clone() const = 0;
 
-    /// Forward propagaiton pass.
+    /// Run a forward propagation pass.
     ///
     /// @return inputs for the next layer.
     virtual const Array &output(const Array &inputs) = 0;
-    /// Back propagation pass.
+    /// Run a backpropagation pass.
     ///
     /// @return error signals $e_i$ propagated to the previous layer.
     virtual const Array &backprop(const Array &errors) = 0;
@@ -1268,10 +1294,10 @@ public:
  * output, calculate loss and error gradient to propagate back. */
 class ALossLayer {
 protected:
-    SharedBuffers shared;
+    SharedBuffers shared; //< input buffer, potentially shared
 
 public:
-    /// A name to identify layer type.
+    /// Get the name of the loss layer type. Required for serialization.
     virtual std::string tag() const { return "ALossLayer"; }
 
     /// Calculate loss.
@@ -1283,7 +1309,13 @@ public:
     /// Create a copy of the layer with its own detached buffers.
     virtual std::shared_ptr<ALossLayer> clone() const = 0;
 
+    /// Return the number of inputs of the layer.
     virtual size_t inputDim() const = 0;
+
+    /// Return the number of outputs of the layer.
+    ///
+    /// Loss layers are usually the last layers in the network,
+    /// so the number of outputs is usually zero.
     virtual size_t outputDim() const { return 0; }
 };
 
@@ -1479,7 +1511,7 @@ protected:
         }
     }
 
-    /// Backpropagation algorithm
+    /// Run backpropagation pass and save results in the member variables.
     void
     backpropInplace(const Array &errors) {
         calcLocalGrad(errors);
@@ -1768,9 +1800,9 @@ public:
  */
 class SoftmaxWithLoss : public ALossLayer {
 protected:
-    size_t nSize;
-    Array softmaxOutput; //< $\\phi(\\mathbf{y})_i$
-    Array lossGrad; //< $\\partial E/\\partial y_i$
+    size_t nSize; ///< the number of inputs of the softmax layer
+    Array softmaxOutput; ///< $\\phi(\\mathbf{y})_i$
+    Array lossGrad; ///< $\\partial E/\\partial y_i$
 
     /** Softmax activation. */
     static Array softmax(const Array &input) {
@@ -1796,6 +1828,7 @@ protected:
     }
 
 public:
+    /// Create a SoftmaxWithLoss layer (softmax activation and cross-entropy loss).
     SoftmaxWithLoss(size_t n) : nSize(n), softmaxOutput(n), lossGrad(n) {}
 
     virtual std::string tag() const { return "SoftmaxWithLoss"; }
@@ -1898,6 +1931,7 @@ protected:
 public:
     Net() : layers(0) {}
 
+    /// Add another backpropagation layer to the network.
     virtual Net &append(std::shared_ptr<ABackpropLayer> layer) {
         layers.push_back(std::move(layer));
         if (layers.size() >= 2) { // connect the last two layers
@@ -1907,10 +1941,12 @@ public:
         return *this;
     }
 
+    /// Add another backpropagation layer to the network.
     virtual Net &append(const ABackpropLayer &layer) {
         return append(layer.clone());
     }
 
+    /// Add a loss layer to the network.
     virtual Net &append(std::shared_ptr<ALossLayer> loss) {
         if (layers.empty()) {
             throw std::logic_error("cannot append loss layer to an empty Net");
@@ -1926,10 +1962,12 @@ public:
         return *this;
     }
 
+    /// Add a loss layer to the network.
     virtual Net &append(const ALossLayer &loss) {
         return append(loss.clone());
     }
 
+    /// Initialize the network.
     virtual void
     init(std::unique_ptr<RNG> &rng, WeightInit init = Init::normalXavier) {
         for (size_t i = 0u; i < layers.size(); ++i) {
@@ -1937,8 +1975,13 @@ public:
         }
     }
 
-    virtual void clear() { layers.clear(); }
+    /// Delete all layers.
+    virtual void clear() {
+        layers.clear();
+        lossLayer = nullptr;
+    }
 
+    /// Evaluate network output (run a forward propagation step).
     const Array &output(const Array &inputs) {
         selfCheck();
         const Array *out = &(layers[0]->output(inputs));
@@ -1950,11 +1993,14 @@ public:
 
     // TODO: checks on order of calls + tests (loss and backprop after output)
     // TODO: optimize: remember last output and don't recalculate it
+    /// Evaluate network loss (run a forward propagation step and compare
+    /// its output to the expected result).
     float loss(const Array &inputs, const Array &expected) {
         auto &out = output(inputs);
         return lossLayer->output(out, expected);
     }
 
+    /// Evaluate network output and loss. Return both.
     std::tuple<const Array &, float>
     outputWithLoss(const Array &inputs, const Array &expected) {
         const Array &out = output(inputs);
@@ -1962,6 +2008,13 @@ public:
         return std::make_tuple(out, lossValue);
     }
 
+    /// Run a backpropagation step.
+    ///
+    /// This method should be called only after a forward propagation step.
+    ///
+    /// \see output
+    /// \see outputWithLoss
+    /// \see loss
     const Array &backprop(const Array &errors) {
         if (layers.empty()) {
             throw std::logic_error("no layers");
@@ -1975,77 +2028,114 @@ public:
         return *bpr;
     }
 
+    /// Run a backpropagation step.
+    ///
+    /// This method should be called only after a forward propagation step.
+    ///
+    /// \see output
+    /// \see outputWithLoss
+    /// \see loss
     const Array &backprop() {
         selfCheck();
         return backprop(lossLayer->backprop());
     }
 
+    /// Specify how the network parameters have to be updated.
     void setLearningPolicy(const ALearningPolicy &lp) {
         for (size_t i = 0; i < layers.size(); ++i) {
             layers[i]->setLearningPolicy(lp);
         }
      }
 
+    /// Adjust network parameters.
+    ///
+    /// This method should be called only after a backpropagation step.
+    ///
+    /// \see backprop
     void update() {
         for (size_t i = 0; i < layers.size(); ++i) {
             layers[i]->update();
         }
     }
 
+    /// Return the number of backpropagation layers in the network.
     size_t size() const { return layers.size(); }
+
+    /// Get an immutable i-th backpropagation layer.
+    /// The method may return nullptr.
     std::shared_ptr<const ABackpropLayer> getLayer(size_t i) const {
        return (i < layers.size()) ? layers[i] : nullptr;
     }
+    /// Get a mutable i-th backpropagation layer.
+    /// The method may return nullptr.
     std::shared_ptr<ABackpropLayer> getLayer(size_t i) {
        return (i < layers.size()) ? layers[i] : nullptr;
     }
+    /// Get the loss layer.
+    /// The method may return nullptr if there is no loss layer.
     std::shared_ptr<const ALossLayer> getLossLayer() const { return lossLayer; }
+    /// Get the loss layer.
+    /// The method may return nullptr if there is no loss layer.
     std::shared_ptr<ALossLayer> getLossLayer() { return lossLayer; }
 };
 
 
-/// Layer factory.
+/** A builder class to create new feed forward Layers. */
 class MakeLayer {
 public:
-    size_t nInputs = 0;
-    size_t nOutputs = 0;
-    std::shared_ptr<Array> maybeWeights = nullptr;
-    std::shared_ptr<Array> maybeBias = nullptr;
-    const Activation *maybeActivation = nullptr;
+    size_t nInputs = 0; ///< the number of layer inputs
+    size_t nOutputs = 0; ///< the number of layer outputs
+    std::shared_ptr<Array> maybeWeights = nullptr; ///< layer weight parameters
+    std::shared_ptr<Array> maybeBias = nullptr; ///< layer bias parameters
+    const Activation *maybeActivation = nullptr; ///< layer activation function
 
+    /// Create a new layer builder.
     MakeLayer() {}
+    /// Create a builder for a layer with `n` inputs.
     MakeLayer(size_t n)
         : nInputs(n), nOutputs(n) {}
+    /// Create a builder for a layer with `n` inputs and activation function `af`.
     MakeLayer(size_t n, const Activation &af)
         : nInputs(n), nOutputs(n), maybeActivation(&af) {}
+    /// Create a builder for a layer with `nInputs` inputs and `nOutputs` outputs.
     MakeLayer(size_t nInputs, size_t nOutputs)
         : nInputs(nInputs), nOutputs(nOutputs) {}
+    /// Create a builder for a layer with `nInputs` inputs and `nOutputs` outputs
+    /// and activation function `af`.
     MakeLayer(size_t nInputs, size_t nOutputs, const Activation &af)
         : nInputs(nInputs), nOutputs(nOutputs), maybeActivation(&af) {}
+    /// Create a builder for a layer with given layer parameters (`weights` and `bias`).
     MakeLayer(const Array &weights, const Array &bias)
         : maybeWeights(std::shared_ptr<Array>(new Array(weights))),
           maybeBias(std::shared_ptr<Array>(new Array(bias))) {}
+    /// Create a builder for a layer with given layer parameters (`weights` and `bias`)
+    /// and activation function `af`.
     MakeLayer(const Array &weights, const Array &bias, const Activation &af)
         : maybeWeights(std::shared_ptr<Array>(new Array(weights))),
           maybeBias(std::shared_ptr<Array>(new Array(bias))),
           maybeActivation(&af) {}
 
+    /// Setup a layer with `n` input variables.
     MakeLayer &setInputDim(size_t n) {
         nInputs = n;
         return *this;
     }
+    /// Setup a layer with `n` output variables.
     MakeLayer &setOutputDim(size_t n) {
         nOutputs = n;
         return *this;
     }
+    /// Setup a layer with weight parameters `w`.
     MakeLayer &setWeights(Array &w) {
         maybeWeights = std::make_shared<Array>(w);
         return *this;
     }
+    /// Setup a layer with bias parameters `b`.
     MakeLayer &setBias(Array &b) {
         maybeBias = std::make_shared<Array>(b);
         return *this;
     }
+    /// Setup a layer with an activation function `af`.
     MakeLayer &setActivation(const Activation &af) {
         maybeActivation = &af;
         return *this;
@@ -2122,15 +2212,16 @@ private:
 };
 
 
+/** A builder class to construct and configure feed-forward neural Nets. */
 class MakeNet {
 protected:
-    size_t nInputs;
-    size_t nOutputs;
+    size_t nInputs; ///< the number of inputs of the first layer
+    size_t nOutputs; ///< the number of outputs of the last layer
 
     enum class LayerType { FC, Activation, L2Loss, Softmax, Hinge };
-    std::vector<MakeLayer> layerMakers;
-    std::vector<LayerType> layerTypes;
-    bool hasLoss = false;
+    std::vector<MakeLayer> layerMakers; ///< builder objects for all layers
+    std::vector<LayerType> layerTypes; ///< types of layers to create
+    bool hasLoss = false; ///< a flag to indicate that the loss layer is present
 
 public:
     /// Create a new net.
@@ -2298,8 +2389,9 @@ private:
  * To invoke the callback use operator().
  * callback function may return true to stop training early. */
 struct EpochCallback {
-    int period;
-    std::function<bool(int epoch)> callback; //< return true to stop early
+    int period; ///< epochs between subsequent calls
+    std::function<bool(int epoch)> callback; ///< return true to stop early
+    /// callback invokation rule
     bool operator()(int currentEpoch, bool alwaysInvoke = false) const {
         if (alwaysInvoke || (period > 0 && currentEpoch % period == 0)) {
             return callback(currentEpoch);
@@ -2316,8 +2408,9 @@ struct EpochCallback {
  * To invoke the callback use operator().
  * callback function may return true to stop training early. */
 struct IterationCallback {
-    int period;
-    std::function<bool(int iteration)> callback; //< return true to stop early
+    int period; ///< iterations (samples) between subsequent calls
+    std::function<bool(int iteration)> callback; ///< return true to stop early
+    /// callback invokation rule
     bool operator()(int currentIteration, bool alwaysInvoke = false) const {
         if (alwaysInvoke || (period > 0 && currentIteration % period == 0)) {
             return callback(currentIteration);
