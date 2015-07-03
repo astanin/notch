@@ -1,15 +1,26 @@
-Notch Examples
-==============
+Examples
+========
+
+Notch examples can be founds in the `examples/` directory of the source
+distribution:
 
  * `demo_xor` creates a multilayer peceptron and trains it to calculate
-    XOR function (to classify two linearly inseparable sets)
+    XOR function (to classify two linearly inseparable sets).
 
  * `demo_iris` trains a multilayer perceptron to classify the iris flower
-    dataset; the demo uses some optional Notch features:
+    dataset. The demo uses some optional Notch features:
     it reads data from a CSV file, applies one-hot encoding to labels,
-    and applies softmax activation with cross-entropy loss on output
+    and applies softmax activation with cross-entropy loss on output.
 
- * `demo_io` shows how to save and load a multilayer perceptron
+ * `demo_mnist` trains a multilayer perceptron to classify hand-written
+    digit images from the famous MNIST bechmark.
+
+ * `demo_twospirals` trains a multilayer perceptron on a two-spiral
+    classification problem. The problem is known to be difficult for
+    neural networks. This example uses SQUARE dataset augmentation
+    and ADADELTA training schedule to solve the problem.
+
+ * `demo_io` shows how to save and load a multilayer perceptron.
 
 
 How to build examples
