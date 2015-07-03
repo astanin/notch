@@ -9,3 +9,8 @@ tags
 .idea
 build*
 data/*-ubyte
+docs/html/*.html
+docs/html/*.png
+docs/html/*.css
+docs/html/dynsections.js
+docs/html/jquery.js
