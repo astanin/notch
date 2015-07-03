@@ -83,7 +83,7 @@ Naming Conventions
 ------------------
 
 Different neural network libraries name the same things differently.
-This library sticks to terminology of NNLM3.
+This library sticks to the notation of NNLM3.
 
 For neurons with activation potential $v_j = W_{ji} y_i + b_j$,
 activation function $\\phi(v_j)$, and the network loss $E$, the naming
@@ -113,12 +113,12 @@ Bibliography
 ------------
 
  * NNLM3: Neural Networks and Learning Machines / Simon Haykin. -- 3rd ed.
-   ([libgen](http://libgen.org/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854))
+   ([libgen](http://libgen.education/book/index.php?md5=0239f16656e6e5e7db7aaa160cf9f854))
 
  * PRML: Pattern Recognition and Machine Learning / Christoper M. Bishop. --
-   ([libgen](http://libgen.org/book/index.php?md5=44807de3f3da5ae8f5d7066317d8a38a),
+   ([libgen](http://libgen.education/book/index.php?md5=44807de3f3da5ae8f5d7066317d8a38a),
     [web](http://research.microsoft.com/en-us/um/people/cmbishop/prml/index.htm))
 
  * NNTT: Neural Networks: Tricks of the Trade / Grégoire Montavon et al (eds.) -- 2nd ed.
-   ([libgen](http://libgen.org/book/index.php?md5=6b8768e619756f4e867282cfcec63f2e))
+   ([libgen](http://libgen.education/book/index.php?md5=6b8768e619756f4e867282cfcec63f2e))
 
