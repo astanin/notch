@@ -1,5 +1,5 @@
-Notch vs Torch7
-===============
+Benchmarks: Notch vs Torch7
+============================
 
 Benchmark date:   2015-07-01T15:38+0000
 
@@ -21,12 +21,12 @@ Benchmarks
 Log
 ---
 
-```
-Torch7 twospirals SGD 1000 iters: OK [0m# training error = 0.99146835152189[0m	
+~~~
+Torch7 twospirals SGD 1000 iters: OK # training error = 0.99146835152189
 Torch7 twospirals SGD real time:  107.23
 Notch twospirals SGD 1000 iters: OK # training error = 0.923686
 Notch twospirals SGD real time:  121.75
 Notch twospirals SGD+ADADELTA 1000 iters: OK # training error = 0.973669
 Notch twospirals SGD+ADADELTA real time:  115.00
-```
+~~~
 
