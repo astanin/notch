@@ -13,7 +13,7 @@ This is (supposed to be)
 
  * cross-platform (Linux and Windows)
 
- * reasonably fast (for a CPU-only implementations, see `benchmarks/`)
+ * reasonably fast (for a CPU-only implementations, see [benchmarks](benchmarks/README.md))
 
  * but not at the cost of algorithms' readability and portability
 
@@ -47,7 +47,7 @@ without extra dependencies to bundle.
 How to use
 ----------
 
-See `examples/`.
+See [examples](examples/README.md).
 
 
 Conditional Compilation
