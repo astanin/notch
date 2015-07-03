@@ -81,7 +81,7 @@ Different neural network libraries name the same things differently.
 This library sticks to terminology of NNLM3.
 
 For neurons with activation potential $v_j = W_{ji} y_i + b_j$,
-activation function $\phi(v_j)$, and the network loss $E$, the naming
+activation function $\\phi(v_j)$, and the network loss $E$, the naming
 convention is summarized in the following table:
 
     | CONCEPT                      | NOTCH                 | TORCH7 NN           | CAFFE          |
