@@ -128,8 +128,6 @@ private:
     Dataset inputs;
     Dataset outputs;
 
-public:
-
     /// An iterator type to process all labeled data samples.
     class DatasetIterator : public std::iterator<std::input_iterator_tag, LabeledData> {
     private:
@@ -175,8 +173,11 @@ public:
         DatasetIterator &operator++(int) { return ++(*this); }
     };
 
-    // constructors
+public:
+
+    /// Create an empty labeled dataset.
     LabeledDataset() : nSamples(0), inputDimension(0), outputDimension(0) {}
+    /// Create a labeled dataset from a list of samples.
     LabeledDataset(std::initializer_list<LabeledData> samples)
         : nSamples(0), inputDimension(0), outputDimension(0) {
         for (LabeledData s : samples) {
