@@ -29,10 +29,15 @@ This library was born out of frustration.
  * Most of the neural network frameworks are notoriously difficult to
    install and deploy. Some of them work only on a particular operating
    system flavor, or have very specific hardware requirements.
+   Some of them require hundreds of megabytes of dependencies to be
+   installed.
 
- * Many neural network frameworks are designed to _train_ neural
+ * Many neural network frameworks are designed only to _train_ neural
    networks. Few care about _using_ them and integrating neural networks
    into the end-user software.
+
+ * Some neural network libraries are just too generic and too verbose,
+   though it can be subjective.
 
 Notch is supposed to lower the barrier to entry and be a tool which
 works anywhere where a modern C++ compiler is available.
