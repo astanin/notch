@@ -294,7 +294,7 @@ namespace internal {
 #ifdef NOTCH_USE_CBLAS
 
 /** Matrix-vector product, similar to BLAS _gemv function.
- * Calculate $b = \mathbf{M}*x + b$.
+ * Calculate $\\mathbf{b} = \\mathbf{M}*\\mathbf{x} + \\mathbf{b}$.
  *
  * Note: CBLAS requires pointers to data.
  * The type of std::begin(std::valarray&) is not specified by the standard,
@@ -392,7 +392,7 @@ dot(const size_t n,
     return cblas_sdot(n, x_begin, x_stride, y_begin, y_stride);
 }
 
-/** Outer product between two vectors. Calculate $\mathbf{M} = \alpha x y^T$.
+/** Outer product between two vectors. Calculate $\\mathbf{M} = \\alpha \\mathbf{x} \\mathbf{y}^T$.
  *
  * See gemv notes. */
 template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
@@ -421,7 +421,7 @@ outer(float alpha,
                m_begin, cols /* leading dimension of M */);
 }
 
-/** Multiply a vector by a scalar: Calculate $y = \alpha x$.
+/** Multiply a vector by a scalar: Calculate $\\mathbf{y} = \\alpha \\mathbf{x}$.
  *
  * See gemv notes. */
 template <class Vector_Iter>
@@ -447,7 +447,7 @@ scale(float alpha,
 }
 
 /** Multiply a vector by a scalar and add to another vector,
- * similar to BLAS _axpy function. Calculate $y = \alpha x + y$.
+ * similar to BLAS _axpy function. Calculate $\\mathbf{y} = \\alpha \\mathbf{x} + \\mathbf{y}$.
  *
  * See gemv notes. */
 template <class VectorX_Iter, class VectorY_OutIter>
@@ -472,7 +472,7 @@ scaleAdd(float alpha,
 #else /* NOTCH_USE_CBLAS is not defined */
 
 /** Matrix-vector product, similar to BLAS _gemv function.
- * Calculate $b = \mathbf{M}*x + b$. */
+ * Calculate $\\mathbf{b} = \mathbf{M}*\\mathbf{x} + \\mathbf{b}$. */
 template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
 void
 gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
@@ -566,7 +566,7 @@ dot(const size_t n,
     return static_cast<float>(dotProduct);
 }
 
-/** Outer product between two vectors. Calculate $\mathbf{M} = \alpha x y^T$. */
+/** Outer product between two vectors. Calculate $\\mathbf{M} = \\alpha \\mathbf{x} \\mathbf{y}^T$. */
 template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
 void
 outer(float alpha,
@@ -597,7 +597,7 @@ outer(float alpha,
     }
 }
 
-/** Multiply vector by a scalar: Calculate $y = \alpha x$. */
+/** Multiply vector by a scalar: Calculate $\\mathbf{y} = \\alpha \\mathbf{x}$. */
 template <class Vector_Iter>
 typename std::enable_if<std::is_pointer<Vector_Iter>::value, void>::type
 scale(float alpha,
@@ -623,7 +623,7 @@ scale(float alpha,
 }
 
 /** Multiply a vector by a scalar and add to another vector,
- * similar to BLAS _axpy function.  Calculate $y = \alpha x + y$. */
+ * similar to BLAS _axpy function.  Calculate $\\mathbf{ y } = \\alpha \\mathbf{ x } + \\mathbf{ y }$. */
 template <class VectorX_Iter, class VectorY_OutIter>
 void
 scaleAdd(float alpha,
@@ -767,7 +767,7 @@ public:
     /** One-sided Xavier or "Fan-in" initialization.
      *
      * Pick weights from a zero-centered _normal_ distrubition with variance
-     * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+     * $$\\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
      *
      * See
      *
@@ -789,7 +789,7 @@ public:
     /** Uniform one-sided Xavier or "Fan-in" initialization.
      *
      * Pick weights from a zero-centered _uniform_ distrubition with variance
-     * $$\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
+     * $$\\sigma^2 = 1/n_{in}$$, where $n_{in}$ is the number of inputs.
      *
      * See
      *
@@ -830,7 +830,7 @@ public:
  *
  * It is defined as
  *
- * $$\phi(v) = 1/(1 + \exp(- s v)),$$
+ * $$\\phi(v) = 1/(1 + \\exp(- s v)),$$
  *
  * where $s$ is its derivative at zero.
  * See  NNLM3, Chapter 4, page 135. */
@@ -863,11 +863,11 @@ public:
 
 /** Hyperbolic tangent activation function.
  *
- * It is defined as $\phi(v) = a  \tanh(b v)$, NNLM3, Chapter 4, page 136.
+ * It is defined as $\\phi(v) = a  \\tanh(b v)$, NNLM3, Chapter 4, page 136.
  * It maps output to the range (-a, a), or (-1, 1) by default.
  *
  * Yann LeCun proposed parameters $a = 1.7159$ and $b = 2/3$,
- * so that $\phi(1) = 1$ and $\phi(-1) = -1$, and the slope at the origin is
+ * so that $\\phi(1) = 1$ and $\\phi(-1) = -1$, and the slope at the origin is
  * close to one (1.1424). scaledTanh uses this parameters.
  *
  * References:
@@ -941,10 +941,10 @@ const TanhActivation defaultTanh(1.0f, 1.0f, "tanh");
 const TanhActivation scaledTanh(1.7159f, 0.6667f, "scaledTanh");
 /// Logistic function activation (output values between 0 and 1).
 const LogisticActivation logisticActivation(1.0f);
-/// Rectified Linear Unit: $\phi(v) = \max(0, v)$.
+/// Rectified Linear Unit: $\\phi(v) = \\max(0, v)$.
 const PiecewiseLinearActivation ReLU(0.0f, 1.0f, "ReLU");
 /// Rectified Linear Unit with small non-zero gradient in inactive zone:
-/// $\phi(v) = v \text{if} v > 0 \text{or} 0.01 v \text{otherwise}$.
+/// $\\phi(v) = v$ if $v > 0$ or $0.01 v$ otherwise.
 const PiecewiseLinearActivation leakyReLU(0.01f, 1.0f, "leakyReLU");
 /// Linear activation.
 const PiecewiseLinearActivation linearActivation(1.0f, 1.0f, "linear");
@@ -970,33 +970,33 @@ public:
  *
  * Generalized delta rule for learning with fixed rate with a momentum term:
  *
- * $$\Delta w_{ji} (n) = \alpha \Delta w_{ji} (n-1)
- *                     - \eta \partial E / \partial w_{ji},$$
+ * $$\\Delta w_{ji} (n) = \\alpha \\Delta w_{ji} (n-1)
+ *                      - \\eta \\partial E / \\partial w_{ji},$$
  *
- * where $\eta$ is a learning rate, and $\alpha$ is a momentum constant.
+ * where $\\eta$ is a learning rate, and $\\alpha$ is a momentum constant.
  *
  * The momentum term tends to accelerate descent in steady downhill dirctions
- * when the partial derivative $\partial E/\partial w_{ji}$ has the same sign
+ * when the partial derivative $\\partial E/\\partial w_{ji}$ has the same sign
  * on consecutive iterations. It has stabilizing effect otherwise.
  *
- * If the momentum $\alpha = 0$ then the learning policy becomes classic delta
+ * If the momentum $\\alpha = 0$ then the learning policy becomes classic delta
  * rule:
  *
- * $$\Delta w_{ji} = - \eta \partial E / \partial w_{ji}.$$
+ * $$\\Delta w_{ji} = - \\eta \\partial E / \\partial w_{ji}.$$
  *
- * If weightDecay parameter $\lambda$ is not zero, it has an effect of
+ * If weightDecay parameter $\\lambda$ is not zero, it has an effect of
  * adding a complexity penalty term to the loss function:
  *
- * $$E_c(\mathbf{w}) = \lambda ||\mathbf{w}||^2$$
+ * $$E_c(\\mathbf{w}) = \\lambda ||\\mathbf{w}||^2$$
  *
- * and accordingly an extra term to $\partial E/\partial w_{ji}$:
+ * and accordingly an extra term to $\\partial E/\\partial w_{ji}$:
  *
- * $$\partial E_c/\partial w_{ji} = 2 \lambda \mathbf{w}_{ji}$$
+ * $$\\partial E_c/\\partial w_{ji} = 2 \\lambda \\mathbf{w}_{ji}$$
  *
  * Weight-decay has an effect of reducing excess weights of the network
  * (weights which have little influence on the network performance).
  * It may improve generatlization of the network.
- * For a method how to choose parameter $\lambda$ see (Rognvaldsson, 2012).
+ * For a method how to choose parameter $\\lambda$ see (Rognvaldsson, 2012).
  *
  * References:
  *
@@ -1118,8 +1118,8 @@ public:
  */
 class AdaDelta : public ALearningPolicy {
 protected:
-    float momentum; //< $\rho$, exponential smoothing parameter in (Zeiler, 2012)
-    float epsilon; // $\epsilon$ regularization parameter in (Zeiler, 2012)
+    float momentum; //< $\\rho$, exponential smoothing parameter in (Zeiler, 2012)
+    float epsilon; // $\\epsilon$ regularization parameter in (Zeiler, 2012)
     float squaredWeightsDelta = 0.0;
     float squaredBiasDelta = 0.0;
     float squaredGrad_w = 0.0;
@@ -1335,11 +1335,11 @@ protected:
     std::shared_ptr<Array> bias;    //< bias values $b_j$ for the entire layer, one per neuron
     const Activation *activationFunction;
 
-    Array inducedLocalField;  //< $v_j = \sum_i w_ji x_i + b_j$
-    Array activationGrad;     //< $\partial y/\partial v_j = \phi^\prime (v_j)$
-    Array localGrad;          //< $\delta_j = \partial E/\partial v_j = \phi^\prime(v_j) e_j$
-    std::shared_ptr<Array> weightSensitivity;  //< $\partial E/\partial w_{ji}$
-    std::shared_ptr<Array> biasSensitivity;    //< $\partial E/\partial b_{j}$
+    Array inducedLocalField;  //< $v_j = \\sum_i w_ji x_i + b_j$
+    Array activationGrad;     //< $\\partial y/\\partial v_j = \\phi^\\prime (v_j)$
+    Array localGrad;          //< $\\delta_j = \\partial E/\\partial v_j = \\phi^\\prime(v_j) e_j$
+    std::shared_ptr<Array> weightSensitivity;  //< $\\partial E/\\partial w_{ji}$
+    std::shared_ptr<Array> biasSensitivity;    //< $\\partial E/\\partial b_{j}$
     Array propagatedErrors; //< backpropagation result
 
     std::shared_ptr<ALearningPolicy> policy;
@@ -1379,7 +1379,7 @@ protected:
             [&](float y) { return activationFunction->derivative(y); });
     }
 
-    /** Non-linear response of the layer $y_j = \phi(v_j)$. */
+    /** Non-linear response of the layer $y_j = \\phi(v_j)$. */
     void calcOutput() {
         Array &outputs = *shared.outputBuffer;
         std::transform(std::begin(inducedLocalField),
@@ -1399,7 +1399,7 @@ protected:
         calcOutput();
     }
 
-    /** The local gradient $\delta_j = \partial E/\partial v_j$ is the product
+    /** The local gradient $\\delta_j = \\partial E/\\partial v_j$ is the product
      * of the activation function derivative and the error signal. */
     void calcLocalGrad(const Array &errors) {
         assert(activationGrad.size() == errors.size());
@@ -1425,17 +1425,18 @@ protected:
      *
      * where `w_{ji}` is the synaptic weight connecting neuron $i$ to neuron $j$,
      * `\eta` is learning rate, $delta_j (n)$ is the local [error] gradient
-     * $\partial E (n)/\partial v_j (n)$, $y_{i}$ is the input signal of the
-     * neuron $i$, $n$ is the epoch number We discard $\eta$ at the moment
+     * $\\partial E (n)/\\partial v_j (n)$, $y_{i}$ is the input signal of the
+     * neuron $i$, $n$ is the epoch number We discard $\\eta$ at the moment
      * (because it is part of ALearningPolicy).
      *
      * Or in terms of the sensitivity factor, Eq. (4.14) idem:
      *
-     * $$ \Delta w_{ji} (n) = - \eta \partial E(n) / \partial w_{ji}(n)$$
+     * $$ \\Delta w_{ji} (n) = - \\eta \\partial E(n) / \\partial w_{ji}(n)$$
      *
      * Hence, at this point we may calculate the sensitivity factor
      *
-     * $$dE/dw_ji = - \delta_j y_i$$ */
+     * $$ \\partial E/\\partial dw_{ji} = - \\delta_j y_i $$
+     */
     void calcSensitivityFactors() {
         assert(weightSensitivity->size() == weights->size());
         assert(biasSensitivity->size() == bias->size());
@@ -1456,10 +1457,10 @@ protected:
     /** Calculate back-propagated error signal and corrections to synaptic weights.
     * NNLM3r, Page 134.
     *
-    * $$ e_j = \sum_k \delta_k w_{kj} $$
+    * $$ e_j = \\sum_k \\delta_k w_{kj} $$
     *
     * where $e_j$ is an error propagated from all downstream neurons to the
-    * neuron $j$, $\delta_k$ is the local gradient of the downstream neurons
+    * neuron $j$, $\\delta_k$ is the local gradient of the downstream neurons
     * $k$, $w_{kj}$ is the synaptic weight of the $j$-th input of the
     * downstream neuron $k$. */
     void calcPropagatedErrors() {
@@ -1467,7 +1468,7 @@ protected:
             propagatedErrors.resize(nInputs);
         }
         // propagated errors are dot products between columns of the
-        // weight matrix $w_{kj} and local gradient $\delta_j$;
+        // weight matrix $w_{kj} and local gradient $\\delta_j$;
         auto e_begin = std::begin(propagatedErrors); // points to e_0
         auto w_begin = std::begin(*weights);         // points to w_00
         auto delta_begin = std::begin(localGrad);    // points to delta_0
@@ -1602,8 +1603,8 @@ public:
 class ActivationLayer : public ABackpropLayer {
 protected:
     size_t nSize; // the number of input and outputs is the same
-    const Activation *activationFunction; //< $\phi$
-    Array activationGrad; //< $\phi^\prime(v)$
+    const Activation *activationFunction; //< $\\phi$
+    Array activationGrad; //< $\\phi^\\prime(v)$
     Array propagatedErrors;
 
     std::shared_ptr<ActivationLayer> makeClone() const {
@@ -1687,11 +1688,11 @@ public:
  *
  * Loss is the Euclidean distance between two vectors:
  *
- * $$ E_2(\mathbf{y}, \mathbf{d}) = \sqrt{ \sum_i (y_i - d_i)^2 } $$
+ * $$ E_2(\\mathbf{y}, \\mathbf{d}) = \\sqrt{ \\sum_i (y_i - d_i)^2 } $$
  *
  * This loss layer may be used for regressing real-valued labels.
- * Minimizing Euclidean loss $E(y,d)$ means predicting
- * the conditional mean of $d$.
+ * Minimizing Euclidean loss $E_2(\\mathbf{y},\\mathbf{d})$ means predicting
+ * the conditional mean of $\\mathbf{d}$.
  *
  * References:
  *
@@ -1702,7 +1703,7 @@ public:
 class EuclideanLoss : public ALossLayer {
 protected:
     size_t nSize;
-    Array lossGrad; //< $\partial E/\partial y_i$
+    Array lossGrad; //< $\\partial E/\\partial y_i$
 
 public:
     EuclideanLoss(size_t n) : nSize(n), lossGrad(0.0, n) {}
@@ -1739,9 +1740,9 @@ public:
  *
  * Softmax function is a generalization of the logistic function and
  * produces outputs in the range (0,1) which sum to 1.
- * Given inputs $y_i$, the softmax function $\phi_j$ is defined as
+ * Given inputs $y_i$, the softmax function $\\phi_j$ is defined as
  *
- * $$ \phi(\mathbf{y})_j = \frac {\exp{y_j}} {\sum_i \exp{y_i}} $$
+ * $$ \\phi(\\mathbf{y})_j = \\frac {\\exp{y_j}} {\\sum_i \\exp{y_i}} $$
  *
  * It is often used as the last layer in the multiclass classification
  * problems using a cross-entropy loss function. Class labels should be
@@ -1749,10 +1750,10 @@ public:
  *
  * For a multiclass classification problem with $K$ different classes
  * where $d_i$ is the true (desired) propability that the sample belongs
- * to class $i$, and $\phi_i$ is the predicted probability, the
+ * to class $i$, and $\\phi_i$ is the predicted probability, the
  * cross-entropy loss function is defined as
  *
- * $$ E(\mathbf{\phi}, \mathbf{d}) = - \sum_{i = 1}^{K} d_i \ln \phi_i $$
+ * $$ E(\\mathbf{\\phi}, \\mathbf{d}) = - \\sum_{i = 1}^{K} d_i \\ln \\phi_i $$
  *
  * OneHotEncoder may be used to encode categorical labels for use with
  * the cross-entropy loss function.
@@ -1767,8 +1768,8 @@ public:
 class SoftmaxWithLoss : public ALossLayer {
 protected:
     size_t nSize;
-    Array softmaxOutput; //< $\phi(\mathbf{y})_i$
-    Array lossGrad; //< $\partial E/\partial y_i$
+    Array softmaxOutput; //< $\\phi(\\mathbf{y})_i$
+    Array lossGrad; //< $\\partial E/\\partial y_i$
 
     /** Softmax activation. */
     static Array softmax(const Array &input) {
@@ -1809,7 +1810,7 @@ public:
             // combination of softmax activation with cross-entropy loss
             // allows to simplify loss gradient calculation:
             //
-            // $$ \grad_y E = d - \phi(y)$$
+            // $$ \\grad_y E = d - \\phi(y)$$
             lossGrad[i] = expected[i] - softmaxOutput[i];
         }
         return lossTotal;
@@ -1835,7 +1836,7 @@ public:
  * $d = +1$ and $d = -1$, and classifier output $y$, the hinge
  * loss is defined as
  *
- * $$ E(y, d) = \max(0, 1 - d y) $$
+ * $$ E(\\mathbf{y}, \\mathbf{d}) = \\max(0, 1 - \\mathbf{d}^T \\mathbf{y}) $$
  */
 class HingeLoss : public ALossLayer {
 protected:
