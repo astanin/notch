@@ -108,10 +108,14 @@ auto trainingSet = notch::io::CSVReader("my-training-data.csv").read();
 net.setLearningPolicy(AdaDelta());
 
 // Train for 100 epochs:
-SGD::train(net, trainingSet, 100);
+notch::SGD::train(net, trainingSet, 100);
 ~~~
 
 To save the trained network to file, use
 `notch::io::PlainTextNetworkWriter` class. To load parameters of the
 previously trained network, use `notch::io::PlainTextNetworkReader`.
-Both are defined in `notch_io.hpp`.
+Both are defined in `notch_io.hpp`:
+
+~~~{.cpp}
+notch::io::PlainTextNetworkWriter(std::cout) << net;
+~~~
