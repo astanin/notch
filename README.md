@@ -1,4 +1,4 @@
-@mainpage
+[![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest) @mainpage
 
 NOTCH
 =====
