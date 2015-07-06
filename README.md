@@ -52,7 +52,8 @@ without extra dependencies to bundle.
 How to use
 ----------
 
-See [examples](examples/README.md).
+See [examples](examples/README.md)
+and [API reference](http://astanin.bitbucket.org/notch/).
 
 
 Conditional Compilation
