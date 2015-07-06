@@ -771,6 +771,7 @@ WARN_LOGFILE           =
 INPUT                  = examples/README.md \
                          benchmarks/README.md \
                          README.md \
+                         docs/start.md \
                          notch.hpp \
                          notch_io.hpp \
                          notch_pre.hpp \

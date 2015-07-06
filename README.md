@@ -1,4 +1,4 @@
-[![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest) @mainpage
+[![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest)
 
 NOTCH
 =====
@@ -9,7 +9,7 @@ This is (supposed to be)
 
  * a header-only C++11 library
 
- * without extra dependencies (CBLAS dependency is optional)
+ * with no extra dependencies (CBLAS dependency is optional)
 
  * cross-platform (Linux and Windows)
 
@@ -52,7 +52,7 @@ without extra dependencies to bundle.
 How to use
 ----------
 
-See [examples](examples/README.md)
+See [examples](examples/README.md),
 and [API reference](http://astanin.bitbucket.org/notch/).
 
 

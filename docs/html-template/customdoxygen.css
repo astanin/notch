@@ -17,6 +17,10 @@ address.footer {
     display: none;
 }
 
+.container {
+    max-width: 970px;
+}
+
 /* DOXYGEN Code Styles - These are from doxygen but can be changed to fit the theme
 ----------------------------------- */
 
