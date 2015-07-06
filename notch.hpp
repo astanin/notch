@@ -63,6 +63,8 @@ THE SOFTWARE.
 
 namespace notch {
 
+inline namespace core {
+
 /* Library Framework
  * =================
  */
@@ -2488,6 +2490,7 @@ public:
     }
 };
 
+} // end of namespace notch::core
 } // end of namespace notch
 
 #endif /* NOTCH_H */

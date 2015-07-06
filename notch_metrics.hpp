@@ -47,6 +47,7 @@ THE SOFTWARE.
 #include "notch.hpp"
 
 namespace notch {
+inline namespace metrics {
 
 /** A multi-class confusion matrix for class labels of type C.
  *
@@ -202,6 +203,7 @@ public:
 	}
 };
 
+} // end of namespace notch::metrics
 } // end of namespace notch
 
 #endif /* NOTCH_METRICS_H */

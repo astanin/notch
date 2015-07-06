@@ -42,6 +42,8 @@ THE SOFTWARE.
 
 namespace notch {
 
+inline namespace io {
+
 /* Vectors Input-Output
  * --------------------
  */
@@ -896,6 +898,7 @@ public:
     }
 };
 
+} // end of namespace notch::io
 } // end of namespace notch
 
 #endif
