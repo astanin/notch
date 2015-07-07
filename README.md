@@ -52,8 +52,12 @@ without extra dependencies to bundle.
 How to use
 ----------
 
-See [examples](examples/README.md),
-and [API reference](http://astanin.bitbucket.org/notch/).
+See [Getting started](docs/start.md), [examples](examples/README.md),
+and [API reference](http://astanin.bitbucket.org/notch/hierarchy.html).
+
+_Note: Notch is still in the early stage of development.
+Some important features are still missing. Interfaces change.
+Hey, it doesn't even have a version number yet!_
 
 
 Conditional Compilation
