@@ -1,3 +1,6 @@
+Getting Started
+===============
+
 @mainpage
 
 Notch is a header-only C++11 library which allows to implement
@@ -67,55 +70,70 @@ in all but one of them to avoid multiple definitions.
 
 ## The Basics
 
-Neural networks are represented by a `notch::core::Net` class. It is a
-stack of several neural layers which support backpropagation (all
-subclasses of `notch::core::ABackpropLayer`) and a loss layer (see
-`notch::core::ALossLayer`).  The easiest way to construct new
-`notch::core::Net` objects is to use `notch::core::MakeNet` class:
+Most small programs use at least `notch.hpp` and `notch_io.hpp`
+headers. This is a common beginning of a small Notch program:
+
+~~~{.cpp}
+#include <iostream>
+#include "notch.hpp"     // notch::core
+#include "notch_io.hpp"  // notch::io
+
+using namespace notch;
+using namespace std;
+
+int main() {
+    // your code goes here
+}
+~~~
+
+Neural networks are represented by a `Net` class. It is a stack of several
+neural layers which support backpropagation (all subclasses of
+`ABackpropLayer`) and a loss layer (see `ALossLayer`).  The easiest way to
+construct new `Net` objects is to use `MakeNet` class:
 
 ~~~{.cpp}
 // Create a network with 2 inputs, 4 hidden nodes and 1 output
 // with an Euclidean (L2) loss layer, and initialize it randomly.
-auto net = notch::MakeNet()
+auto net = MakeNet()
     .setInputDim(2) // 2 inputs
     .addFC(4)       // then a fully connected layer with 4 nodes
     .addL2Loss()    // Euclidean loss
-    .init()         // or .make() to skip initialization
+    .init();        // or .make() to skip initialization
 ~~~
 
 To apply the neural network to some input, use `.output()` method of
 the `Net` object.  It takes an `Array` and returns another `Array`.
+(Remember, Notch `Array`s are just `std::valarray<float>`).
 
-To train a network in supervised mode, use `notch::core::SGD::train()`
-method.  It implements Stochastic Gradient Descent, a first-order online
-learning algorithm. It will require to choose
-`notch::core::ALearningPolicy` and a labeled dataset for training
-(`notch::core::LabeledDataset`).
+To train a network in supervised mode, use `SGD::train()` method. 
+It implements Stochastic Gradient Descent, a first-order online
+learning algorithm. It will require to choose `ALearningPolicy`
+ and a labeled dataset for training (`LabeledDataset`).
 
 The labeled dataset can be loaded from a CSV file
-(see `notch::io::CSVReader` class and `demo_iris.cpp` example),
+(see `CSVReader` class and `demo_iris.cpp` example),
 from a labeled set of images in IDX format
-(see `notch::io::IDXReader` class and `demo_mnist.cpp` example),
-or constructed in your code using `.append()` method
-of a `notch::core::LabeledDataset` object.
+(see `IDXReader` class and `demo_mnist.cpp` example),
+or constructed in code using `.append()` method
+of a `LabeledDataset` object.
 
 ~~~{.cpp}
 // Assuming that the label to learn is the last
 // column on a CSV table, we may read training data like this:
-auto trainingSet = notch::io::CSVReader("my-training-data.csv").read();
+auto trainingSet = CSVReader("my-training-data.csv").read();
 
 // ADADELTA is a good adaptive learning policy
 net.setLearningPolicy(AdaDelta());
 
 // Train for 100 epochs:
-notch::SGD::train(net, trainingSet, 100);
+SGD::train(net, trainingSet, 100);
 ~~~
 
 To save the trained network to file, use
-`notch::io::PlainTextNetworkWriter` class. To load parameters of the
-previously trained network, use `notch::io::PlainTextNetworkReader`.
+`PlainTextNetworkWriter` class. To load parameters of the
+previously trained network, use `PlainTextNetworkReader`.
 Both are defined in `notch_io.hpp`:
 
 ~~~{.cpp}
-notch::io::PlainTextNetworkWriter(std::cout) << net;
+PlainTextNetworkWriter(std::cout) << net;
 ~~~
