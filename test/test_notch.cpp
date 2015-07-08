@@ -420,7 +420,7 @@ TEST_CASE("scaleAdd: multiply vector by a scalar and add to another vector", "[c
     CHECK(y[2] == 42); // memory is not modified beyond the end
 }
 
-TEST_CASE("conv2d with a 3x3 kernel", "[core][math]") {
+TEST_CASE("conv2d with a 3x3 kernel", "[core][math][conv]") {
     array<float, 5*4> input;
     iota(begin(input), end(input), 0); // input: 0, 1, ... 5*4-1
 
@@ -429,7 +429,7 @@ TEST_CASE("conv2d with a 3x3 kernel", "[core][math]") {
 
     SECTION("Sobel X-direction") {
         array<float, 3*3> kernel {1, 0, -1, 2, 0, -2, 1, 0 , -1};
-        internal::conv2d(begin(input), 5, 4, begin(kernel), begin(output));
+        internal::conv2d<3>(begin(input), 5, 4, begin(kernel), begin(output));
         for (size_t i =0; i < 3*2; ++i) {
             CHECK(output[i] == 2*4); // derivative in X is constant
         }
@@ -439,7 +439,7 @@ TEST_CASE("conv2d with a 3x3 kernel", "[core][math]") {
     SECTION("Sobel Y-direction") {
         size_t imageW = 5;
         array<float, 3*3> kernel {1, 2, 1, 0, 0, 0, -1, -2, -1};
-        internal::conv2d(begin(input), 5, 4, begin(kernel), begin(output));
+        internal::conv2d<3>(begin(input), 5, 4, begin(kernel), begin(output));
         for (size_t i =0; i < 3*2; ++i) {
             CHECK(output[i] == imageW*2*4); // derivative in Y is constant
         }
@@ -448,7 +448,7 @@ TEST_CASE("conv2d with a 3x3 kernel", "[core][math]") {
 
     SECTION("Laplace 2D approximation") {
         array<float, 3*3> kernel {0, 1, 0, 1, -4, 1, 0, 1, 0};
-        internal::conv2d(begin(input), 5, 4, begin(kernel), begin(output));
+        internal::conv2d<3>(begin(input), 5, 4, begin(kernel), begin(output));
         for (size_t i =0; i < 3*2; ++i) {
             CHECK(output[i] == 0); // it's a plane
         }

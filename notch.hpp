@@ -677,7 +677,7 @@ scaleAdd(float alpha,
 #endif /* ifdef NOTCH_USE_CBLAS */
 
 /// Unrolled loop over kernel points for a 3x3 kernel.
-template<class Iter, size_t kernelSize=3>
+template<size_t kernelSize = 3, class Iter>
 inline float
 conv2dAt(Iter imagePos, const size_t imageWidth, Iter kernel) {
     Iter row1 = imagePos - imageWidth - 1;
@@ -701,7 +701,7 @@ conv2dAt(Iter imagePos, const size_t imageWidth, Iter kernel) {
  * and a square kernel. Save result in row-major order.
  *
  * This function does _not_ pad image data. */
-template<class Iter, class OutIter, size_t kernelSize=3>
+template<size_t kernelSize = 3, class Iter, class OutIter>
 void
 conv2d(Iter image, const size_t imageWidth, const size_t imageHeight,
        Iter kernel, OutIter result) {
@@ -716,7 +716,7 @@ conv2d(Iter image, const size_t imageWidth, const size_t imageHeight,
         for (size_t c = 0; c < resultWidth; ++c) {
             Iter image_rc = image_topleft + r*imageWidth + c;
             OutIter result_rc = result + r*resultWidth + c;
-            *result_rc = conv2dAt<Iter, kernelSize>(image_rc, imageWidth, kernel);
+            *result_rc = conv2dAt<kernelSize, Iter>(image_rc, imageWidth, kernel);
         }
     }
 }
