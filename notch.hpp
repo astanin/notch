@@ -93,6 +93,13 @@ using Array = std::valarray<float>;
 using Input = Array;
 using Output = Array;
 
+/** Array index type to use in loops parallelized by OpenMP. */
+#ifdef _MSC_VER  // MSVC supports only OpenMP 2.0 => only signed loop variables
+using OMP_size_t = int_fast64_t;
+#else
+using OMP_size_t = size_t;
+#endif
+
 /** Unlabeled dataset is a collection or `Input`s or `Output`s. */
 using Dataset = std::vector<Array>;
 
@@ -537,7 +544,7 @@ emul(VectorX_Iter x_begin, VectorX_Iter x_end,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, z_begin, x_size)
 #endif
-    for (int_fast64_t i = 0; i < x_size; ++i) {
+    for (OMP_size_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float y_i = *(y_begin + i);
         float &z_i = *(z_begin + i);
@@ -606,7 +613,7 @@ outer(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(m_begin, x_begin, y_begin, rows, cols, alpha)
 #endif
-    for (int_fast64_t r = 0; r < rows; ++r) {
+    for (OMP_size_t r = 0; r < rows; ++r) {
         for (size_t c = 0; c < cols; ++c) {
             float &m_rc = *(m_begin + r*cols + c);
             float x_r = *(x_begin + r);
@@ -634,7 +641,7 @@ scale(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
 #endif
-    for (int_fast64_t i = 0; i < x_size; ++i) {
+    for (OMP_size_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float &y_i = *(y_begin + i);
         y_i = alpha * x_i;
@@ -660,7 +667,7 @@ scaleAdd(float alpha,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(x_begin, y_begin, x_size, alpha)
 #endif
-    for (int_fast64_t i = 0; i < x_size; ++i) {
+    for (OMP_size_t i = 0; i < x_size; ++i) {
         float x_i = *(x_begin + i);
         float &y_i = *(y_begin + i);
         y_i += alpha * x_i;
@@ -705,7 +712,7 @@ conv2d(Iter image, const size_t imageWidth, const size_t imageHeight,
 #ifdef NOTCH_USE_OPENMP
 #pragma omp parallel for shared(image_topleft, kernel, resultWidth, resultHeight)
 #endif
-    for (int_fast64_t r = 0; r < resultHeight; ++r) {
+    for (OMP_size_t r = 0; r < resultHeight; ++r) {
         for (size_t c = 0; c < resultWidth; ++c) {
             Iter image_rc = image_topleft + r*imageWidth + c;
             OutIter result_rc = result + r*resultWidth + c;
