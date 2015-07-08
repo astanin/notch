@@ -14,3 +14,7 @@ docs/html/*.png
 docs/html/*.css
 docs/html/dynsections.js
 docs/html/jquery.js
+benchmarks/*.err
+benchmarks/*.log
+benchmarks/bench_*
+benchmarks/*_results.txt
