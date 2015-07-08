@@ -13,7 +13,7 @@
 #define PATH_TO_DATA "..\\..\\data\\"
 // because MSVC builds put binaries to build/Debug by default
 #else
-#define PATH_TO_DATA "../data"
+#define PATH_TO_DATA "../data/"
 // because GCC/Clang and make put binaries in the build directory by default
 #endif
 
