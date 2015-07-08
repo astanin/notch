@@ -1674,6 +1674,18 @@ protected:
         return p;
     }
 
+    /// Calculate convolutions over inputImages and save the to shared.outputBuffer.
+    void outputInplace(const Array &inputImages) {
+        assert(inputImages.size() == inputSize); // TODO: implement multiplane input
+        assert(shared.outputBuffer != nullptr);
+        const Array &kernel = *weights;
+        Array &out = *shared.outputBuffer;
+        internal::conv2d<kernelSize>
+                         (std::begin(inputImages),
+                          inputWidth, inputHeight,
+                          std::begin(kernel), std::begin(out));
+    }
+
 public:
     /// Create a layer with convolution kernels initialized with zeros.
     ConvolutionLayer2D(size_t imageWidth, size_t imageHeight)
@@ -1689,6 +1701,24 @@ public:
           biasSensitivity(new Array(0.0, 1)),
           propagatedErrors(0.0, inputSize)
           {}
+
+    /// Create a layer with initialized convolution kernels.
+    ConvolutionLayer2D(size_t imageWidth, size_t imageHeight,
+                       const Array &weights, const Array &bias)
+        : inputWidth(imageWidth), inputHeight(imageHeight),
+          inputSize(inputWidth * inputHeight),
+          outputWidth(imageWidth - kernelSize + 1),
+          outputHeight(imageHeight - kernelSize + 1),
+          outputSize(outputWidth * outputHeight),
+          weights(new Array(weights)),
+          bias(new Array(bias)),
+          localGrad(0.0, outputSize),
+          weightSensitivity(new Array(0.0, kernelSize*kernelSize)),
+          biasSensitivity(new Array(0.0, 1)),
+          propagatedErrors(0.0, inputSize) {
+              assert(weights.size() == weightSensitivity->size());
+              assert(bias.size() == biasSensitivity->size());
+          }
 
     /* begin ABackpropLayer interface */
     virtual std::string tag() const { return "ConvolutionLayer2D"; }
@@ -1735,9 +1765,9 @@ public:
         return outputSize;
     }
 
-    virtual const Array &output(const Array &inputs) {
+    virtual const Array &output(const Array &inputImages) {
         shared.allocate(inputSize, outputSize); // just in case user didn't init()
-        //outputInplace(inputs); // TODO: forward prop in convolution layer
+        outputInplace(inputImages);
         return *shared.outputBuffer;
     }
 

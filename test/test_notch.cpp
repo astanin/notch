@@ -156,7 +156,7 @@ void dummyInit(std::unique_ptr<RNG> &, Array &weights, int n_in, int) {
     });
 }
 
-TEST_CASE("ConvolutionLayer2D ctor", "[core][conv]") {
+TEST_CASE("ConvolutionLayer2D default ctor", "[core][conv]") {
     ConvolutionLayer2D<3> conv1(5, 4); // 5x4 image in, 3x3 kernel, 3x2 image out
     CHECK(conv1.tag() == "ConvolutionLayer2D");
     CHECK(conv1.inputDim() == 5*4);
@@ -165,9 +165,21 @@ TEST_CASE("ConvolutionLayer2D ctor", "[core][conv]") {
     conv1.init(rng, dummyInit);
     CHECK((*conv1.getWeights())[0] == 9);
     CHECK((*conv1.getBias())[0] == 9);
-    // enable after the first layer output:
-    //CHECK(conv1.getInputBuffer()->size() == 5*4);
-    //CHECK(conv1.getOutputBuffer()->size() == 3*2);
+}
+
+TEST_CASE("ConvolutionLayer2D forward propagation", "[core][conv]") {
+    // convolution layer with a box-filter kernel
+    ConvolutionLayer2D<3> conv1(4, 3, {1, 1, 1,
+                                       1, 1, 1,
+                                       1, 1, 1}, {0});
+    Array input {9, 0, 0, 0,
+                 0, 0, 0, 0,
+                 0, 0, 1, 0};
+    auto output = conv1.output(input);
+    CHECK(conv1.getInputBuffer()->size() == 4*3);
+    CHECK(conv1.getOutputBuffer()->size() == 2*1);
+    CHECK(output[0] == 10);
+    CHECK(output[1] == 1);
 }
 
 TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
