@@ -4,7 +4,7 @@ BENCHMARK_DATE=$(date --iso-8601=minutes -u)
 CPU_MODEL=$(cat /proc/cpuinfo | grep '^model name' | head -1 | sed 's/[^:]*: //')
 OS_INFO=$(. /etc/os-release && echo $NAME $VERSION '; ' $(uname -sm))
 BLAS_LIBRARY=$(ls -S /opt/OpenBLAS/lib/libopenblas*[0-9]*.so | head -1 | sed 's/.*\///')
-
+CXX=${CXX:=g++}
 
 NOTCH_VERSION=$(git rev-parse HEAD|fold -8|head -1)
 TORCH7_VERSION=$((cd ~/torch/pkg/torch && git rev-parse HEAD)|fold -8|head -1)
@@ -36,7 +36,7 @@ echo
 echo "Benchmark date:   $BENCHMARK_DATE" ; echo
 echo "Benchmark CPU:    $CPU_MODEL" ; echo
 echo "Benchmark OS:     $OS_INFO" ; echo
-echo "C++ compiler:     $(g++ --version | head -1)" ; echo
+echo "C++ compiler:     $($CXX --version | head -1)" ; echo
 echo "BLAS:             ${BLAS_LIBRARY}" ; echo
 echo
 
@@ -77,7 +77,7 @@ export LD_LIBRARY_PATH=/opt/OpenBLAS/lib
 (
     # requires GNU C++ compiler and OpenBLAS in /opt/OpenBLAS
     test -f ./bench_twospirals_blas && rm ./bench_twospirals_blas
-    g++ -std=c++11 -O3 -I.. -DNOTCH_USE_CBLAS -I/opt/OpenBLAS/include \
+    ${CXX} -std=c++11 -O3 -I.. -DNOTCH_USE_CBLAS -I/opt/OpenBLAS/include \
         bench_twospirals.cpp \
         -L/opt/OpenBLAS/lib -lopenblas \
         -o bench_twospirals_blas \
@@ -110,7 +110,7 @@ export LD_LIBRARY_PATH=/opt/OpenBLAS/lib
 (
     # requires only GNU C++ compiler
     test -f ./bench_twospirals_noblas && rm ./bench_twospirals_noblas
-    g++ -std=c++11 -O3 -I.. -fopenmp -DNOTCH_USE_OPENMP \
+    ${CXX} -std=c++11 -O3 -I.. -fopenmp -DNOTCH_USE_OPENMP \
         bench_twospirals.cpp -o bench_twospirals_noblas \
         || (echo "Notch build without BLAS FAILED")
     HAS_NOTCH=$(test -f ./bench_twospirals_noblas)
@@ -131,7 +131,7 @@ export LD_LIBRARY_PATH=/opt/OpenBLAS/lib
 (
     # requires only GNU C++ compiler
     test -f ./bench_twospirals_baseline && rm ./bench_twospirals_baseline
-    g++ -std=c++11 -O3 -I.. \
+    ${CXX} -std=c++11 -O3 -I.. \
         bench_twospirals.cpp -o bench_twospirals_baseline \
         || (echo "Notch build without BLAS FAILED")
     HAS_NOTCH=$(test -f ./bench_twospirals_baseline)
