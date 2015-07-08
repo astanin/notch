@@ -149,6 +149,27 @@ TEST_CASE("FC cloning", "[core][fc]") {
     }
 }
 
+/// Initialize all weights equal to the number of inputs.
+void dummyInit(std::unique_ptr<RNG> &, Array &weights, int n_in, int) {
+    std::generate(std::begin(weights), std::end(weights), [&] {
+        return n_in;
+    });
+}
+
+TEST_CASE("ConvolutionLayer2D ctor", "[core][conv]") {
+    ConvolutionLayer2D<3> conv1(5, 4); // 5x4 image in, 3x3 kernel, 3x2 image out
+    CHECK(conv1.tag() == "ConvolutionLayer2D");
+    CHECK(conv1.inputDim() == 5*4);
+    CHECK(conv1.outputDim() == 3*2);
+    auto rng = Init::newRNG();
+    conv1.init(rng, dummyInit);
+    CHECK((*conv1.getWeights())[0] == 9);
+    CHECK((*conv1.getBias())[0] == 9);
+    // enable after the first layer output:
+    //CHECK(conv1.getInputBuffer()->size() == 5*4);
+    //CHECK(conv1.getOutputBuffer()->size() == 3*2);
+}
+
 TEST_CASE("AL(tanh) ~ FC(I, tanh)", "[core][activation]") {
     const Array identity = {1, 0, 0, 0, 1, 0, 0, 0, 1};
     const Array nobias = {0, 0, 0};

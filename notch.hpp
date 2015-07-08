@@ -1639,6 +1639,128 @@ public:
 };
 
 
+template<size_t kernelSize = 3>
+class ConvolutionLayer2D : public ABackpropLayer {
+protected:
+    size_t inputWidth;
+    size_t inputHeight;
+    size_t inputSize;
+    size_t outputWidth;
+    size_t outputHeight;
+    size_t outputSize;
+    // TODO: implement multiplane input
+    // TODO: implement multiple features (kernels) per layer
+    std::shared_ptr<Array> weights; ///< kernelSize x kernelSize convolution kernel $w$
+    std::shared_ptr<Array> bias; ///< 1-size convolution bias
+
+    Array localGrad; ///< $\\partial E/\\partial v$
+    std::shared_ptr<Array> weightSensitivity;  ///< $\\partial E/\\partial w$
+    std::shared_ptr<Array> biasSensitivity;    ///< $\\partial E/\\partial b$
+    Array propagatedErrors; //< backpropagation result
+
+    std::shared_ptr<ALearningPolicy> policy;
+
+    std::shared_ptr<ABackpropLayer> makeClone() const {
+        auto p = std::make_shared<ConvolutionLayer2D>(*this);
+        if (!p) {
+            throw std::runtime_error("cannot clone layer");
+        }
+        p->shared = shared.clone();
+        p->weights = std::make_shared<Array>(*weights);
+        p->bias = std::make_shared<Array>(*bias);
+        if (policy) {
+            p->policy = policy->clone();
+        }
+        return p;
+    }
+
+public:
+    /// Create a layer with convolution kernels initialized with zeros.
+    ConvolutionLayer2D(size_t imageWidth, size_t imageHeight)
+        : inputWidth(imageWidth), inputHeight(imageHeight),
+          inputSize(inputWidth * inputHeight),
+          outputWidth(imageWidth - kernelSize + 1),
+          outputHeight(imageHeight - kernelSize + 1),
+          outputSize(outputWidth * outputHeight),
+          weights(new Array(0.0, kernelSize*kernelSize)),
+          bias(new Array(0.0, 1)),
+          localGrad(0.0, outputSize),
+          weightSensitivity(new Array(0.0, kernelSize*kernelSize)),
+          biasSensitivity(new Array(0.0, 1)),
+          propagatedErrors(0.0, inputSize)
+          {}
+
+    /* begin ABackpropLayer interface */
+    virtual std::string tag() const { return "ConvolutionLayer2D"; }
+
+    /// Initialize synaptic weights.
+    virtual void init(std::unique_ptr<RNG> &rng, WeightInit init) {
+        size_t nInputs = kernelSize * kernelSize;
+        init(rng, *weights, nInputs, 1);
+        init(rng, *bias, nInputs, 1);
+    }
+
+    virtual std::shared_ptr<Array> getInputBuffer() {
+        return shared.inputBuffer;
+    }
+
+    virtual std::shared_ptr<Array> getOutputBuffer() {
+        return shared.outputBuffer;
+    }
+
+    virtual std::shared_ptr<const Array> getWeights() const {
+        return weights;
+    }
+    virtual std::shared_ptr<const Array> getBias() const {
+        return bias;
+    }
+    virtual std::shared_ptr<const Array> getWeightSensitivity() const {
+        return weightSensitivity;
+    }
+    virtual std::shared_ptr<const Array> getBiasSensitivity() const {
+        return biasSensitivity;
+    }
+    virtual const Activation &getActivation() const {
+        return linearActivation;
+    }
+
+    virtual std::shared_ptr<ABackpropLayer> clone() const {
+        return makeClone();
+    }
+
+    virtual size_t inputDim() const {
+        return inputSize;
+    }
+    virtual size_t outputDim() const {
+        return outputSize;
+    }
+
+    virtual const Array &output(const Array &inputs) {
+        shared.allocate(inputSize, outputSize); // just in case user didn't init()
+        //outputInplace(inputs); // TODO: forward prop in convolution layer
+        return *shared.outputBuffer;
+    }
+
+    virtual const Array &backprop(const Array &errors) {
+        shared.allocate(inputSize, outputSize); // just in case user didn't init()
+        //backpropInplace(errors); // TODO: backprop in convolution layer
+        return propagatedErrors;
+    }
+
+    virtual void setLearningPolicy(const ALearningPolicy &lp) {
+        policy = lp.clone();
+    }
+
+    virtual void update() {
+        if (!policy) {
+            throw std::logic_error("learning policy is not defined");
+        }
+        policy->update(*weights, *bias, *weightSensitivity, *biasSensitivity);
+    }
+    /* end ABackpropLayer interface */
+};
+
+
 /** Apply Activation to all inputs.
  *
  * This layer doesn't have any parameters (weights). */
