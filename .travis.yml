@@ -17,21 +17,17 @@ install:
   # install coveralls-lcov
   - mkdir gems
   - gem install -i gems coveralls-lcov
-
-before_script:
-  - cd ${TRAVIS_BUILD_DIR}/test
   # update PATH (for lcov and coveralls-lcov)
   - DEPS=${TRAVIS_BUILD_DIR}/deps
   - PATH=${DEPS}/opt/usr/bin:${DEPS}/gems/bin:$PATH
-  - echo PATH=$PATH
+  - GEM_PATH=${DEPS}/gems:$GEM_PATHS
+
+before_script:
+  - cd ${TRAVIS_BUILD_DIR}/test
   - lcov --directory . --zerocounters
 
 script:
   - cd ${TRAVIS_BUILD_DIR}/test
-  # update PATH (for lcov and coveralls-lcov)
-  - DEPS=${TRAVIS_BUILD_DIR}/deps
-  - PATH=${DEPS}/opt/usr/bin:${DEPS}/gems/bin:$PATH
-  - echo PATH=$PATH
   - g++-4.8 -std=c++11 -o test_notch_with_coverage --coverage -I.. test_*.cpp
   - ./test_notch_with_coverage
 
