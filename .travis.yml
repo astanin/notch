@@ -6,7 +6,9 @@ compiler:
 
 install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-  - cd test
+  - cd ${TRAVIS_BUILD_DIR}
+  - mkdir deps
+  - cd deps
   # install newer lcov
   - wget http://ftp.de.debian.org/debian/pool/main/l/lcov/lcov_1.11.orig.tar.gz
   - tar xf lcov_1.11.orig.tar.gz
@@ -15,22 +17,21 @@ install:
   # install coveralls-lcov
   - mkdir gems
   - gem install -i gems coveralls-lcov
-  # update PATH
-  - PATH=`pwd`/opt/usr/bin:`pwd`/gems/bin:$PATH
 
 before_script:
-  - cd test
+  - cd ${TRAVIS_BUILD_DIR}/test
   - lcov --directory . --zerocounters
 
 script:
-  - cd test
+  - cd ${TRAVIS_BUILD_DIR}/test
   # update PATH (for lcov and coveralls-lcov)
-  - PATH=`pwd`/opt/usr/bin:`pwd`/gems/bin:$PATH
+  - DEPS=${TRAVIS_BUILD_DIR}/deps
+  - PATH=${DEPS}/opt/usr/bin:${DEPS}/gems/bin:$PATH
   - g++-4.8 -std=c++11 -o test_notch_with_coverage --coverage -I.. test_*.cpp
   - ./test_notch_with_coverage
 
 after_success:
-  - cd test
+  - cd ${TRAVIS_BUILD_DIR}/test
   - lcov --capture --directory . --output-file coverage.info
   - lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info
   - lcov --list coverage.info
