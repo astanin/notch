@@ -1,8 +1,8 @@
 
-| CI Build    | Compilers  | Artifacs                                      | Status   | Coverage   |
+|             | Compilers  | Artifacts                                     | Status   | Coverage   |
 |-------------|------------|-----------------------------------------------|----------|------------|
-| Full        | GCC        | tests with BLAS, tests without BLAS, examples | [![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest) |   |
-| Only tests  | GCC, Clang | tests with BLAS                               | [![Build Status](https://travis-ci.org/astanin/notch.svg?branch=travis-ci)](https://travis-ci.org/astanin/notch) (GCC & Clang, only tests) | [![Coverage Status](https://coveralls.io/repos/astanin/notch/badge.svg?branch=travis-ci&service=github)](https://coveralls.io/github/astanin/notch?branch=travis-ci) |
+| Full build  | GCC        | tests with BLAS, tests without BLAS, examples | [![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest) |   |
+| Test build  | GCC, Clang | tests with BLAS                               | [![Build Status](https://travis-ci.org/astanin/notch.svg?branch=travis-ci)](https://travis-ci.org/astanin/notch) | [![Coverage Status](https://coveralls.io/repos/astanin/notch/badge.svg?branch=travis-ci&service=github)](https://coveralls.io/github/astanin/notch?branch=travis-ci) |
 
 
 NOTCH
