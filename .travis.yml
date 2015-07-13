@@ -34,7 +34,7 @@ before_script:
 
 script:
   - cd ${TRAVIS_BUILD_DIR}/test
-  - ${CXX} -std=c++11 -o test_notch_with_coverage --coverage -DNOTCH_USE_CBLAS -I.. test_*.cpp -lblas
+  - ${CXX} -std=c++11 -o test_notch_with_coverage --coverage -DNOTCH_USE_CBLAS -DNOTCH_GENERATE_NOBLAS_CODE -I.. test_*.cpp -lblas
   - ldd ./test_notch_with_coverage
   - ./test_notch_with_coverage
 
