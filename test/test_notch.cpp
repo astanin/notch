@@ -432,6 +432,103 @@ TEST_CASE("scaleAdd: multiply vector by a scalar and add to another vector", "[c
     CHECK(y[2] == 42); // memory is not modified beyond the end
 }
 
+#ifdef NOTCH_USE_CBLAS
+#ifdef NOTCH_GENERATE_NOBLAS_CODE
+
+TEST_CASE("noblas_gemv: matrix-vector product b = M*x + b", "[core][noblas][math]") {
+    float M[6] = {1, 2, 3, 4, 5, 6}; // row-major 3x2
+    float x[3] = {100, 10, 1};
+    float b[3] = {1, 2, 42}; // with an extra element at the end
+    CHECK_THROWS(internal::noblas_gemv(begin(M), end(M), begin(x), end(x), begin(b), end(b)));
+    internal::noblas_gemv(begin(M), end(M), begin(x), end(x), begin(b), begin(b)+2);
+    CHECK(b[0] == Approx(100*1 + 10*2 + 1*3 + 1));
+    CHECK(b[1] == Approx(100*4 + 10*5 + 1*6 + 2));
+    CHECK(b[2] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("noblas_emul: element-by-element product between vectors", "[core][noblas][math]") {
+    float x[3] = {1, 2, 3};
+    float y[3] = {10, 100, 1000};
+    float z[3] = {0.5, 0.5, 0.5};
+    float expectedZ[3] = {10, 200, 3000};
+    CHECK_THROWS(internal::noblas_emul(begin(x), end(x), begin(y), end(y), begin(z), begin(z)+2));
+    internal::noblas_emul(begin(x), end(x), begin(y), end(y), begin(z), end(z));
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK(z[i] == expectedZ[i]);
+    }
+}
+
+TEST_CASE("noblas_dot: vector-vector dot product", "[core][noblas][math]") {
+    float x[3] = {1, 2, 3};
+    float y[4] = {100, 10, 1, 42};
+    CHECK_THROWS(internal::noblas_dot(begin(x), end(x), begin(y), end(y)));
+    float p = internal::noblas_dot(begin(x), end(x), begin(y), begin(y)+3);
+    CHECK(p == 123);
+    CHECK(y[3] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("noblas_dot: vector-vector dot product with strides", "[core][noblas][math]") {
+    float x[4] = {1, 2, 3, 4};
+    float y[3] = {1, 10, 100};
+    float p = internal::noblas_dot(2, x, 2, y+1, 1);
+    CHECK(p == 1*10 + 3*100);
+}
+
+TEST_CASE("noblas_outer: outer vector-vector product", "[core][noblas][math]") {
+    float alpha = 0.5;
+    float x[2] = {10, 100};
+    float y[3] = {2, 4, 8};
+    float M[7] = {0, 0, 0, 0, 0, 0, 42}; // with an extra element at the end
+    float expectedM[6] = {20*alpha, 40*alpha, 80*alpha, 200*alpha, 400*alpha, 800*alpha};
+    CHECK_THROWS(internal::noblas_outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), end(M)));
+    internal::noblas_outer(alpha, begin(x), end(x), begin(y), end(y), begin(M), begin(M) + 6);
+    for (size_t i =0; i < 6; ++i) {
+        CHECK(M[i] == expectedM[i]);
+    }
+    CHECK(M[6] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("noblas_scale: multiply vector by a scalar", "[core][noblas][math]") {
+    float alpha = 10.0;
+    float x[2] = {2, 4};
+    float y[3] = {0, 0, 42}; // with an extra element at the end
+    float expectedY[2] = {20, 40};
+    CHECK_THROWS(internal::noblas_scale(alpha, begin(x), end(x), begin(y), end(y)));
+    internal::noblas_scale(alpha, begin(x), end(x), begin(y), begin(y)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(y[i] == expectedY[i]);
+    }
+    CHECK(y[2] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("noblas_scale: save output to the same vector", "[core][noblas][math]") {
+    float alpha = 2;
+    float x[3] = {1, 3, 42};
+    float expected[2] = {2, 6};
+    internal::noblas_scale(alpha, begin(x), begin(x)+2, begin(x), begin(x)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(x[i] == expected[i]);
+    }
+    CHECK(x[2] == 42); // memory is not modified beyond the end
+}
+
+TEST_CASE("noblas_scaleAdd: multiply vector by a scalar and add to another vector", "[core][noblas][math]") {
+    float alpha = 10.0;
+    float x[2] = {2, 4};
+    float y[3] = {1, 1, 42}; // with an extra element at the end
+    float expectedY[2] = {20+1, 40+1};
+    CHECK_THROWS(internal::noblas_scaleAdd(alpha, begin(x), end(x), begin(y), end(y)));
+    internal::noblas_scaleAdd(alpha, begin(x), end(x), begin(y), begin(y)+2);
+    for (size_t i =0; i < 2; ++i) {
+        CHECK(y[i] == expectedY[i]);
+    }
+    CHECK(y[2] == 42); // memory is not modified beyond the end
+}
+
+#endif
+#endif
+
+
 TEST_CASE("conv2d with a 3x3 kernel", "[core][math][conv]") {
     array<float, 5*4> input;
     iota(begin(input), end(input), 0); // input: 0, 1, ... 5*4-1

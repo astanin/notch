@@ -57,15 +57,15 @@ THE SOFTWARE.
 #include <omp.h>
 #endif
 
-// Always generate no-BLAS code if NOTCH_USE_NOBLAS_CODE is defined,
+// Always generate no-BLAS code if NOTCH_GENERATE_NOBLAS_CODE is defined,
 // otherwise use this code only if NOTCH_USE_CBLAS is not defined.
 // Both flags can be defined together to have full test coverage.
 #ifdef NOTCH_USE_CBLAS
-#ifdef NOTCH_USE_NOBLAS_CODE
+#ifdef NOTCH_GENERATE_NOBLAS_CODE
 #define INTERNAL_NOBLAS(name) noblas_##name
 #endif
 #else
-#define NOTCH_USE_NOBLAS_CODE
+#define NOTCH_GENERATE_NOBLAS_CODE
 #define INTERNAL_NOBLAS(name) name
 #endif
 
@@ -508,7 +508,7 @@ scaleAdd(float alpha,
 
 #endif /* NOTCH_USE_CBLAS is defined */
 
-#ifdef NOTCH_USE_NOBLAS_CODE
+#ifdef NOTCH_GENERATE_NOBLAS_CODE
 
 /** Matrix-vector product, similar to BLAS _gemv function.
  * Calculate $\\mathbf{b} = \mathbf{M}*\\mathbf{x} + \\mathbf{b}$. */
@@ -694,7 +694,7 @@ INTERNAL_NOBLAS(scaleAdd)(
     }
 }
 
-#endif /* ifdef NOTCH_USE_NOBLAS_CODE */
+#endif /* ifdef NOTCH_GENERATE_NOBLAS_CODE */
 
 /// Unrolled loop over kernel points for a 3x3 kernel.
 template<size_t kernelSize = 3, class Iter>
