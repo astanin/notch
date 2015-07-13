@@ -5,14 +5,12 @@ compiler:
   - clang
 
 install:
+  # use gcc-4.8
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  # create deps directory for build tools
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir deps
   - cd deps
-  # use gcc-4.8
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-  # use gcov-4.8 by default
-  - mkdir -p opt/usr/bin
-  - ln -s `which gcov-4.8` opt/usr/bin/
   # install newer lcov
   - wget http://ftp.de.debian.org/debian/pool/main/l/lcov/lcov_1.11.orig.tar.gz
   - tar xf lcov_1.11.orig.tar.gz
@@ -27,6 +25,7 @@ install:
   # show versions used
   - $CXX --version | head -1
   - gcov --version | head -1
+  - gcov-4.8 --version | head -1
   - lcov --version | head -1
 
 before_script:
@@ -40,7 +39,7 @@ script:
 
 after_success:
   - cd ${TRAVIS_BUILD_DIR}/test
-  - lcov --capture --directory . --output-file coverage.info && \
+  - lcov --capture --directory . --output-file coverage.info --gcov-tool `which gcov-4.8` && \
     lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info && \
     lcov --list coverage.info && \
     coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage.info
