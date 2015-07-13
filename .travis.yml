@@ -5,14 +5,17 @@ compiler:
   - clang
 
 install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir deps
   - cd deps
+  # use gcc-4.8
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  # use gcov-4.8 by default
+  - mkdir -p opt/usr/bin
+  - ln -s `which gcov-4.8` opt/usr/bin/
   # install newer lcov
   - wget http://ftp.de.debian.org/debian/pool/main/l/lcov/lcov_1.11.orig.tar.gz
   - tar xf lcov_1.11.orig.tar.gz
-  - mkdir opt
   - PREFIX=`pwd`/opt make -C lcov-1.11/ install
   # install coveralls-lcov
   - mkdir gems
@@ -21,6 +24,10 @@ install:
   - DEPS=${TRAVIS_BUILD_DIR}/deps
   - PATH=${DEPS}/opt/usr/bin:${DEPS}/gems/bin:$PATH
   - GEM_PATH=${DEPS}/gems:$GEM_PATHS
+  # show versions used
+  - $CXX --version | head -1
+  - gcov --version | head -1
+  - lcov --version | head -1
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR}/test
@@ -33,10 +40,10 @@ script:
 
 after_success:
   - cd ${TRAVIS_BUILD_DIR}/test
-  - lcov --capture --directory . --output-file coverage.info
-  - lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info
-  - lcov --list coverage.info
-  - coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage.info
+  - lcov --capture --directory . --output-file coverage.info && \
+    lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info && \
+    lcov --list coverage.info && \
+    coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage.info
 
 addons:
   apt:
