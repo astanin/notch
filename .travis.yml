@@ -34,7 +34,7 @@ before_script:
 
 script:
   - cd ${TRAVIS_BUILD_DIR}/test
-  - g++-4.8 -std=c++11 -o test_notch_with_coverage --coverage -I.. test_*.cpp
+  - g++-4.8 -std=c++11 -o test_notch_with_coverage --coverage -DNOTCH_USE_CBLAS -I.. test_*.cpp -L/usr/lib/openblas-base -lopenblas
   - ./test_notch_with_coverage
 
 after_success:
@@ -52,3 +52,5 @@ addons:
     - gcc-4.8
     - g++-4.8
     - clang
+    - libblas-dev
+    - libopenblas-dev
