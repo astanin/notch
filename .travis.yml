@@ -39,9 +39,9 @@ script:
 
 after_success:
   - cd ${TRAVIS_BUILD_DIR}/test
-  - lcov --capture --directory . --output-file coverage.info --gcov-tool `which gcov-4.8` && \
-    lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info && \
-    lcov --list coverage.info && \
+  - lcov --capture --directory . --output-file coverage.info --gcov-tool `which gcov-4.8` &&
+    lcov --remove coverage.info 'test/*' '/usr/*' --output-file coverage.info &&
+    lcov --list coverage.info &&
     coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage.info
 
 addons:
