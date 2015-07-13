@@ -57,6 +57,17 @@ THE SOFTWARE.
 #include <omp.h>
 #endif
 
+// Always generate no-BLAS code if NOTCH_USE_NOBLAS_CODE is defined,
+// otherwise use this code only if NOTCH_USE_CBLAS is not defined.
+// Both flags can be defined together to have full test coverage.
+#ifdef NOTCH_USE_CBLAS
+#ifdef NOTCH_USE_NOBLAS_CODE
+#define INTERNAL_NOBLAS(name) noblas_##name
+#endif
+#else
+#define NOTCH_USE_NOBLAS_CODE
+#define INTERNAL_NOBLAS(name) name
+#endif
 
 #include "notch_debug.hpp"  // TODO: remove from release
 
@@ -495,13 +506,16 @@ scaleAdd(float alpha,
     cblas_saxpy(x_size, alpha, x_begin, 1, y_begin, 1);
 }
 
-#else /* NOTCH_USE_CBLAS is not defined */
+#endif /* NOTCH_USE_CBLAS is defined */
+
+#ifdef NOTCH_USE_NOBLAS_CODE
 
 /** Matrix-vector product, similar to BLAS _gemv function.
  * Calculate $\\mathbf{b} = \mathbf{M}*\\mathbf{x} + \\mathbf{b}$. */
 template <class Matrix_Iter, class VectorX_Iter, class VectorB_Iter>
 void
-gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
+INTERNAL_NOBLAS(gemv)(
+     Matrix_Iter m_begin, Matrix_Iter m_end,
      VectorX_Iter x_begin, VectorX_Iter x_end,
      VectorB_Iter b_begin, VectorB_Iter b_end) {
     size_t cols = std::distance(x_begin, x_end);
@@ -527,7 +541,8 @@ gemv(Matrix_Iter m_begin, Matrix_Iter m_end,
  * Calculate $z_i = x_i y_i$ for all $i$. */
 template <class VectorX_Iter, class VectorY_Iter, class VectorZ_OutIter>
 void
-emul(VectorX_Iter x_begin, VectorX_Iter x_end,
+INTERNAL_NOBLAS(emul)(
+     VectorX_Iter x_begin, VectorX_Iter x_end,
      VectorY_Iter y_begin, VectorY_Iter y_end,
      VectorZ_OutIter z_begin, VectorZ_OutIter z_end) {
     size_t x_size = std::distance(x_begin, x_end);
@@ -555,7 +570,8 @@ emul(VectorX_Iter x_begin, VectorX_Iter x_end,
 /** Vector-vector dot product, similar to BLAS _dot function. */
 template <class VectorX_Iter, class VectorY_Iter>
 float
-dot(VectorX_Iter x_begin, VectorX_Iter x_end,
+INTERNAL_NOBLAS(dot)(
+    VectorX_Iter x_begin, VectorX_Iter x_end,
     VectorY_Iter y_begin, VectorY_Iter y_end) {
     double dotProduct = 0.0;
     size_t x_size = std::distance(x_begin, x_end);
@@ -578,7 +594,8 @@ dot(VectorX_Iter x_begin, VectorX_Iter x_end,
 /** Vector-vector dot product with strides, similar to BLAS _dot function. */
 template <class VectorX_Iter, class VectorY_Iter>
 float
-dot(const size_t n,
+INTERNAL_NOBLAS(dot)(
+    const size_t n,
     VectorX_Iter x_begin, const size_t x_stride,
     VectorY_Iter y_begin, const size_t y_stride) {
     double dotProduct = 0.0;
@@ -595,7 +612,8 @@ dot(const size_t n,
 /** Outer product between two vectors. Calculate $\\mathbf{M} = \\alpha \\mathbf{x} \\mathbf{y}^T$. */
 template <class VectorX_Iter, class VectorY_Iter, class Matrix_OutIter>
 void
-outer(float alpha,
+INTERNAL_NOBLAS(outer)(
+      float alpha,
       VectorX_Iter x_begin, VectorX_Iter x_end,
       VectorY_Iter y_begin, VectorY_Iter y_end,
       Matrix_OutIter m_begin, Matrix_OutIter m_end) {
@@ -626,7 +644,8 @@ outer(float alpha,
 /** Multiply vector by a scalar: Calculate $\\mathbf{y} = \\alpha \\mathbf{x}$. */
 template <class Vector_Iter>
 typename std::enable_if<std::is_pointer<Vector_Iter>::value, void>::type
-scale(float alpha,
+INTERNAL_NOBLAS(scale)(
+      float alpha,
       Vector_Iter x_begin, Vector_Iter x_end,
       Vector_Iter y_begin, Vector_Iter y_end) {
     size_t x_size = std::distance(x_begin, x_end);
@@ -652,7 +671,8 @@ scale(float alpha,
  * similar to BLAS _axpy function.  Calculate $\\mathbf{ y } = \\alpha \\mathbf{ x } + \\mathbf{ y }$. */
 template <class VectorX_Iter, class VectorY_OutIter>
 void
-scaleAdd(float alpha,
+INTERNAL_NOBLAS(scaleAdd)(
+         float alpha,
          VectorX_Iter x_begin, VectorX_Iter x_end,
          VectorY_OutIter y_begin, VectorY_OutIter y_end) {
     size_t x_size = std::distance(x_begin, x_end);
@@ -674,7 +694,7 @@ scaleAdd(float alpha,
     }
 }
 
-#endif /* ifdef NOTCH_USE_CBLAS */
+#endif /* ifdef NOTCH_USE_NOBLAS_CODE */
 
 /// Unrolled loop over kernel points for a 3x3 kernel.
 template<size_t kernelSize = 3, class Iter>
