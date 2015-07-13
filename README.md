@@ -1,4 +1,9 @@
-[![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest)
+Full build: [![Build Status](https://drone.io/bitbucket.org/astanin/notch/status.png)](https://drone.io/bitbucket.org/astanin/notch/latest)
+
+Test build: [![Build Status](https://travis-ci.org/astanin/notch.svg?branch=travis-ci)](https://travis-ci.org/astanin/notch)
+
+Test coverage: [![Coverage Status](https://coveralls.io/repos/astanin/notch/badge.svg?branch=travis-ci&service=github)](https://coveralls.io/github/astanin/notch?branch=travis-ci)
+
 
 NOTCH
 =====
