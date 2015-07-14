@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 """Usage: python fann2csv.py datafile.fann
 
-Convert FANN dataset file 'datafile.fann' to CSV file.
+Convert FANN dataset file 'datafile.fann' to a CSV file 'datafile.csv'.
+Class labels are saved in the last columns.
+
+For more information about FANN format see
+http://leenissen.dk/fann/html/files2/gettingstarted-txt.html
+
 """
 
 
