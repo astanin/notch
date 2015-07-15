@@ -90,9 +90,9 @@ def convert_images(image_dirs, prefix, width, height, mode):
             for class_id, image_path in images:
                 img = Image.open(image_path)
                 img = img.convert(mode=mode)
-                imagesfile.write(np.asarray(img.getdata()))
+                imagesfile.write(np.asarray(img.getdata(), dtype=np.uint8))
                 imagesfile.flush()
-                labelsfile.write(chr(class_id))
+                labelsfile.write(chr(class_id & 0xFF))
                 labelsfile.flush()
 
 
